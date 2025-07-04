@@ -3,15 +3,11 @@ using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 using System.ComponentModel;
 using System.Text.Json;
-
 namespace Sherlock.MCP.Server.Tools;
-
-/// <summary>
-/// MCP tools for detailed .NET member analysis
-/// </summary>
 [McpServerToolType]
 public static class MemberAnalysisTools
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
     [McpServerTool]
     [Description("Gets detailed information about all methods in a type, including signatures, parameters, overloads, and modifiers")]
     public static string GetTypeMethods(
@@ -26,10 +22,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -37,9 +30,7 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var methods = memberAnalysisService.GetMethods(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -72,15 +63,13 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze methods: {ex.Message}" });
         }
     }
-
     [McpServerTool]
     [Description("Gets detailed information about all properties in a type, including getters, setters, indexers, and access modifiers")]
     public static string GetTypeProperties(
@@ -95,10 +84,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -106,9 +92,7 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var properties = memberAnalysisService.GetProperties(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -139,15 +123,13 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze properties: {ex.Message}" });
         }
     }
-
     [McpServerTool]
     [Description("Gets detailed information about all fields in a type, including const, readonly, static, and volatile fields")]
     public static string GetTypeFields(
@@ -162,10 +144,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -173,9 +152,7 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var fields = memberAnalysisService.GetFields(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -195,15 +172,13 @@ public static class MemberAnalysisTools
                     constantValue = f.ConstantValue
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze fields: {ex.Message}" });
         }
     }
-
     [McpServerTool]
     [Description("Gets detailed information about all events in a type, including handler types and access modifiers")]
     public static string GetTypeEvents(
@@ -218,10 +193,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -229,9 +201,7 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var events = memberAnalysisService.GetEvents(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -252,15 +222,13 @@ public static class MemberAnalysisTools
                     removeMethodAccessModifier = e.RemoveMethodAccessModifier
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze events: {ex.Message}" });
         }
     }
-
     [McpServerTool]
     [Description("Gets detailed information about all constructors in a type, including parameters and access modifiers")]
     public static string GetTypeConstructors(
@@ -275,10 +243,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -286,9 +251,7 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var constructors = memberAnalysisService.GetConstructors(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -312,15 +275,13 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze constructors: {ex.Message}" });
         }
     }
-
     [McpServerTool]
     [Description("Gets comprehensive member information for a type, including all methods, properties, fields, events, and constructors")]
     public static string GetAllTypeMembers(
@@ -335,10 +296,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-            {
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-            }
-
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -346,13 +304,11 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-
             var methods = memberAnalysisService.GetMethods(assemblyPath, typeName, options);
             var properties = memberAnalysisService.GetProperties(assemblyPath, typeName, options);
             var fields = memberAnalysisService.GetFields(assemblyPath, typeName, options);
             var events = memberAnalysisService.GetEvents(assemblyPath, typeName, options);
             var constructors = memberAnalysisService.GetConstructors(assemblyPath, typeName, options);
-            
             var result = new
             {
                 typeName,
@@ -413,8 +369,7 @@ public static class MemberAnalysisTools
                     parameterCount = c.Parameters.Length
                 }).ToArray()
             };
-
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {

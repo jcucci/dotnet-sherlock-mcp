@@ -1,7 +1,5 @@
 using System.Reflection;
-
 namespace Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
-
 public record TypeInfo(
     string FullName,
     string Name,

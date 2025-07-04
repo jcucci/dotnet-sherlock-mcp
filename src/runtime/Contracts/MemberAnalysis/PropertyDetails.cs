@@ -1,7 +1,5 @@
 using System.Reflection;
-
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
-
 public record PropertyDetails(
     string Name,
     string TypeName,
