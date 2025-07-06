@@ -1,0 +1,23 @@
+{
+   "version": "0.2.0",
+   "configurations": [
+      {
+         "name": "Debug Global Tool",
+         "type": "coreclr",
+         "request": "launch",
+         "program": "dotnet",
+         "args": [
+            "run",
+            "--project",
+            "${workspaceFolder}/src/server/Sherlock.MCP.Server.csproj",
+            "--",
+            "--transport",
+            "stdio"
+         ],
+         "cwd": "${workspaceFolder}",
+         "console": "internalConsole",
+         "stopAtEntry": false,
+         "requireExactSource": false
+      }
+   ]
+}

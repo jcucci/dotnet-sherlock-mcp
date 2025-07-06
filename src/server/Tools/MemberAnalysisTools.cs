@@ -2,12 +2,15 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text.Json;
 namespace Sherlock.MCP.Server.Tools;
+
 [McpServerToolType]
 public static class MemberAnalysisTools
 {
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
+
     [McpServerTool]
     [Description("Gets detailed information about all methods in a type, including signatures, parameters, overloads, and modifiers")]
     public static string GetTypeMethods(
@@ -22,7 +25,8 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });    
+
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -30,7 +34,14 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var methods = memberAnalysisService.GetMethods(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var methods = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -63,6 +74,7 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -70,12 +82,13 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze methods: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets detailed information about all properties in a type, including getters, setters, indexers, and access modifiers")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze")] string typeName,
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -85,6 +98,7 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -92,7 +106,14 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var properties = memberAnalysisService.GetProperties(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var properties = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -123,6 +144,7 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -130,12 +152,13 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze properties: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets detailed information about all fields in a type, including const, readonly, static, and volatile fields")]
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze")] string typeName,
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -145,6 +168,7 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -152,7 +176,14 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var fields = memberAnalysisService.GetFields(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var fields = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -172,6 +203,7 @@ public static class MemberAnalysisTools
                     constantValue = f.ConstantValue
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -179,12 +211,13 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze fields: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets detailed information about all events in a type, including handler types and access modifiers")]
     public static string GetTypeEvents(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze")] string typeName,
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -194,6 +227,7 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -201,7 +235,14 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var events = memberAnalysisService.GetEvents(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var events = memberAnalysisService.GetEvents(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -222,6 +263,7 @@ public static class MemberAnalysisTools
                     removeMethodAccessModifier = e.RemoveMethodAccessModifier
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -229,12 +271,13 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze events: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets detailed information about all constructors in a type, including parameters and access modifiers")]
     public static string GetTypeConstructors(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze")] string typeName,
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -244,6 +287,7 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -251,7 +295,14 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var constructors = memberAnalysisService.GetConstructors(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var constructors = memberAnalysisService.GetConstructors(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -275,6 +326,7 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -282,12 +334,13 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze constructors: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets comprehensive member information for a type, including all methods, properties, fields, events, and constructors")]
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze")] string typeName,
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -297,6 +350,7 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var options = new MemberFilterOptions
             {
                 IncludePublic = includePublic,
@@ -304,11 +358,18 @@ public static class MemberAnalysisTools
                 IncludeStatic = includeStatic,
                 IncludeInstance = includeInstance
             };
-            var methods = memberAnalysisService.GetMethods(assemblyPath, typeName, options);
-            var properties = memberAnalysisService.GetProperties(assemblyPath, typeName, options);
-            var fields = memberAnalysisService.GetFields(assemblyPath, typeName, options);
-            var events = memberAnalysisService.GetEvents(assemblyPath, typeName, options);
-            var constructors = memberAnalysisService.GetConstructors(assemblyPath, typeName, options);
+    
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            if (type?.FullName == null)
+                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+
+            var methods = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
+            var properties = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
+            var fields = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
+            var events = memberAnalysisService.GetEvents(assemblyPath, type.FullName, options);
+            var constructors = memberAnalysisService.GetConstructors(assemblyPath, type.FullName, options);
+    
             var result = new
             {
                 typeName,
@@ -369,6 +430,7 @@ public static class MemberAnalysisTools
                     parameterCount = c.Parameters.Length
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -376,4 +438,4 @@ public static class MemberAnalysisTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze all members: {ex.Message}" });
         }
     }
-}
+ }

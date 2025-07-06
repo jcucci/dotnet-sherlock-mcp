@@ -8,7 +8,7 @@ builder.Logging.AddConsole(consoleLogOptions =>
     consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 builder.Services
-    .AddSingleton<IAssemblyDiscoveryService, AssemblyDiscoveryService>()
+    
     .AddSingleton<IMemberAnalysisService, MemberAnalysisService>()
     .AddMcpServer()
     .WithStdioServerTransport()

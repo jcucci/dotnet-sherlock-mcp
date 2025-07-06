@@ -1,13 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Version>0.4.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Sherlock.MCP.Server</PackageId>
-    <Version>0.1.0</Version>
-    <PackageVersion>0.1.0</PackageVersion>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -19,12 +21,16 @@
 
   <PropertyGroup>
     <Authors>Joe Cucci</Authors>
+    <Description>Model Context Protocol server for .NET assembly analysis and reflection</Description>
     <Product>Sherlock MCP Server</Product>
-    <Description>Model Context Protocol server for .NET assembly analysis</Description>
     <Copyright>Copyright © $([System.DateTime]::Now.Year)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/jcucci/sherlock-mcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sherlock-mcp</ToolCommandName>
+    <PackageId>Sherlock.MCP.Server</PackageId>
+    <PackageVersion>$(Version)</PackageVersion>
     <PackageProjectUrl>https://github.com/jcucci/sherlock-mcp</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>mcp,model-context-protocol,dotnet,assembly-analysis,reflection</PackageTags>
@@ -41,6 +47,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\runtime\Sherlock.MCP.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
 
 </Project>

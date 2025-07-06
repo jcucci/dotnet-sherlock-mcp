@@ -1,23 +1,24 @@
 using ModelContextProtocol.Server;
-using Sherlock.MCP.Runtime;
+
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 namespace Sherlock.MCP.Server.Tools;
+
 [McpServerToolType]
 public static class ReflectionTools
 {
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
+
     [McpServerTool]
     [Description("Analyzes a .NET assembly and returns information about all public types, their members, and metadata")]
-    public static string AnalyzeAssembly(
-        IAssemblyDiscoveryService discoveryService,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath)
+    public static string AnalyzeAssembly([Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var assembly = Assembly.LoadFrom(assemblyPath);
             var types = assembly.GetExportedTypes();
             var result = new
@@ -41,6 +42,7 @@ public static class ReflectionTools
                     memberCount = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).Length
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -48,21 +50,23 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze assembly: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
     [Description("Gets detailed information about a specific type including all its members, methods, properties, and fields")]
     public static string AnalyzeType(
-        IAssemblyDiscoveryService discoveryService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze (e.g., 'System.String' or 'MyNamespace.MyClass')")] string typeName)
+        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetType(typeName);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
             if (type == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+    
             var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
                 .Select(c => new
                 {
@@ -75,6 +79,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
                     }).ToArray()
                 }).ToArray();
+    
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => !m.IsSpecialName)
                 .Select(m => new
@@ -92,6 +97,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
                     }).ToArray()
                 }).ToArray();
+    
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Select(p => new
                 {
@@ -101,6 +107,7 @@ public static class ReflectionTools
                     canWrite = p.CanWrite,
                     isStatic = p.GetGetMethod()?.IsStatic ?? p.GetSetMethod()?.IsStatic ?? false
                 }).ToArray();
+    
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Select(f => new
                 {
@@ -110,6 +117,7 @@ public static class ReflectionTools
                     isReadOnly = f.IsInitOnly,
                     isLiteral = f.IsLiteral
                 }).ToArray();
+    
             var result = new
             {
                 typeName = type.FullName,
@@ -128,6 +136,7 @@ public static class ReflectionTools
                 properties,
                 fields
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -135,119 +144,57 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze type: {ex.Message}" });
         }
     }
+    
     [McpServerTool]
-    [Description("Searches for assemblies that contain a specific type name across common locations")]
-    public static string FindAssembliesByTypeName(
-        IAssemblyDiscoveryService discoveryService,
-        [Description("Name of the type to search for (can be partial, e.g., 'String', 'List', 'HttpClient')")] string typeName,
-        [Description("Optional hint path to a directory or specific assembly file where the type might be located")] string? hintPath = null,
-        [Description("Optional hint indicating if the type is likely from a NuGet package")] bool? isNuGetPackage = null)
+    [Description("Searches for an assembly by its file name in common binary folders (bin/Debug, bin/Release, etc.).")]
+    public static string FindAssemblyByFileName(
+        [Description("The file name of the assembly to search for (e.g., 'MyProject.dll').")] string assemblyFileName,
+        [Description("The root directory to start the search from.")] string workingDirectory)
     {
         try
         {
-            var assemblies = discoveryService.FindAssemblyByTypeName(typeName, hintPath, isNuGetPackage);
+            var assemblyPath = Directory.GetFiles(workingDirectory, assemblyFileName, SearchOption.AllDirectories).FirstOrDefault();
+
+            if (assemblyPath == null)
+                return JsonSerializer.Serialize(new { error = $"Assembly '{assemblyFileName}' not found in common binary folders." });
+
             var result = new
             {
-                searchTerm = typeName,
-                hintPath,
-                isNuGetPackage,
-                foundAssemblies = assemblies.Select(path => new
-                {
-                    path,
-                    fileName = Path.GetFileName(path),
-                    directory = Path.GetDirectoryName(path)
-                }).ToArray(),
-                count = assemblies.Length
+                searchTerm = assemblyFileName,
+                workingDirectory,
+                foundAssembly = assemblyPath,
             };
+
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to search for assemblies: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
         }
     }
-    [McpServerTool]
-    [Description("Lists all assemblies in a specified directory, with optional recursive search")]
-    public static string ListAssembliesInDirectory(
-        IAssemblyDiscoveryService discoveryService,
-        [Description("Directory path to search for assemblies")] string directoryPath,
-        [Description("Whether to search subdirectories recursively (default: true)")] bool recursive = true)
-    {
-        try
-        {
-            if (!Directory.Exists(directoryPath))
-                return JsonSerializer.Serialize(new { error = $"Directory not found: {directoryPath}" });
-            var assemblies = discoveryService.FindAssembliesInDirectory(directoryPath, recursive);
-            var result = new
-            {
-                directory = directoryPath,
-                recursive,
-                assemblies = assemblies.Select(path => new
-                {
-                    path,
-                    fileName = Path.GetFileName(path),
-                    size = new FileInfo(path).Length,
-                    lastModified = new FileInfo(path).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
-                }).ToArray(),
-                count = assemblies.Length
-            };
-            return JsonSerializer.Serialize(result, SerializerOptions);
-        }
-        catch (Exception ex)
-        {
-            return JsonSerializer.Serialize(new { error = $"Failed to list assemblies: {ex.Message}" });
-        }
-    }
-    [McpServerTool]
-    [Description("Gets the locations of .NET Framework and runtime assemblies")]
-    public static string GetFrameworkAssemblies(
-        IAssemblyDiscoveryService discoveryService)
-    {
-        try
-        {
-            var assemblies = discoveryService.GetFrameworkAssemblyLocations();
-            var result = new
-            {
-                frameworkAssemblies = assemblies.Select(path => new
-                {
-                    path,
-                    fileName = Path.GetFileName(path),
-                    directory = Path.GetDirectoryName(path)
-                }).ToArray(),
-                count = assemblies.Length,
-                runtimeVersion = Environment.Version.ToString(),
-                frameworkDescription = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription
-            };
-            return JsonSerializer.Serialize(result, SerializerOptions);
-        }
-        catch (Exception ex)
-        {
-            return JsonSerializer.Serialize(new { error = $"Failed to get framework assemblies: {ex.Message}" });
-        }
-    }
-    [McpServerTool]
-    [Description("Analyzes a method signature and provides detailed information about parameters, return type, and attributes")]
+    
     public static string AnalyzeMethod(
-        IAssemblyDiscoveryService discoveryService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type containing the method")] string typeName,
+        [Description("Name of the class containing the method (e.g., 'String' or 'MyClass')")] string typeName,
         [Description("Name of the method to analyze")] string methodName)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+    
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetType(typeName);
+            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
             if (type == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+    
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => m.Name == methodName)
                 .ToArray();
+    
             if (methods.Length == 0)
-            {
                 return JsonSerializer.Serialize(new { error = $"Method '{methodName}' not found in type '{typeName}'" });
-            }
+    
             var result = new
             {
                 typeName = type.FullName,
@@ -278,6 +225,7 @@ public static class ReflectionTools
                     }).ToArray()
                 }).ToArray()
             };
+    
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
