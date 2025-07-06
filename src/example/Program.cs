@@ -1,71 +1,31 @@
-using Microsoft.Extensions.Logging;
-using Sherlock.MCP.Runtime;
-// Create a logger for demonstration
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-var logger = loggerFactory.CreateLogger<AssemblyDiscoveryService>();
-// Create the assembly discovery service
-var assemblyDiscovery = new AssemblyDiscoveryService(logger);
+using System;
+using System.IO;
+using System.Linq;
+
 Console.WriteLine("=== Sherlock MCP Assembly Discovery Example ===\n");
-// Example 1: Get common assembly locations
-Console.WriteLine("1. Common Assembly Locations:");
-var commonLocations = assemblyDiscovery.GetCommonAssemblyLocations();
-foreach (var location in commonLocations.Take(5)) // Show first 5
+
+// Example: Find an assembly by file name
+Console.WriteLine("1. Finding an assembly by file name:");
+var assemblyFileName = "Sherlock.MCP.Runtime.dll";
+var workingDirectory = AppDomain.CurrentDomain.BaseDirectory;
+var searchDirectories = new[] { "bin/Debug", "bin/Release", "bin" };
+var assemblyPaths = searchDirectories
+    .Select(subDir => Path.Combine(workingDirectory, subDir))
+    .Where(Directory.Exists)
+    .SelectMany(dir => Directory.GetFiles(dir, assemblyFileName, SearchOption.AllDirectories))
+    .ToArray();
+
+if (assemblyPaths.Length > 0)
 {
-    Console.WriteLine($"   - {location}");
-}
-Console.WriteLine($"   ... and {commonLocations.Length - 5} more locations\n");
-// Example 2: Get framework assemblies
-Console.WriteLine("2. Framework Assembly Locations:");
-var frameworkAssemblies = assemblyDiscovery.GetFrameworkAssemblyLocations();
-foreach (var assembly in frameworkAssemblies.Take(10)) // Show first 10
-{
-    Console.WriteLine($"   - {Path.GetFileName(assembly)}");
-}
-Console.WriteLine($"   ... and {frameworkAssemblies.Length - 10} more framework assemblies\n");
-// Example 3: Find assemblies in a specific directory
-Console.WriteLine("3. Finding Assemblies in Current Directory:");
-var currentDir = AppDomain.CurrentDomain.BaseDirectory;
-var assembliesInDir = assemblyDiscovery.FindAssembliesInDirectory(currentDir, recursive: false);
-if (assembliesInDir.Length > 0)
-{
-    foreach (var assembly in assembliesInDir)
+    Console.WriteLine($"Found {assemblyPaths.Length} assemblies:");
+    foreach (var path in assemblyPaths)
     {
-        Console.WriteLine($"   - {Path.GetFileName(assembly)}");
+        Console.WriteLine($"   - {path}");
     }
 }
 else
 {
-    Console.WriteLine("   No managed assemblies found in current directory");
+    Console.WriteLine($"Assembly '{assemblyFileName}' not found in common binary folders.");
 }
-Console.WriteLine();
-// Example 4: Search for assemblies containing a specific type
-Console.WriteLine("4. Finding Assemblies Containing 'String' Type:");
-var assembliesWithString = assemblyDiscovery.FindAssemblyByTypeName("String");
-foreach (var assembly in assembliesWithString.Take(5)) // Show first 5
-{
-    Console.WriteLine($"   - {Path.GetFileName(assembly)}");
-}
-if (assembliesWithString.Length > 5)
-{
-    Console.WriteLine($"   ... and {assembliesWithString.Length - 5} more assemblies");
-}
-Console.WriteLine();
-// Example 5: Search for NuGet package assemblies
-Console.WriteLine("5. Searching for 'Microsoft.Extensions.Logging' NuGet Package Assemblies:");
-var nugetAssemblies = assemblyDiscovery.GetNuGetPackageAssemblies("Microsoft.Extensions.Logging");
-if (nugetAssemblies.Length > 0)
-{
-    foreach (var assembly in nugetAssemblies.Take(5)) // Show first 5
-    {
-        Console.WriteLine($"   - {Path.GetFileName(assembly)}");
-    }
-    if (nugetAssemblies.Length > 5)
-    {
-        Console.WriteLine($"   ... and {nugetAssemblies.Length - 5} more package assemblies");
-    }
-}
-else
-{
-    Console.WriteLine("   No assemblies found for this package");
-}
+
 Console.WriteLine("\n=== Example Complete ===");
