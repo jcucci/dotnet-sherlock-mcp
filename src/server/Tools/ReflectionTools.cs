@@ -3,6 +3,8 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
+using Sherlock.MCP.Server.Shared;
+
 namespace Sherlock.MCP.Server.Tools;
 
 [McpServerToolType]
@@ -142,6 +144,34 @@ public static class ReflectionTools
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Failed to analyze type: {ex.Message}" });
+        }
+    }
+    
+    [McpServerTool]
+    [Description("Searches for an assembly by its class name in common binary folders (bin/Debug, bin/Release, etc.).")]
+    public static string FindAssemblyByClassName(
+        [Description("The class name to search for (e.g., 'MyClass').")] string className,
+        [Description("The root directory to start the search from.")] string workingDirectory)
+    {
+        try
+        {
+            var assemblyPath = AssemblyLocator.FindAssemblyByClassName(className, workingDirectory);
+
+            if (assemblyPath == null)
+                return JsonSerializer.Serialize(new { error = $"Assembly '{className}' not found in common binary folders." });
+
+            var result = new
+            {
+                searchTerm = className,
+                workingDirectory,
+                foundAssembly = assemblyPath,
+            };
+
+            return JsonSerializer.Serialize(result, SerializerOptions);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
         }
     }
     
