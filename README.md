@@ -27,17 +27,14 @@ dotnet tool install -g Sherlock.MCP.Server
 
 ## Usage
 
-Once installed, you can start the MCP server by running the following command:
+To configure Sherlock MCP as a custom tool in an IDE that supports the Model Context Protocol (such as Cursor), follow these steps:
 
-```bash
-sherlock-mcp
-```
+1.  **Open your IDE's settings.**
+2.  **Navigate to the MCP or custom tools section.**
+3.  **Add a new server configuration.**
+4.  **For the command, enter `sherlock-mcp`.**
 
-The server will start and listen for connections from LLMs.
-
-### Example: Using the Tool with an LLM
-
-Here's an example of how you can use Sherlock MCP for .NET with an LLM to get information about a constructor:
+Once configured, your IDE will be able to use Sherlock MCP for deep .NET code analysis.
 
 ## Available Tools
 
