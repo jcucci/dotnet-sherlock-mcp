@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a .NET MCP (Model Context Protocol) server called "dotnet-sherlock-mcp" that uses reflection to provide LLMs with knowledge about .NET classes, their members, and their signatures. The project is currently in initial setup phase with only a Visual Studio solution file present.
+This is a .NET MCP (Model Context Protocol) server called "dotnet-sherlock-mcp" that uses reflection to provide LLMs with knowledge about .NET classes, their members, and their signatures. The project includes a working server, runtime libraries, and tests.
 
 ## Project Structure
 

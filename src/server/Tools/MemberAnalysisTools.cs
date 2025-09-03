@@ -16,7 +16,8 @@ public static class MemberAnalysisTools
     public static string GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Full name of the type to analyze (e.g., 'System.String' or 'MyNamespace.MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")]
+        string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -36,7 +37,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 
@@ -88,7 +92,7 @@ public static class MemberAnalysisTools
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -108,7 +112,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 
@@ -158,7 +165,7 @@ public static class MemberAnalysisTools
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -178,7 +185,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 
@@ -217,7 +227,7 @@ public static class MemberAnalysisTools
     public static string GetTypeEvents(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -237,7 +247,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 
@@ -277,7 +290,7 @@ public static class MemberAnalysisTools
     public static string GetTypeConstructors(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -297,7 +310,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 
@@ -340,7 +356,7 @@ public static class MemberAnalysisTools
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -360,7 +376,10 @@ public static class MemberAnalysisTools
             };
     
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type?.FullName == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
 

@@ -20,7 +20,7 @@ public static class ReflectionTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-    
+
             var assembly = Assembly.LoadFrom(assemblyPath);
             var types = assembly.GetExportedTypes();
             var result = new
@@ -44,7 +44,7 @@ public static class ReflectionTools
                     memberCount = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).Length
                 }).ToArray()
             };
-    
+
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -52,23 +52,25 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze assembly: {ex.Message}" });
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets detailed information about a specific type including all its members, methods, properties, and fields")]
     public static string AnalyzeType(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class to get type information about (e.g., 'String' or 'MyClass')")] string typeName)
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-    
+
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal) || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+
             if (type == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
-    
+
             var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
                 .Select(c => new
                 {
@@ -81,7 +83,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
                     }).ToArray()
                 }).ToArray();
-    
+
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => !m.IsSpecialName)
                 .Select(m => new
@@ -99,7 +101,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
                     }).ToArray()
                 }).ToArray();
-    
+
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Select(p => new
                 {
@@ -109,7 +111,7 @@ public static class ReflectionTools
                     canWrite = p.CanWrite,
                     isStatic = p.GetGetMethod()?.IsStatic ?? p.GetSetMethod()?.IsStatic ?? false
                 }).ToArray();
-    
+
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Select(f => new
                 {
@@ -119,7 +121,7 @@ public static class ReflectionTools
                     isReadOnly = f.IsInitOnly,
                     isLiteral = f.IsLiteral
                 }).ToArray();
-    
+
             var result = new
             {
                 typeName = type.FullName,
@@ -138,7 +140,7 @@ public static class ReflectionTools
                 properties,
                 fields
             };
-    
+
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)
@@ -146,7 +148,7 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to analyze type: {ex.Message}" });
         }
     }
-    
+
     [McpServerTool]
     [Description("Searches for an assembly by its class name in common binary folders (bin/Debug, bin/Release, etc.).")]
     public static string FindAssemblyByClassName(
@@ -174,7 +176,7 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
         }
     }
-    
+
     [McpServerTool]
     [Description("Searches for an assembly by its file name in common binary folders (bin/Debug, bin/Release, etc.).")]
     public static string FindAssemblyByFileName(
@@ -202,29 +204,34 @@ public static class ReflectionTools
             return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
         }
     }
-    
+
+    [McpServerTool]
+    [Description("Gets detailed information about a method, including overloads, parameters, attributes, and return type")]
     public static string AnalyzeMethod(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Name of the class containing the method (e.g., 'String' or 'MyClass')")] string typeName,
+        [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Name of the method to analyze")] string methodName)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
-    
+
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetExportedTypes().FirstOrDefault(t => t.Name == typeName);
+            var type = assembly.GetType(typeName)
+                ?? assembly.GetExportedTypes()
+                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type == null)
                 return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
-    
+
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => m.Name == methodName)
                 .ToArray();
-    
+
             if (methods.Length == 0)
                 return JsonSerializer.Serialize(new { error = $"Method '{methodName}' not found in type '{typeName}'" });
-    
+
             var result = new
             {
                 typeName = type.FullName,
@@ -255,7 +262,7 @@ public static class ReflectionTools
                     }).ToArray()
                 }).ToArray()
             };
-    
+
             return JsonSerializer.Serialize(result, SerializerOptions);
         }
         catch (Exception ex)

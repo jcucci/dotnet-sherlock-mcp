@@ -13,12 +13,12 @@ The `MemberAnalysisService` provides detailed reflection capabilities for analyz
 ```csharp
 public interface IMemberAnalysisService
 {
-    Task<MemberInfo[]> GetAllMembersAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    Task<MethodDetails[]> GetMethodsAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    Task<PropertyDetails[]> GetPropertiesAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    Task<FieldDetails[]> GetFieldsAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    Task<EventDetails[]> GetEventsAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    Task<ConstructorDetails[]> GetConstructorsAsync(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    MemberInfo[] GetAllMembers(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    MethodDetails[] GetMethods(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    PropertyDetails[] GetProperties(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    FieldDetails[] GetFields(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    EventDetails[] GetEvents(string assemblyPath, string typeName, MemberFilterOptions? options = null);
+    ConstructorDetails[] GetConstructors(string assemblyPath, string typeName, MemberFilterOptions? options = null);
 }
 ```
 
@@ -156,7 +156,7 @@ var assemblyPath = "/path/to/assembly.dll";
 var typeName = "MyNamespace.MyClass";
 
 // Get all methods
-var methods = await service.GetMethodsAsync(assemblyPath, typeName);
+var methods = service.GetMethods(assemblyPath, typeName);
 
 // Get all members with filtering
 var options = new MemberFilterOptions
@@ -165,7 +165,7 @@ var options = new MemberFilterOptions
     IncludeNonPublic = true,
     IncludeStatic = false
 };
-var properties = await service.GetPropertiesAsync(assemblyPath, typeName, options);
+var properties = service.GetProperties(assemblyPath, typeName, options);
 ```
 
 ### MCP Tool Usage
