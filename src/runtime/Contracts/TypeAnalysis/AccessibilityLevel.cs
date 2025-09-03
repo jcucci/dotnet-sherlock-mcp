@@ -1,4 +1,5 @@
 namespace Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 public enum AccessibilityLevel
 {
     Public,

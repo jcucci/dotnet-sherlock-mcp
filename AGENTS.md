@@ -22,6 +22,16 @@
 - Prefer expression-bodied members when clear; use named parameters when argument meaning isn’t obvious.
 - Keep code self‑documenting; avoid redundant inline comments. Braces optional for single‑line blocks if readability holds.
 
+## Whitespace & Formatting
+- Use a single blank line between the `using` block and the file‑scoped `namespace`.
+- Use a single blank line after the file‑scoped `namespace` before the first type/member.
+- Keep exactly one blank line between consecutive members inside a type (methods, properties, events, nested types) to separate logical units.
+- Within longer methods, group related steps and separate them with a single blank line (setup, processing, return) — no multiple consecutive blank lines.
+- Ensure files end with a trailing newline; avoid trailing whitespace on lines.
+- Maintain one top‑level type per file; nested types are allowed within their parent file.
+
+AI contributors: when generating or editing code, please preserve and improve whitespace per the above. Favor readability by adding minimal, consistent blank lines between logical sections while avoiding extra vertical padding.
+
 ## Testing Guidelines
 - Framework: xUnit; files in `src/unit-tests` named `*Tests.cs` (e.g., `MemberAnalysisServiceTests`).
 - Test naming: `MethodOrUnit_Scenario_ExpectedOutcome`.

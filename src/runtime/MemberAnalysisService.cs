@@ -3,19 +3,11 @@ using System.Text;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 
 namespace Sherlock.MCP.Runtime;
-public interface IMemberAnalysisService
-{
-    MemberInfo[] GetAllMembers(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    MethodDetails[] GetMethods(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    PropertyDetails[] GetProperties(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    FieldDetails[] GetFields(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    EventDetails[] GetEvents(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-    ConstructorDetails[] GetConstructors(string assemblyPath, string typeName, MemberFilterOptions? options = null);
-}
 
 public class MemberAnalysisService : IMemberAnalysisService
 {
     private readonly Dictionary<string, Assembly> _loadedAssemblies = new();
+
     public MemberInfo[] GetAllMembers(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -23,6 +15,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return type.GetMembers(bindingFlags);
     }
+
     public MethodDetails[] GetMethods(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -68,6 +61,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return ApplyMemberFilters(methodDetails, options, m => m.Name, m => m.CustomAttributes).ToArray();
     }
+
     public PropertyDetails[] GetProperties(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -110,6 +104,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return ApplyMemberFilters(propertyDetails, options, p => p.Name, p => p.CustomAttributes).ToArray();
     }
+
     public FieldDetails[] GetFields(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -152,6 +147,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return ApplyMemberFilters(fieldDetails, options, f => f.Name, f => f.CustomAttributes).ToArray();
     }
+
     public EventDetails[] GetEvents(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -188,6 +184,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return ApplyMemberFilters(eventDetails, options, e => e.Name, e => e.CustomAttributes).ToArray();
     }
+
     public ConstructorDetails[] GetConstructors(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
         var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
@@ -213,6 +210,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return ApplyMemberFilters(constructorDetails, options, c => c.Signature, c => c.CustomAttributes).ToArray();
     }
+
     private Type LoadTypeFromAssembly(string assemblyPath, string typeName, MemberFilterOptions? options)
     {
         var caseSensitive = options?.CaseSensitive ?? true;
@@ -244,6 +242,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return type ?? throw new ArgumentException($"Type '{typeName}' not found in assembly '{assemblyPath}'");
     }
+
     private static BindingFlags GetBindingFlags(MemberFilterOptions? options)
     {
         options ??= new MemberFilterOptions();
@@ -257,6 +256,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return flags;
     }
+
     private static ParameterDetails[] GetParameterDetails(ParameterInfo[] parameters)
     {
         return parameters.Select(p => new ParameterDetails(
@@ -272,6 +272,7 @@ public class MemberAnalysisService : IMemberAnalysisService
             CustomAttributes: AttributeUtils.FromParameter(p)
         )).ToArray();
     }
+
     private static IEnumerable<T> ApplyMemberFilters<T>(IEnumerable<T> source, MemberFilterOptions? options, Func<T, string> nameSelector, Func<T, Sherlock.MCP.Runtime.Contracts.TypeAnalysis.AttributeInfo[]> attrSelector)
     {
         options ??= new MemberFilterOptions();
@@ -299,6 +300,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         return query;
     }
+
     private static string GetFriendlyTypeName(Type type)
     {
         if (type.IsByRef)
@@ -415,6 +417,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         sb.Append(')');
         return sb.ToString();
     }
+
     private static string BuildPropertySignature(PropertyInfo property, ParameterDetails[] indexerParams)
     {
         var sb = new StringBuilder();
@@ -463,6 +466,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         sb.Append(field.Name);
         return sb.ToString();
     }
+
     private static string BuildEventSignature(EventInfo eventInfo)
     {
         var sb = new StringBuilder();
@@ -484,6 +488,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         sb.Append(eventInfo.Name);
         return sb.ToString();
     }
+
     private static string BuildConstructorSignature(ConstructorInfo constructor, ParameterDetails[] parameters)
     {
         var sb = new StringBuilder();
@@ -497,6 +502,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         sb.Append(')');
         return sb.ToString();
     }
+
     private static string FormatParameter(ParameterDetails param)
     {
         var sb = new StringBuilder();

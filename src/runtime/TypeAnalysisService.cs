@@ -11,18 +11,6 @@ using TypeAnalysisGenericVariance = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.
 
 namespace Sherlock.MCP.Runtime;
 
-public interface ITypeAnalysisService
-{
-    Assembly? LoadAssembly(string assemblyPath);
-    TypeAnalysisInfo GetTypeInfo(Type type);
-    TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName);
-    TypeAnalysisHierarchy GetTypeHierarchy(Type type);
-    TypeAnalysisGenericTypeInfo GetGenericTypeInfo(Type type);
-    TypeAnalysisAttributeInfo[] GetTypeAttributes(Type type);
-    TypeAnalysisInfo[] GetNestedTypes(Type parentType);
-    TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath);
-}
-
 public class TypeAnalysisService : ITypeAnalysisService
 {
     private readonly Dictionary<string, Assembly> _loadedAssemblies = [];

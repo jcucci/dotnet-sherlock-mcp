@@ -4,12 +4,6 @@ using Sherlock.MCP.Runtime.Contracts.XmlDocs;
 
 namespace Sherlock.MCP.Runtime;
 
-public interface IXmlDocService
-{
-    XmlDocInfo? GetXmlDocsForType(Type type);
-    XmlDocInfo? GetXmlDocsForMember(MemberInfo member);
-}
-
 public class XmlDocService : IXmlDocService
 {
     private readonly Dictionary<string, XDocument?> _xmlCache = new();
