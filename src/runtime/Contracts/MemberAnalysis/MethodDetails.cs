@@ -1,5 +1,8 @@
 using System.Reflection;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+
 public record MethodDetails(
     string Name,
     string ReturnTypeName,
@@ -14,5 +17,6 @@ public record MethodDetails(
     bool IsOverride,
     bool IsOperator,
     bool IsExtensionMethod,
+    AttributeInfo[] CustomAttributes,
     string Signature
 );

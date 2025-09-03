@@ -1,5 +1,6 @@
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
@@ -20,7 +21,7 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var types = typeAnalysis.GetTypesFromAssembly(assemblyPath);
             var result = new
@@ -29,11 +30,11 @@ public static class TypeAnalysisTools
                 typeCount = types.Length,
                 types
             };
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("type.list", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get types: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get types: {ex.Message}");
         }
     }
 
@@ -47,7 +48,7 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
             if (info == null)
@@ -61,13 +62,13 @@ public static class TypeAnalysisTools
                 }
             }
             if (info == null)
-                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
-            return JsonSerializer.Serialize(info, SerializerOptions);
+            return JsonHelpers.Envelope("type.info", info);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze type: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
         }
     }
 
@@ -82,15 +83,15 @@ public static class TypeAnalysisTools
         try
         {
             var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var hierarchy = typeAnalysis.GetTypeHierarchy(type);
-            return JsonSerializer.Serialize(hierarchy, SerializerOptions);
+            return JsonHelpers.Envelope("type.hierarchy", hierarchy);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get type hierarchy: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get type hierarchy: {ex.Message}");
         }
     }
 
@@ -105,15 +106,15 @@ public static class TypeAnalysisTools
         try
         {
             var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var genericInfo = typeAnalysis.GetGenericTypeInfo(type);
-            return JsonSerializer.Serialize(genericInfo, SerializerOptions);
+            return JsonHelpers.Envelope("type.generic", genericInfo);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get generic type info: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get generic type info: {ex.Message}");
         }
     }
 
@@ -128,15 +129,15 @@ public static class TypeAnalysisTools
         try
         {
             var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var attributes = typeAnalysis.GetTypeAttributes(type);
-            return JsonSerializer.Serialize(attributes, SerializerOptions);
+            return JsonHelpers.Envelope("type.attributes", new { typeName = type.FullName, attributeCount = attributes.Length, attributes });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get attributes: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get attributes: {ex.Message}");
         }
     }
 
@@ -151,16 +152,15 @@ public static class TypeAnalysisTools
         try
         {
             var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var nested = typeAnalysis.GetNestedTypes(type);
-            return JsonSerializer.Serialize(nested, SerializerOptions);
+            return JsonHelpers.Envelope("type.nested", new { typeName = type.FullName, nestedTypeCount = nested.Length, nested });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get nested types: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get nested types: {ex.Message}");
         }
     }
 }
-

@@ -2,6 +2,7 @@
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 using System.Reflection;
 namespace Sherlock.MCP.Tests;
+/// <summary>Sample class for tests with parameters</summary>
 public class TestSampleClass
 {
     public const int ConstantField = 42;
@@ -11,13 +12,20 @@ public class TestSampleClass
     public TestSampleClass() { }
     public TestSampleClass(int value) { _privateReadOnlyField = value; }
     static TestSampleClass() { }
+    [Obsolete("Use NewProperty")]
     public string PublicProperty { get; set; } = "";
     protected virtual string ProtectedVirtualProperty { get; private set; } = "";
     public string this[int index] => index.ToString();
     public static void StaticMethod() { }
+    [return: System.ComponentModel.Description("returns nothing")]
     public virtual void VirtualMethod() { }
     protected internal void ProtectedInternalMethod() { }
-    public void MethodWithParameters(int required, string optional = "default", params object[] values) { }
+    /// <summary>Method with parameters and attribute for testing</summary>
+    /// <param name="required">required</param>
+    /// <param name="optional">optional</param>
+    /// <returns>none</returns>
+    [Sample]
+    public void MethodWithParameters([Sample] int required, string optional = "default", params object[] values) { }
     public T GenericMethod<T>(T value) where T : class => value;
     public event Action? PublicEvent;
     protected virtual event Action? ProtectedVirtualEvent;
@@ -29,6 +37,11 @@ public abstract class AbstractTestClass
     public virtual void VirtualMethod() { }
     protected virtual event Action? ProtectedVirtualEvent;
 }
+public class Outer
+{
+    public class Inner { }
+}
+public sealed class SampleAttribute : Attribute { }
 public class MemberAnalysisServiceTests
 {
     private readonly IMemberAnalysisService _service;
@@ -70,6 +83,8 @@ public class MemberAnalysisServiceTests
         Assert.Equal(3, methodWithParams.Parameters.Length);
         Assert.True(methodWithParams.Parameters[1].IsOptional);
         Assert.True(methodWithParams.Parameters[2].IsParams);
+        // Attributes projected
+        Assert.Contains(methods, m => m.Name == "MethodWithParameters" && m.CustomAttributes.Any(a => a.AttributeType!.Contains("SampleAttribute")));
     }
     [Fact]
     public void GetProperties_ReturnsPropertyDetails()
@@ -82,6 +97,7 @@ public class MemberAnalysisServiceTests
         Assert.True(publicProperty.CanRead);
         Assert.True(publicProperty.CanWrite);
         Assert.Equal("string", publicProperty.TypeName);
+        Assert.Contains(publicProperty.CustomAttributes, a => a.AttributeType!.Contains("Obsolete"));
         var indexer = properties.FirstOrDefault(p => p.IsIndexer);
         Assert.NotNull(indexer);
         Assert.Single(indexer.IndexerParameters);
@@ -143,4 +159,46 @@ public class MemberAnalysisServiceTests
         var protectedMethod = methods.FirstOrDefault(m => m.AccessModifier.Contains("protected"));
         Assert.NotNull(protectedMethod);
     }
+
+    [Fact]
+    public void Filtering_Sorting_Paging_Works()
+    {
+        var methods = _service.GetMethods(_testAssemblyPath,
+            "Sherlock.MCP.Tests.TestSampleClass",
+            new MemberFilterOptions { NameContains = "Method", SortOrder = "desc", Skip = 0, Take = 2, IncludeDeclaredOnly = true });
+        Assert.True(methods.Length <= 2);
+        Assert.True(methods.All(m => m.Name.Contains("Method")));
+    }
+
+    [Fact]
+    public void CaseInsensitive_And_NestedType_Resolution_Works()
+    {
+        var members = _service.GetAllMembers(_testAssemblyPath, "sherlock.mcp.tests.outer.inner", new MemberFilterOptions { CaseSensitive = false });
+        Assert.NotNull(members);
+    }
+
+    [Fact]
+    public void Attribute_Filtering_Works()
+    {
+        var methods = _service.GetMethods(_testAssemblyPath,
+            "Sherlock.MCP.Tests.TestSampleClass",
+            new MemberFilterOptions { HasAttributeContains = "SampleAttribute" });
+        Assert.Contains(methods, m => m.Name == "MethodWithParameters");
+    }
+
+    [Fact]
+    public void XmlDocs_Service_Finds_Docs()
+    {
+        var xmlService = new XmlDocService();
+        var testType = typeof(TestSampleClass);
+        var typeDocs = xmlService.GetXmlDocsForType(testType);
+        Assert.NotNull(typeDocs);
+        var method = testType.GetMethod("MethodWithParameters");
+        Assert.NotNull(method);
+        var methodDocs = xmlService.GetXmlDocsForMember(method!);
+        Assert.NotNull(methodDocs);
+        Assert.True((methodDocs!.Summary ?? string.Empty).Length >= 1);
+        Assert.True(methodDocs.Params.Length >= 1);
+    }
+
 }

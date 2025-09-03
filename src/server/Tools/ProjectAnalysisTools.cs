@@ -1,5 +1,6 @@
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -19,11 +20,11 @@ public static class ProjectAnalysisTools
         try
         {
             var projects = await projectAnalysis.AnalyzeSolutionFileAsync(solutionFilePath);
-            return JsonSerializer.Serialize(new { solutionFilePath, projectCount = projects.Length, projects }, SerializerOptions);
+            return JsonHelpers.Envelope("project.solution", new { solutionFilePath, projectCount = projects.Length, projects });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze solution: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to analyze solution: {ex.Message}");
         }
     }
 
@@ -36,11 +37,11 @@ public static class ProjectAnalysisTools
         try
         {
             var result = await projectAnalysis.AnalyzeProjectFileAsync(projectFilePath);
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("project.project", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze project: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to analyze project: {ex.Message}");
         }
     }
 
@@ -54,11 +55,11 @@ public static class ProjectAnalysisTools
         try
         {
             var paths = await projectAnalysis.GetProjectOutputPathsAsync(projectFilePath, configuration);
-            return JsonSerializer.Serialize(new { projectFilePath, configuration, outputPaths = paths }, SerializerOptions);
+            return JsonHelpers.Envelope("project.outputs", new { projectFilePath, configuration, outputPaths = paths });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to get output paths: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to get output paths: {ex.Message}");
         }
     }
 
@@ -72,11 +73,11 @@ public static class ProjectAnalysisTools
         try
         {
             var packages = await projectAnalysis.ResolvePackageReferencesAsync(projectFilePath, packageName);
-            return JsonSerializer.Serialize(new { projectFilePath, packageName, packages }, SerializerOptions);
+            return JsonHelpers.Envelope("project.packages", new { projectFilePath, packageName, packages });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to resolve packages: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to resolve packages: {ex.Message}");
         }
     }
 
@@ -90,12 +91,11 @@ public static class ProjectAnalysisTools
         try
         {
             var deps = await projectAnalysis.FindDepsJsonFilesAsync(projectFilePath, configuration);
-            return JsonSerializer.Serialize(new { projectFilePath, configuration, dependencies = deps }, SerializerOptions);
+            return JsonHelpers.Envelope("project.deps", new { projectFilePath, configuration, dependencies = deps });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to parse deps.json: {ex.Message}" }, SerializerOptions);
+            return JsonHelpers.Error("InternalError", $"Failed to parse deps.json: {ex.Message}");
         }
     }
 }
-
