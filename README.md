@@ -42,6 +42,7 @@ Sherlock MCP for .NET provides the following tools for analyzing .NET assemblies
 
 *   `AnalyzeAssembly`: Analyzes a .NET assembly and returns information about all public types, their members, and metadata.
 *   `AnalyzeType`: Gets detailed information about a specific type including all its members, methods, properties, and fields.
+*   `AnalyzeMethod`: Gets detailed information about a method and all overloads.
 *   `FindAssemblyByClassName`: Searches for an assembly by its class name in common binary folders.
 *   `FindAssemblyByFileName`: Searches for an assembly by its file name in common binary folders.
 *   `GetAllTypeMembers`: Gets comprehensive member information for a type, including all methods, properties, fields, events, and constructors.
@@ -50,6 +51,20 @@ Sherlock MCP for .NET provides the following tools for analyzing .NET assemblies
 *   `GetTypeFields`: Gets detailed information about all fields in a type.
 *   `GetTypeMethods`: Gets detailed information about all methods in a type.
 *   `GetTypeProperties`: Gets detailed information about all properties in a type.
+
+Additionally, the following tools provide higher‑level project and type analysis:
+
+*   `GetTypesFromAssembly`: Lists public types from an assembly with metadata.
+*   `GetTypeInfo`: Returns rich metadata for a single type.
+*   `GetTypeHierarchy`: Shows inheritance chain and implemented interfaces.
+*   `GetGenericTypeInfo`: Details generic parameters, arguments, and variance.
+*   `GetTypeAttributes`: Returns custom attributes applied to a type.
+*   `GetNestedTypes`: Lists nested types declared on a type.
+*   `AnalyzeSolution`: Parses a `.sln` and lists contained projects.
+*   `AnalyzeProject`: Parses a project file and returns metadata, refs, and outputs.
+*   `GetProjectOutputPaths`: Computes output folders for a given configuration.
+*   `ResolvePackageReferences`: Resolves NuGet package references to local assemblies in the cache.
+*   `FindDepsJsonDependencies`: Reads deps.json files to surface runtime dependencies.
 
 ## Contributing
 

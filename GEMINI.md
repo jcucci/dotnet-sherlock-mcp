@@ -11,7 +11,7 @@ The `dotnet-sherlock-mcp` project is a .NET-based server that provides a Model C
 The project is organized into the following components:
 
 - **`Sherlock.MCP.Server`**: The main executable project that hosts the MCP server. It utilizes the `Microsoft.Extensions.Hosting` library for robust server management and the `ModelContextProtocol` library for MCP communication.
-- **`Sherlock.MCP.Runtime`**: A class library that contains the core logic for assembly analysis. It uses `System.Reflection.MetadataLoadContext` for safe, isolated inspection of assemblies.
+- **`Sherlock.MCP.Runtime`**: A class library that contains the core logic for assembly analysis. It uses `System.Reflection` and `AssemblyLoadContext` for safe, controlled inspection of assemblies.
 - **`Sherlock.MCP.Tests`**: The unit testing project, which uses `xunit` as the testing framework. It ensures the reliability and correctness of the `Sherlock.MCP.Runtime` components.
 - **`Sherlock.MCP.Example`**: An example console application that demonstrates how to use the `Sherlock.MCP.Runtime` library.
 
@@ -22,7 +22,7 @@ The project is organized into the following components:
 - **xUnit**: The framework used for unit tests.
 - **Microsoft.Extensions.Hosting**: Used for hosting the server.
 - **ModelContextProtocol**: The library used for MCP communication.
-- **System.Reflection.MetadataLoadContext**: Used for assembly inspection.
+- **System.Reflection / AssemblyLoadContext**: Used for assembly inspection and controlled loading.
 
 ## Development Workflow
 
@@ -53,3 +53,4 @@ dotnet test src/unit-tests/Sherlock.MCP.Tests.csproj
 ## How to Contribute
 
 Contributions to the project are welcome. Please follow the existing coding style and conventions. Ensure that any new code is accompanied by corresponding unit tests.
+
