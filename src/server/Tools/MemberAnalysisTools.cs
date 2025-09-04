@@ -646,7 +646,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.all",
@@ -668,7 +668,7 @@ public static class MemberAnalysisTools
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
                                            || string.Equals(t.Name, typeName, StringComparison.Ordinal));
                 if (type?.FullName == null)
-                    return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
                 var methods = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
                 var properties = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);

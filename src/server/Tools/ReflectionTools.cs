@@ -19,7 +19,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var assembly = Assembly.LoadFrom(assemblyPath);
             var types = assembly.GetExportedTypes();
@@ -45,11 +45,11 @@ public static class ReflectionTools
                 }).ToArray()
             };
 
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("reflection.assembly", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze assembly: {ex.Message}" });
+            return JsonHelpers.Error("InternalError", $"Failed to analyze assembly: {ex.Message}");
         }
     }
 
@@ -62,14 +62,14 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var assembly = Assembly.LoadFrom(assemblyPath);
             var type = assembly.GetType(typeName)
                 ?? assembly.GetExportedTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal) || string.Equals(t.Name, typeName, StringComparison.Ordinal));
 
             if (type == null)
-                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
             var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
                 .Select(c => new
@@ -141,11 +141,11 @@ public static class ReflectionTools
                 fields
             };
 
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("reflection.type", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze type: {ex.Message}" });
+            return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
         }
     }
 
@@ -160,7 +160,7 @@ public static class ReflectionTools
             var assemblyPath = AssemblyLocator.FindAssemblyByClassName(className, workingDirectory);
 
             if (assemblyPath == null)
-                return JsonSerializer.Serialize(new { error = $"Assembly '{className}' not found in common binary folders." });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly '{className}' not found in common binary folders.");
 
             var result = new
             {
@@ -169,11 +169,11 @@ public static class ReflectionTools
                 foundAssembly = assemblyPath,
             };
 
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("reflection.findByClassName", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
+            return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
         }
     }
 
@@ -188,7 +188,7 @@ public static class ReflectionTools
             var assemblyPath = Directory.GetFiles(workingDirectory, assemblyFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             if (assemblyPath == null)
-                return JsonSerializer.Serialize(new { error = $"Assembly '{assemblyFileName}' not found in common binary folders." });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly '{assemblyFileName}' not found in common binary folders.");
 
             var result = new
             {
@@ -197,11 +197,11 @@ public static class ReflectionTools
                 foundAssembly = assemblyPath,
             };
 
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("reflection.findByFileName", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to search for assembly: {ex.Message}" });
+            return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
         }
     }
 
@@ -215,7 +215,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonSerializer.Serialize(new { error = $"Assembly file not found: {assemblyPath}" });
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var assembly = Assembly.LoadFrom(assemblyPath);
             var type = assembly.GetType(typeName)
@@ -223,14 +223,14 @@ public static class ReflectionTools
                     .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
                                        || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type == null)
-                return JsonSerializer.Serialize(new { error = $"Type '{typeName}' not found in assembly" });
+                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => m.Name == methodName)
                 .ToArray();
 
             if (methods.Length == 0)
-                return JsonSerializer.Serialize(new { error = $"Method '{methodName}' not found in type '{typeName}'" });
+                return JsonHelpers.Error("MemberNotFound", $"Method '{methodName}' not found in type '{typeName}'");
 
             var result = new
             {
@@ -263,11 +263,11 @@ public static class ReflectionTools
                 }).ToArray()
             };
 
-            return JsonSerializer.Serialize(result, SerializerOptions);
+            return JsonHelpers.Envelope("reflection.method", result);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Failed to analyze method: {ex.Message}" });
+            return JsonHelpers.Error("InternalError", $"Failed to analyze method: {ex.Message}");
         }
     }
 }
