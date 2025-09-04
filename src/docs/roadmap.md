@@ -8,29 +8,6 @@ This roadmap outlines high‑impact features and tools to deepen LLM understandi
 - Source‑level reasoning (symbols, references, snippets, diagnostics).
 - LLM‑friendly responses (stable schemas, paging, summarization, streaming).
 
-## Member & Type Depth (near term)
-- Member attributes
-  - Expose `CustomAttributeData` for methods, properties, fields, events, parameters.
-  - New tools: `GetMemberAttributes`, `GetParameterAttributes`.
-- XML documentation
-  - Load adjacent XML doc files and surface `<summary>`, `<param>`, `<returns>`, `<remarks>`.
-  - Tools: `GetXmlDocsForType`, `GetXmlDocsForMember`.
-- Lookup & filtering
-  - Normalize type lookups (full name, simple, nested `+`), case sensitivity options.
-  - Add paging, sorting, and filters to list tools (by name, namespace, attribute, access, kind).
-- Schema & errors
-  - Define explicit JSON schemas for tool outputs; include stable `kind` and `version` fields.
-  - Standardize error codes and messages across tools.
-
-## Assembly Safety, Scale, and Performance
-- Safer loading
-  - Prefer `MetadataLoadContext` for inspection to avoid executing code; fall back to `AssemblyLoadContext` when necessary.
-- Indexing & caching
-  - Background index of types/members across assemblies with file mtimes for invalidation.
-  - Cache tool responses keyed by inputs + schema version; add `noCache` flag.
-- Streaming & chunking
-  - Stream large responses (e.g., many types/methods) and support continuation tokens.
-
 ## Advanced Understanding & Graphs
 - Call graph (static approximation)
   - Build a conservative call graph from Roslyn semantic model; tools to fetch callers/callees.

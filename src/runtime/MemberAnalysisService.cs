@@ -1,16 +1,17 @@
 using System.Reflection;
 using System.Text;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Runtime;
 
 public class MemberAnalysisService : IMemberAnalysisService
 {
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = new();
 
     public MemberInfo[] GetAllMembers(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
 
         return type.GetMembers(bindingFlags);
@@ -18,7 +19,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public MethodDetails[] GetMethods(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var methods = type.GetMethods(bindingFlags);
 
@@ -64,7 +66,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public PropertyDetails[] GetProperties(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var properties = type.GetProperties(bindingFlags);
 
@@ -107,7 +110,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public FieldDetails[] GetFields(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var fields = type.GetFields(bindingFlags);
 
@@ -150,7 +154,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public EventDetails[] GetEvents(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var events = type.GetEvents(bindingFlags);
 
@@ -187,7 +192,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public ConstructorDetails[] GetConstructors(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        var type = LoadTypeFromAssembly(assemblyPath, typeName, options);
+        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var constructors = type.GetConstructors(bindingFlags);
 
@@ -211,15 +217,9 @@ public class MemberAnalysisService : IMemberAnalysisService
         return ApplyMemberFilters(constructorDetails, options, c => c.Signature, c => c.CustomAttributes).ToArray();
     }
 
-    private Type LoadTypeFromAssembly(string assemblyPath, string typeName, MemberFilterOptions? options)
+    private static Type LoadTypeFromAssembly(Assembly assembly, string typeName, MemberFilterOptions? options)
     {
         var caseSensitive = options?.CaseSensitive ?? true;
-
-        if (!_loadedAssemblies.TryGetValue(assemblyPath, out var assembly))
-        {
-            assembly = Assembly.LoadFrom(assemblyPath);
-            _loadedAssemblies[assemblyPath] = assembly;
-        }
 
         var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         var type = assembly.GetType(typeName, false, !caseSensitive);
@@ -240,7 +240,7 @@ public class MemberAnalysisService : IMemberAnalysisService
             }
         }
 
-        return type ?? throw new ArgumentException($"Type '{typeName}' not found in assembly '{assemblyPath}'");
+        return type ?? throw new ArgumentException($"Type '{typeName}' not found in assembly '{assembly.FullName}'");
     }
 
     private static BindingFlags GetBindingFlags(MemberFilterOptions? options)

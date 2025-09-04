@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sherlock.MCP.Runtime.Inspection;
 using TypeAnalysisInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeInfo;
 using TypeAnalysisHierarchy = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeHierarchy;
 using TypeAnalysisGenericTypeInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.GenericTypeInfo;
@@ -13,24 +14,23 @@ namespace Sherlock.MCP.Runtime;
 
 public class TypeAnalysisService : ITypeAnalysisService
 {
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = [];
+    private readonly Dictionary<string, IAssemblyInspectionContext> _contexts = new(StringComparer.OrdinalIgnoreCase);
 
     public Assembly? LoadAssembly(string assemblyPath)
     {
         try
         {
-            if (_loadedAssemblies.TryGetValue(assemblyPath, out var cachedAssembly))
-                return cachedAssembly;
+            if (!File.Exists(assemblyPath)) return null;
+            if (_contexts.TryGetValue(assemblyPath, out var existing))
+            {
+                return existing.Assembly;
+            }
 
-            if (!File.Exists(assemblyPath))
-                return null;
-
-            var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-            _loadedAssemblies[assemblyPath] = assembly;
-
-            return assembly;
+            var ctx = InspectionContextFactory.Create(assemblyPath);
+            _contexts[assemblyPath] = ctx;
+            return ctx.Assembly;
         }
-        catch (Exception)
+        catch
         {
             return null;
         }
@@ -60,13 +60,10 @@ public class TypeAnalysisService : ITypeAnalysisService
 
     public TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName)
     {
-        var assembly = LoadAssembly(assemblyPath);
-        if (assembly == null)
-            return null;
-
         try
         {
-            var type = assembly.GetType(typeName);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var type = ctx.Assembly.GetType(typeName);
             return type != null ? GetTypeInfo(type) : null;
         }
         catch (Exception)
@@ -165,13 +162,10 @@ public class TypeAnalysisService : ITypeAnalysisService
 
     public TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath)
     {
-        var assembly = LoadAssembly(assemblyPath);
-        if (assembly == null)
-            return [];
-
         try
         {
-            return assembly.GetTypes()
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            return ctx.Assembly.GetTypes()
                 .Where(t => t.IsPublic || t.IsNestedPublic)
                 .Select(GetTypeInfo)
                 .ToArray();

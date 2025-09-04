@@ -8,13 +8,13 @@ namespace Sherlock.MCP.Runtime;
 
 public interface ITypeAnalysisService
 {
-    Assembly? LoadAssembly(string assemblyPath);
-    TypeAnalysisInfo GetTypeInfo(Type type);
-    TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName);
-    TypeAnalysisHierarchy GetTypeHierarchy(Type type);
-    TypeAnalysisGenericTypeInfo GetGenericTypeInfo(Type type);
-    TypeAnalysisAttributeInfo[] GetTypeAttributes(Type type);
-    TypeAnalysisInfo[] GetNestedTypes(Type parentType);
-    TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath);
+    public Assembly? LoadAssembly(string assemblyPath);
+    public TypeAnalysisInfo GetTypeInfo(Type type);
+    public TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName);
+    public TypeAnalysisHierarchy GetTypeHierarchy(Type type);
+    public TypeAnalysisGenericTypeInfo GetGenericTypeInfo(Type type);
+    public TypeAnalysisAttributeInfo[] GetTypeAttributes(Type type);
+    public TypeAnalysisInfo[] GetNestedTypes(Type parentType);
+    public TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath);
 }
 
