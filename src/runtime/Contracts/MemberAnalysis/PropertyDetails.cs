@@ -1,5 +1,8 @@
 using System.Reflection;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+
 public record PropertyDetails(
     string Name,
     string TypeName,
@@ -16,5 +19,6 @@ public record PropertyDetails(
     ParameterDetails[] IndexerParameters,
     string? GetterAccessModifier,
     string? SetterAccessModifier,
+    AttributeInfo[] CustomAttributes,
     string Signature
 );

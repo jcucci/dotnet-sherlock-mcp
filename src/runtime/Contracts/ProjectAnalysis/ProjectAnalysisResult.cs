@@ -1,4 +1,5 @@
 namespace Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
+
 public record ProjectAnalysisResult(
     string ProjectName,
     string TargetFramework,

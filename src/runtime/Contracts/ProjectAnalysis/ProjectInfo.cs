@@ -1,4 +1,5 @@
 namespace Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
+
 public record ProjectInfo(
     string Name,
     string RelativePath,

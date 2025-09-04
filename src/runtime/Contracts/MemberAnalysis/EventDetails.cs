@@ -1,5 +1,8 @@
 using System.Reflection;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+
 public record EventDetails(
     string Name,
     string EventHandlerTypeName,
@@ -12,5 +15,6 @@ public record EventDetails(
     bool IsOverride,
     string? AddMethodAccessModifier,
     string? RemoveMethodAccessModifier,
+    AttributeInfo[] CustomAttributes,
     string Signature
 );

@@ -1,4 +1,5 @@
 namespace Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 public record GenericTypeInfo(
     string TypeName,
     bool IsGenericTypeDefinition,

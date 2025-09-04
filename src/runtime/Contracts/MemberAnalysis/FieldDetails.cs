@@ -1,5 +1,8 @@
 using System.Reflection;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+
 public record FieldDetails(
     string Name,
     string TypeName,
@@ -11,5 +14,6 @@ public record FieldDetails(
     bool IsVolatile,
     bool IsInitOnly,
     object? ConstantValue,
+    AttributeInfo[] CustomAttributes,
     string Signature
 );

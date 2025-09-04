@@ -1,5 +1,8 @@
 using System.Reflection;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+
 namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+
 public record ParameterDetails(
     string Name,
     string TypeName,
@@ -9,5 +12,6 @@ public record ParameterDetails(
     bool IsRef,
     bool IsIn,
     bool IsParams,
-    ParameterAttributes Attributes
+    ParameterAttributes Attributes,
+    AttributeInfo[] CustomAttributes
 );

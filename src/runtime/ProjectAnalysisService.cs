@@ -1,16 +1,11 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
+
 namespace Sherlock.MCP.Runtime;
-public interface IProjectAnalysisService
-{
-    Task<ProjectInfo[]> AnalyzeSolutionFileAsync(string solutionFilePath);
-    Task<ProjectAnalysisResult> AnalyzeProjectFileAsync(string projectFilePath);
-    Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null);
-    Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null);
-    Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug");
-}
+
 public class ProjectAnalysisService : IProjectAnalysisService
 {
     private static readonly Regex SolutionProjectRegex = new(
@@ -18,6 +13,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         RegexOptions.IgnoreCase | RegexOptions.Compiled
     );
     private static readonly string[] SupportedProjectExtensions = { ".csproj", ".vbproj", ".fsproj" };
+
     public async Task<ProjectInfo[]> AnalyzeSolutionFileAsync(string solutionFilePath)
     {
         if (!File.Exists(solutionFilePath))
@@ -49,6 +45,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return projects.ToArray();
     }
+
     public async Task<ProjectAnalysisResult> AnalyzeProjectFileAsync(string projectFilePath)
     {
         if (!File.Exists(projectFilePath))
@@ -65,7 +62,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         var assemblyName = GetPropertyValue(propertyGroups, "AssemblyName") ?? Path.GetFileNameWithoutExtension(projectFilePath);
         var rootNamespace = GetPropertyValue(propertyGroups, "RootNamespace") ?? assemblyName;
         var projectReferences = doc.Descendants("ProjectReference")
-            .Select(pr => 
+            .Select(pr =>
             {
                 var includePath = pr.Attribute("Include")?.Value ?? string.Empty;
                 var fullPath = Path.GetFullPath(Path.Combine(projectDirectory, includePath));
@@ -94,6 +91,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
             outputPaths
         );
     }
+
     public async Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null)
     {
         if (!File.Exists(projectFilePath))
@@ -107,7 +105,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         var configurations = configuration != null ? new[] { configuration } : new[] { "Debug", "Release" };
         var propertyGroups = doc.Descendants("PropertyGroup");
         var targetFramework = GetPropertyValue(propertyGroups, "TargetFramework");
-        var targetFrameworks = GetPropertyValue(propertyGroups, "TargetFrameworks")?.Split(';') ?? 
+        var targetFrameworks = GetPropertyValue(propertyGroups, "TargetFrameworks")?.Split(';') ??
                               (targetFramework != null ? new[] { targetFramework } : new[] { "net9.0" });
         var customOutputPath = GetPropertyValue(propertyGroups, "OutputPath");
         foreach (var config in configurations)
@@ -132,23 +130,26 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return outputPaths.ToArray();
     }
+
     public async Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null)
     {
         var analysisResult = await AnalyzeProjectFileAsync(projectFilePath);
         var resolvedPackages = new List<PackageReference>();
-        var packagesToResolve = packageName != null 
+        var packagesToResolve = packageName != null
             ? analysisResult.PackageReferences.Where(p => p.Name.Equals(packageName, StringComparison.OrdinalIgnoreCase))
             : analysisResult.PackageReferences;
         foreach (var package in packagesToResolve)
         {
             var assemblyPaths = await ResolvePackageAssemblyPathsAsync(package, analysisResult.TargetFrameworks);
-            resolvedPackages.Add(package with { 
+            resolvedPackages.Add(package with
+            {
                 AssemblyPaths = assemblyPaths,
                 IsResolved = assemblyPaths.Length > 0
             });
         }
         return resolvedPackages.ToArray();
     }
+
     public async Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug")
     {
         var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, configuration);
@@ -165,16 +166,19 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return dependencies.ToArray();
     }
+
     private static string? GetPropertyValue(IEnumerable<XElement> propertyGroups, string propertyName)
     {
         return propertyGroups
             .SelectMany(pg => pg.Elements(propertyName))
             .FirstOrDefault()?.Value;
     }
+
     private static string? GetChildElementValue(XElement parent, string childName)
     {
         return parent.Element(childName)?.Value;
     }
+
     private async Task<string[]> ResolvePackageAssemblyPathsAsync(PackageReference package, string[] targetFrameworks)
     {
         var assemblyPaths = new List<string>();
@@ -207,6 +211,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return assemblyPaths.Distinct().ToArray();
     }
+
     private static Task<string[]> FindBestMatchingFrameworkPathAsync(string basePath, string targetFramework)
     {
         if (!Directory.Exists(basePath))
@@ -233,6 +238,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return Task.FromResult(assemblies.ToArray());
     }
+
     private static bool IsCompatibleFramework(string availableFramework, string targetFramework)
     {
         if (availableFramework.Equals(targetFramework, StringComparison.OrdinalIgnoreCase))
@@ -245,6 +251,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         return false;
     }
+
     private async Task<RuntimeDependency[]> ParseDepsJsonFileAsync(string depsJsonPath)
     {
         var dependencies = new List<RuntimeDependency>();
@@ -258,7 +265,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 {
                     var libraryName = library.Name;
                     var libraryInfo = library.Value;
-                    if (libraryInfo.TryGetProperty("type", out var typeElement) && 
+                    if (libraryInfo.TryGetProperty("type", out var typeElement) &&
                         libraryInfo.TryGetProperty("serviceable", out var serviceableElement))
                     {
                         var type = typeElement.GetString() ?? "unknown";

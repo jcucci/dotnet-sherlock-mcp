@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sherlock.MCP.Runtime.Inspection;
 using TypeAnalysisInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeInfo;
 using TypeAnalysisHierarchy = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeHierarchy;
 using TypeAnalysisGenericTypeInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.GenericTypeInfo;
@@ -8,56 +9,41 @@ using TypeAnalysisGenericParameterInfo = Sherlock.MCP.Runtime.Contracts.TypeAnal
 using TypeAnalysisTypeKind = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeKind;
 using TypeAnalysisAccessibilityLevel = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.AccessibilityLevel;
 using TypeAnalysisGenericVariance = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.GenericVariance;
+
 namespace Sherlock.MCP.Runtime;
-public interface ITypeAnalysisService
-{
-    Assembly? LoadAssembly(string assemblyPath);
-    TypeAnalysisInfo GetTypeInfo(Type type);
-    TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName);
-    TypeAnalysisHierarchy GetTypeHierarchy(Type type);
-    TypeAnalysisGenericTypeInfo GetGenericTypeInfo(Type type);
-    TypeAnalysisAttributeInfo[] GetTypeAttributes(Type type);
-    TypeAnalysisInfo[] GetNestedTypes(Type parentType);
-    TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath);
-}
+
 public class TypeAnalysisService : ITypeAnalysisService
 {
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = new();
+    private readonly Dictionary<string, IAssemblyInspectionContext> _contexts = new(StringComparer.OrdinalIgnoreCase);
+
     public Assembly? LoadAssembly(string assemblyPath)
     {
         try
         {
-            if (_loadedAssemblies.TryGetValue(assemblyPath, out var cachedAssembly))
+            if (!File.Exists(assemblyPath)) return null;
+            if (_contexts.TryGetValue(assemblyPath, out var existing))
             {
-                return cachedAssembly;
+                return existing.Assembly;
             }
-            if (!File.Exists(assemblyPath))
-            {
-                return null;
-            }
-            var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-            _loadedAssemblies[assemblyPath] = assembly;
-            return assembly;
+
+            var ctx = InspectionContextFactory.Create(assemblyPath);
+            _contexts[assemblyPath] = ctx;
+            return ctx.Assembly;
         }
-        catch (Exception)
+        catch
         {
-            // Handle loading errors gracefully
             return null;
         }
     }
+
     public TypeAnalysisInfo GetTypeInfo(Type type)
     {
-        var kind = GetTypeKind(type);
-        var accessibility = GetAccessibilityLevel(type);
-        var attributes = GetTypeAttributes(type);
-        var genericParameters = type.IsGenericType ? GetGenericParameters(type) : Array.Empty<TypeAnalysisGenericParameterInfo>();
-        var nestedTypes = GetNestedTypes(type);
         return new TypeAnalysisInfo(
             FullName: type.FullName ?? type.Name,
             Name: type.Name,
             Namespace: type.Namespace,
-            Kind: kind,
-            Accessibility: accessibility,
+            Kind: GetTypeKind(type),
+            Accessibility: GetAccessibilityLevel(type),
             IsAbstract: type.IsAbstract,
             IsSealed: type.IsSealed,
             IsStatic: type.IsAbstract && type.IsSealed && !type.IsInterface,
@@ -65,22 +51,19 @@ public class TypeAnalysisService : ITypeAnalysisService
             IsNested: type.IsNested,
             AssemblyName: type.Assembly.GetName().Name,
             BaseType: type.BaseType?.FullName,
-            Interfaces: type.GetInterfaces().Select(i => i.FullName ?? i.Name).ToArray(),
-            Attributes: attributes,
-            GenericParameters: genericParameters,
-            NestedTypes: nestedTypes
+            Interfaces: [.. type.GetInterfaces().Select(i => i.FullName ?? i.Name)],
+            Attributes: GetTypeAttributes(type),
+            GenericParameters: type.IsGenericType ? GetGenericParameters(type) : [],
+            NestedTypes: GetNestedTypes(type)
         );
     }
+
     public TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName)
     {
-        var assembly = LoadAssembly(assemblyPath);
-        if (assembly == null)
-        {
-            return null;
-        }
         try
         {
-            var type = assembly.GetType(typeName);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var type = ctx.Assembly.GetType(typeName);
             return type != null ? GetTypeInfo(type) : null;
         }
         catch (Exception)
@@ -88,20 +71,24 @@ public class TypeAnalysisService : ITypeAnalysisService
             return null;
         }
     }
+
     public TypeAnalysisHierarchy GetTypeHierarchy(Type type)
     {
         var inheritanceChain = new List<string>();
         var baseTypes = new List<TypeAnalysisInfo>();
         var current = type.BaseType;
+
         while (current != null)
         {
             inheritanceChain.Add(current.FullName ?? current.Name);
             baseTypes.Add(GetTypeInfo(current));
             current = current.BaseType;
         }
+
         var allInterfaces = type.GetInterfaces()
             .Select(i => i.FullName ?? i.Name)
             .ToArray();
+
         // Note: Getting derived types requires scanning all loaded assemblies
         // This is expensive and might not be practical in all scenarios
         var derivedTypes = Array.Empty<TypeAnalysisInfo>();
@@ -113,6 +100,7 @@ public class TypeAnalysisService : ITypeAnalysisService
             DerivedTypes: derivedTypes
         );
     }
+
     public TypeAnalysisGenericTypeInfo GetGenericTypeInfo(Type type)
     {
         if (!type.IsGenericType)
@@ -121,20 +109,21 @@ public class TypeAnalysisService : ITypeAnalysisService
                 TypeName: type.FullName ?? type.Name,
                 IsGenericTypeDefinition: false,
                 IsConstructedGenericType: false,
-                GenericParameters: Array.Empty<TypeAnalysisGenericParameterInfo>(),
-                GenericArguments: Array.Empty<string>(),
-                ParameterVariances: Array.Empty<TypeAnalysisGenericVariance>()
+                GenericParameters: [],
+                GenericArguments: [],
+                ParameterVariances: []
             );
         }
+
         var genericParameters = GetGenericParameters(type);
-        var genericArguments = type.IsGenericTypeDefinition 
-            ? Array.Empty<string>()
+        var genericArguments = type.IsGenericTypeDefinition
+            ? []
             : type.GetGenericArguments().Select(t => t.FullName ?? t.Name).ToArray();
+
         var variances = type.IsGenericTypeDefinition
-            ? type.GetGenericArguments()
-                .Select(GetGenericVariance)
-                .ToArray()
-            : Array.Empty<TypeAnalysisGenericVariance>();
+            ? type.GetGenericArguments().Select(GetGenericVariance).ToArray()
+            : [];
+
         return new TypeAnalysisGenericTypeInfo(
             TypeName: type.FullName ?? type.Name,
             IsGenericTypeDefinition: type.IsGenericTypeDefinition,
@@ -144,19 +133,19 @@ public class TypeAnalysisService : ITypeAnalysisService
             ParameterVariances: variances
         );
     }
+
     public TypeAnalysisAttributeInfo[] GetTypeAttributes(Type type)
     {
         try
         {
-            return type.GetCustomAttributesData()
-                .Select(ConvertAttributeData)
-                .ToArray();
+            return type.GetCustomAttributesData().Select(AttributeUtils.Convert).ToArray();
         }
         catch (Exception)
         {
-            return Array.Empty<TypeAnalysisAttributeInfo>();
+            return [];
         }
     }
+
     public TypeAnalysisInfo[] GetNestedTypes(Type parentType)
     {
         try
@@ -170,23 +159,19 @@ public class TypeAnalysisService : ITypeAnalysisService
             return Array.Empty<TypeAnalysisInfo>();
         }
     }
+
     public TypeAnalysisInfo[] GetTypesFromAssembly(string assemblyPath)
     {
-        var assembly = LoadAssembly(assemblyPath);
-        if (assembly == null)
-        {
-            return Array.Empty<TypeAnalysisInfo>();
-        }
         try
         {
-            return assembly.GetTypes()
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            return ctx.Assembly.GetTypes()
                 .Where(t => t.IsPublic || t.IsNestedPublic)
                 .Select(GetTypeInfo)
                 .ToArray();
         }
         catch (ReflectionTypeLoadException ex)
         {
-            // Return only the successfully loaded types
             return ex.Types
                 .Where(t => t != null && (t.IsPublic || t.IsNestedPublic))
                 .Select(t => GetTypeInfo(t!))
@@ -194,11 +179,11 @@ public class TypeAnalysisService : ITypeAnalysisService
         }
         catch (Exception)
         {
-            return Array.Empty<TypeAnalysisInfo>();
+            return [];
         }
     }
-    #region Private Helper Methods
-    private TypeAnalysisTypeKind GetTypeKind(Type type)
+
+    private static TypeAnalysisTypeKind GetTypeKind(Type type)
     {
         if (type.IsEnum) return TypeAnalysisTypeKind.Enum;
         if (type.IsInterface) return TypeAnalysisTypeKind.Interface;
@@ -211,7 +196,8 @@ public class TypeAnalysisService : ITypeAnalysisService
         if (type.IsClass) return TypeAnalysisTypeKind.Class;
         return TypeAnalysisTypeKind.Unknown;
     }
-    private TypeAnalysisAccessibilityLevel GetAccessibilityLevel(Type type)
+
+    private static TypeAnalysisAccessibilityLevel GetAccessibilityLevel(Type type)
     {
         if (type.IsPublic || type.IsNestedPublic) return TypeAnalysisAccessibilityLevel.Public;
         if (type.IsNestedPrivate) return TypeAnalysisAccessibilityLevel.Private;
@@ -222,22 +208,24 @@ public class TypeAnalysisService : ITypeAnalysisService
         if (!type.IsVisible) return TypeAnalysisAccessibilityLevel.Internal;
         return TypeAnalysisAccessibilityLevel.Unknown;
     }
+
     private TypeAnalysisGenericParameterInfo[] GetGenericParameters(Type type)
     {
         if (!type.IsGenericType)
-        {
-            return Array.Empty<TypeAnalysisGenericParameterInfo>();
-        }
+            return [];
+
         return type.GetGenericArguments()
             .Where(t => t.IsGenericParameter)
             .Select(CreateGenericParameterInfo)
             .ToArray();
     }
+
     private TypeAnalysisGenericParameterInfo CreateGenericParameterInfo(Type genericParameter)
     {
         var constraints = genericParameter.GetGenericParameterConstraints()
             .Select(t => t.FullName ?? t.Name)
             .ToArray();
+
         var attrs = genericParameter.GenericParameterAttributes;
         return new TypeAnalysisGenericParameterInfo(
             Name: genericParameter.Name,
@@ -249,42 +237,19 @@ public class TypeAnalysisService : ITypeAnalysisService
             HasDefaultConstructorConstraint: (attrs & GenericParameterAttributes.DefaultConstructorConstraint) != 0
         );
     }
+
     private TypeAnalysisGenericVariance GetGenericVariance(Type genericParameter)
     {
         if (!genericParameter.IsGenericParameter)
-        {
             return TypeAnalysisGenericVariance.None;
-        }
+
         var attrs = genericParameter.GenericParameterAttributes;
         if ((attrs & GenericParameterAttributes.Covariant) != 0)
-        {
             return TypeAnalysisGenericVariance.Covariant;
-        }
+
         if ((attrs & GenericParameterAttributes.Contravariant) != 0)
-        {
             return TypeAnalysisGenericVariance.Contravariant;
-        }
+
         return TypeAnalysisGenericVariance.None;
     }
-    private TypeAnalysisAttributeInfo ConvertAttributeData(CustomAttributeData attributeData)
-    {
-        var constructorArgs = attributeData.ConstructorArguments
-            .Select(arg => arg.Value)
-            .ToArray();
-        var namedArgs = attributeData.NamedArguments
-            .ToDictionary(
-                arg => arg.MemberName,
-                arg => arg.TypedValue.Value
-            );
-        var attributeType = attributeData.AttributeType;
-        var attributeUsage = attributeType.GetCustomAttribute<AttributeUsageAttribute>();
-        return new TypeAnalysisAttributeInfo(
-            AttributeType: attributeType.FullName ?? attributeType.Name,
-            ConstructorArguments: constructorArgs,
-            NamedArguments: namedArgs,
-            AllowMultiple: attributeUsage?.AllowMultiple ?? false,
-            ValidOn: attributeUsage?.ValidOn ?? AttributeTargets.All
-        );
-    }
-    #endregion
 }
