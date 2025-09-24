@@ -1,24 +1,26 @@
 # Sherlock MCP for .NET
 
-**Sherlock MCP for .NET** is a powerful tool that provides a Model Context Protocol (MCP) server for .NET assemblies. It allows Language Learning Models (LLMs) to analyze and understand your .NET code, enabling more accurate and context-aware responses.
+**Sherlock MCP for .NET** is a comprehensive Model Context Protocol (MCP) server that provides deep introspection capabilities for .NET assemblies. It enables Language Learning Models (LLMs) to analyze and understand your .NET code with precision, delivering accurate and context-aware responses for complex development scenarios.
 
-This tool is ideal for developers who want to leverage the power of LLMs to:
+This tool is essential for developers who want to harness LLM capabilities for:
 
-*   Understand complex .NET codebases.
-*   Get detailed information about types, members, and their signatures.
-*   Automate code analysis and documentation.
-*   Build custom tools that interact with .NET assemblies.
+*   **Deep codebase analysis** - Understanding complex .NET architectures and dependencies
+*   **Precise type information** - Getting detailed metadata about types, members, and their signatures
+*   **Automated documentation** - Extracting and utilizing XML documentation and attributes
+*   **Custom tooling** - Building sophisticated tools that interact with .NET assemblies
+*   **Code generation** - Creating accurate code based on existing type structures
 
 ## Key Features
 
-*   **MCP Server**: Provides a standardized interface for LLMs to interact with .NET assemblies.
-*   **Assembly Analysis**: Uses reflection to extract detailed information about types, members, and their signatures.
-*   **Rich Toolset**: Analyze assemblies, types, methods, properties, fields, events, and constructors.
-*   **Attributes & XML Docs**: Surface member/parameter attributes and adjacent XML documentation (summary/params/returns/remarks).
-*   **Filtering & Paging**: Name/attribute filters, sorting, and paging for large result sets.
-*   **Stable Schemas**: Standard JSON envelopes with `kind` and `version`; consistent error codes.
-*   **.NET 9.0 Support**: Built on the latest version of the .NET platform.
-*   **Easy to Use**: Can be easily integrated into your existing workflows.
+*   **Comprehensive MCP Server**: Provides 28+ specialized tools for .NET assembly analysis
+*   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
+*   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
+*   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
+*   **XML Documentation Integration**: Automatic extraction of summary, parameters, returns, and remarks
+*   **Performance Optimized**: Caching, streaming, and memory-efficient processing
+*   **Stable JSON API**: Consistent envelopes with versioning and structured error codes
+*   **.NET 9.0 Native**: Built on the latest .NET platform with modern C# features
+*   **Project Integration**: Solution and project file analysis with dependency resolution
 
 ## Installation
 
@@ -135,57 +137,69 @@ Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name,
 
 ## Tools Overview
 
-Reflection (quick scans)
+### Assembly Discovery & Analysis
+- **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
+- **`FindAssemblyByClassName`**: Locate assemblies containing specific class names
+- **`FindAssemblyByFileName`**: Find assemblies by file name in common build paths
 
-- AnalyzeAssembly: Assembly overview (public types + metadata), returns `reflection.assembly`.
-- AnalyzeType: Type members snapshot (constructors/methods/properties/fields), returns `reflection.type`.
-- AnalyzeMethod: Method overloads, params, attributes, returns `reflection.method`.
-- FindAssemblyByClassName / FindAssemblyByFileName: Locate local assemblies.
+### Type Introspection
+- **`GetTypesFromAssembly`**: List all public types with metadata (paginated)
+- **`AnalyzeType`**: Comprehensive type analysis with all members
+- **`GetTypeInfo`**: Detailed type metadata (accessibility, generics, nested types)
+- **`GetTypeHierarchy`**: Inheritance chain and interface implementations
+- **`GetGenericTypeInfo`**: Generic parameters, arguments, and variance information
+- **`GetTypeAttributes`**: Custom attributes declared on types
+- **`GetNestedTypes`**: Nested type declarations
 
-Member analysis (rich, filterable)
+### Member Analysis (Filterable & Paginated)
+- **`GetAllTypeMembers`**: All members across all categories
+- **`GetTypeMethods`**: Method signatures, overloads, and metadata
+- **`GetTypeProperties`**: Property details including getters/setters and indexers
+- **`GetTypeFields`**: Field information including constants and readonly fields
+- **`GetTypeEvents`**: Event declarations with handler types
+- **`GetTypeConstructors`**: Constructor signatures and parameters
+- **`AnalyzeMethod`**: Deep method analysis with overloads and attributes
 
-- GetAllTypeMembers: Comprehensive members for a type (methods/properties/fields/events/constructors).
-- GetTypeMethods / GetTypeProperties / GetTypeFields / GetTypeEvents / GetTypeConstructors.
-- GetMemberAttributes: Attributes for a single member.
-- GetParameterAttributes: Attributes for a specific parameter.
+### Attributes & Metadata
+- **`GetMemberAttributes`**: Attributes for specific members
+- **`GetParameterAttributes`**: Parameter-level attribute information
 
-Type analysis
+### XML Documentation
+- **`GetXmlDocsForType`**: Extract type-level XML documentation
+- **`GetXmlDocsForMember`**: Member-specific documentation (summary/params/returns/remarks)
 
-- GetTypesFromAssembly: Public types with metadata.
-- GetTypeInfo: Detailed type metadata (kind, accessibility, generics, nested types).
-- GetTypeHierarchy: Base types + interfaces.
-- GetGenericTypeInfo: Generic parameters/arguments/variance.
-- GetTypeAttributes: Custom attributes declared on a type.
-- GetNestedTypes: Nested types declared by a type.
+### Project & Solution Analysis
+- **`AnalyzeSolution`**: Parse .sln files and enumerate projects
+- **`AnalyzeProject`**: Project metadata, references, and build configuration
+- **`GetProjectOutputPaths`**: Resolve output directories for different configurations
+- **`ResolvePackageReferences`**: Map NuGet packages to cached assemblies
+- **`FindDepsJsonDependencies`**: Parse deps.json for runtime dependencies
 
-XML documentation
+### Configuration & Runtime
+- **`GetRuntimeOptions`**: Current server configuration and defaults
+- **`UpdateRuntimeOptions`**: Modify pagination, caching, and search behavior
 
-- GetXmlDocsForType: Summary/remarks/returns/params from adjacent XML.
-- GetXmlDocsForMember: Docs for methods/properties/fields/events/ctors.
+### Advanced Filtering & Pagination
 
-Project analysis
+All member analysis tools support comprehensive filtering and pagination:
 
-- AnalyzeSolution: Parse `.sln`, list projects.
-- AnalyzeProject: Project metadata, references, outputs.
-- GetProjectOutputPaths: Output folders for a configuration.
-- ResolvePackageReferences: Resolve NuGet packages to cached assemblies.
-- FindDepsJsonDependencies: Read deps.json runtime dependencies.
+**Filtering Options:**
+* `caseSensitive` (bool): Case-sensitive type/member matching
+* `nameContains` (string): Filter by member name substring
+* `hasAttributeContains` (string): Filter by attribute type substring
+* `includePublic` / `includeNonPublic` (bool): Visibility filtering
+* `includeStatic` / `includeInstance` (bool): Member type filtering
 
-Runtime/config
+**Pagination:**
+* `skip` / `take` (int): Standard offset pagination
+* `maxItems` (int): Maximum results per request
+* `continuationToken` (string): Token-based pagination for large datasets
+* `sortBy` / `sortOrder` (string): Sort by name/access in asc/desc order
 
-- GetRuntimeOptions / UpdateRuntimeOptions: Page size, caching, search roots, defaults.
-
-### Member Listing Options
-
-All member listing tools (methods/properties/fields/events/constructors) accept:
-
-* `caseSensitive` (bool): Case-sensitive type/member matching (default false in tools).
-* `nameContains` (string): Filter members by substring.
-* `hasAttributeContains` (string): Filter by attribute type substring.
-* `skip` / `take` (int): Paging over results.
-* `sortBy` / `sortOrder`: Sort by name/access; asc/desc.
-
-Type lookup supports full names, simple names, and nested types (normalized `Outer+Inner`); `caseSensitive` controls comparison.
+**Type Resolution:**
+* Supports full names (`Namespace.Type`), simple names (`Type`), and nested types (`Outer+Inner`)
+* Case sensitivity controlled by `caseSensitive` parameter
+* Automatic fallback resolution for ambiguous type names
 
 ### Response Schema
 
