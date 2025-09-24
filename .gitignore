@@ -55,3 +55,6 @@ TestResult.xml
 nunit-*.xml
 
 /test-results/
+
+# MCP Registry tokens
+.mcpregistry_*

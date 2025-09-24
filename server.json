@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json",
+  "name": "io.github.jcucci/dotnet-sherlock-mcp",
+  "description": ".NET assembly introspection MCP server with advanced reflection and type analysis capabilities",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/jcucci/dotnet-sherlock-mcp",
+    "source": "github"
+  },
+  "version": "2.3.0",
+  "packages": [
+    {
+      "registryType": "nuget",
+      "identifier": "Sherlock.MCP.Server",
+      "version": "2.3.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

@@ -225,6 +225,9 @@ Contributions are welcome. This repo includes an `.editorconfig` with modern C# 
 * Follow the response envelope and error code conventions when adding tools.
 * Run `dotnet build` and `dotnet test` locally before opening a PR.
 
+## MCP Registry
+mcp-name: io.github.jcucci/dotnet-sherlock-mcp
+
 ## License
 
 Sherlock MCP for .NET is licensed under the [MIT License](LICENSE).
