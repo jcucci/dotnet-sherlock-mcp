@@ -6,6 +6,16 @@ using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Indexing;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Middleware;
+using System.Reflection;
+
+// Handle version command before starting the application
+if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
+{
+    var assembly = Assembly.GetExecutingAssembly();
+    var version = assembly.GetName().Version?.ToString() ?? "Unknown";
+    Console.WriteLine($"Sherlock MCP Server {version}");
+    return 0;
+}
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.AddConsole(consoleLogOptions =>
@@ -28,3 +38,4 @@ builder.Services
     .WithToolsFromAssembly();
 
 await builder.Build().RunAsync();
+return 0;
