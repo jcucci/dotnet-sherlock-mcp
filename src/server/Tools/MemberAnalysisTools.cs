@@ -24,8 +24,7 @@ public static class MemberAnalysisTools
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")]
-        string typeName,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -149,7 +148,7 @@ public static class MemberAnalysisTools
         }
     }
 
-    
+
 
     [McpServerTool]
     [Description("Gets custom attributes for a member (method, property, field, event, constructor)")]
@@ -173,11 +172,11 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             MemberInfo? member = memberKind.ToLowerInvariant() switch
             {
-                "method" => type.GetMethods(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
-                "property" => type.GetProperties(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).FirstOrDefault(p => string.Equals(p.Name, memberName, comparison)),
-                "field" => type.GetFields(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).FirstOrDefault(f => string.Equals(f.Name, memberName, comparison)),
-                "event" => type.GetEvents(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).FirstOrDefault(e => string.Equals(e.Name, memberName, comparison)),
-                "constructor" => type.GetConstructors(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).FirstOrDefault() as MemberInfo,
+                "method" => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
+                "property" => type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(p => string.Equals(p.Name, memberName, comparison)),
+                "field" => type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(f => string.Equals(f.Name, memberName, comparison)),
+                "event" => type.GetEvents(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(e => string.Equals(e.Name, memberName, comparison)),
+                "constructor" => type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault() as MemberInfo,
                 _ => null
             };
             if (member == null)
@@ -213,9 +212,9 @@ public static class MemberAnalysisTools
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            var method = type.GetMethods(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
+            var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                              .FirstOrDefault(m => string.Equals(m.Name, methodName, comparison))
-                        ?? (MethodBase?) type.GetConstructors(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
+                        ?? (MethodBase?)type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                              .FirstOrDefault();
             if (method == null)
                 return JsonHelpers.Error("MemberNotFound", $"Method/Constructor '{methodName}' not found");
@@ -234,11 +233,13 @@ public static class MemberAnalysisTools
             return JsonHelpers.Error("InternalError", $"Failed to get parameter attributes: {ex.Message}");
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets detailed information about all properties in a type, including getters, setters, indexers, and access modifiers")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
+        ToolMiddleware middleware,
+        RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
@@ -251,82 +252,123 @@ public static class MemberAnalysisTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Items to take (paging)")] int? take = null,
         [Description("Sort by: name|access (default: name)")] string sortBy = "name",
-        [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc")
+        [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
+        [Description("Maximum items to return (overrides take)")] int? maxItems = null,
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Bypass cache for this request")] bool noCache = false)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-    
-            var options = new MemberFilterOptions
-            {
-                IncludePublic = includePublic,
-                IncludeNonPublic = includeNonPublic,
-                IncludeStatic = includeStatic,
-                IncludeInstance = includeInstance,
-                CaseSensitive = caseSensitive,
-                NameContains = nameContains,
-                HasAttributeContains = hasAttributeContains,
-                Skip = skip,
-                Take = take,
-                SortBy = sortBy,
-                SortOrder = sortOrder
-            };
-    
-            var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetType(typeName)
-                ?? assembly.GetExportedTypes()
-                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-            if (type?.FullName == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
-            var properties = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
-    
-            var result = new
+            var cacheKey = CacheKeyHelper.Build(
+                "member.properties",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
+
+            return middleware.Execute(cacheKey, () =>
             {
-                typeName,
-                assemblyPath,
-                propertyCount = properties.Length,
-                properties = properties.Select(p => new
+                var options = new MemberFilterOptions
                 {
-                    name = p.Name,
-                    signature = p.Signature,
-                    typeName = p.TypeName,
-                    accessModifier = p.AccessModifier,
-                    isStatic = p.IsStatic,
-                    isVirtual = p.IsVirtual,
-                    isAbstract = p.IsAbstract,
-                    isSealed = p.IsSealed,
-                    isOverride = p.IsOverride,
-                    canRead = p.CanRead,
-                    canWrite = p.CanWrite,
-                    isIndexer = p.IsIndexer,
-                    getterAccessModifier = p.GetterAccessModifier,
-                    setterAccessModifier = p.SetterAccessModifier,
-                    attributes = p.CustomAttributes,
-                    indexerParameters = p.IndexerParameters.Select(param => new
+                    IncludePublic = includePublic,
+                    IncludeNonPublic = includeNonPublic,
+                    IncludeStatic = includeStatic,
+                    IncludeInstance = includeInstance,
+                    CaseSensitive = caseSensitive,
+                    NameContains = nameContains,
+                    HasAttributeContains = hasAttributeContains,
+                    // paging controlled below
+                    SortBy = sortBy,
+                    SortOrder = sortOrder
+                };
+
+                // Resolve type
+                var assembly = Assembly.LoadFrom(assemblyPath);
+                var type = assembly.GetType(typeName)
+                    ?? assembly.GetExportedTypes()
+                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+                if (type?.FullName == null)
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+
+                // Get full filtered set (no paging yet) to compute total and page safely
+                var all = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
+
+                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+                var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
+                var offset = 0;
+                string salt = TokenHelper.MakeSalt(cacheKey);
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
                     {
-                        name = param.Name,
-                        typeName = param.TypeName,
-                        isOptional = param.IsOptional,
-                        defaultValue = param.DefaultValue,
-                        attributes = param.CustomAttributes
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                    }
+                }
+                else if (skip.HasValue && skip.Value > 0)
+                {
+                    offset = skip.Value;
+                }
+
+                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                string? nextToken = null;
+                var nextOffset = offset + pageItems.Length;
+                if (nextOffset < all.Length)
+                {
+                    nextToken = TokenHelper.Make(nextOffset, salt);
+                }
+
+                var result = new
+                {
+                    typeName,
+                    assemblyPath,
+                    total = all.Length,
+                    count = pageItems.Length,
+                    nextToken,
+                    properties = pageItems.Select(p => new
+                    {
+                        name = p.Name,
+                        signature = p.Signature,
+                        typeName = p.TypeName,
+                        accessModifier = p.AccessModifier,
+                        isStatic = p.IsStatic,
+                        isVirtual = p.IsVirtual,
+                        isAbstract = p.IsAbstract,
+                        isSealed = p.IsSealed,
+                        isOverride = p.IsOverride,
+                        canRead = p.CanRead,
+                        canWrite = p.CanWrite,
+                        isIndexer = p.IsIndexer,
+                        getterAccessModifier = p.GetterAccessModifier,
+                        setterAccessModifier = p.SetterAccessModifier,
+                        attributes = p.CustomAttributes,
+                        indexerParameters = p.IndexerParameters.Select(param => new
+                        {
+                            name = param.Name,
+                            typeName = param.TypeName,
+                            isOptional = param.IsOptional,
+                            defaultValue = param.DefaultValue,
+                            attributes = param.CustomAttributes
+                        }).ToArray()
                     }).ToArray()
-                }).ToArray()
-            };
-            return JsonHelpers.Envelope("member.properties", result);
+                };
+
+                return JsonHelpers.Envelope("member.properties", result);
+            }, noCache);
         }
         catch (Exception ex)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze properties: {ex.Message}");
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets detailed information about all fields in a type, including const, readonly, static, and volatile fields")]
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
+        ToolMiddleware middleware,
+        RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Include public members (default: true)")] bool includePublic = true,
@@ -339,66 +381,105 @@ public static class MemberAnalysisTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Items to take (paging)")] int? take = null,
         [Description("Sort by: name|access (default: name)")] string sortBy = "name",
-        [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc")
+        [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
+        [Description("Maximum items to return (overrides take)")] int? maxItems = null,
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Bypass cache for this request")] bool noCache = false)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-    
-            var options = new MemberFilterOptions
-            {
-                IncludePublic = includePublic,
-                IncludeNonPublic = includeNonPublic,
-                IncludeStatic = includeStatic,
-                IncludeInstance = includeInstance,
-                CaseSensitive = caseSensitive,
-                NameContains = nameContains,
-                HasAttributeContains = hasAttributeContains,
-                Skip = skip,
-                Take = take,
-                SortBy = sortBy,
-                SortOrder = sortOrder
-            };
-    
-            var assembly = Assembly.LoadFrom(assemblyPath);
-            var type = assembly.GetType(typeName)
-                ?? assembly.GetExportedTypes()
-                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-            if (type?.FullName == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
-            var fields = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
-    
-            var result = new
+            var cacheKey = CacheKeyHelper.Build(
+                "member.fields",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
+
+            return middleware.Execute(cacheKey, () =>
             {
-                typeName,
-                assemblyPath,
-                fieldCount = fields.Length,
-                fields = fields.Select(f => new
+                var options = new MemberFilterOptions
                 {
-                    name = f.Name,
-                    signature = f.Signature,
-                    typeName = f.TypeName,
-                    accessModifier = f.AccessModifier,
-                    isStatic = f.IsStatic,
-                    isReadOnly = f.IsReadOnly,
-                    isConst = f.IsConst,
-                    isVolatile = f.IsVolatile,
-                    isInitOnly = f.IsInitOnly,
-                    constantValue = f.ConstantValue,
-                    attributes = f.CustomAttributes
-                }).ToArray()
-            };
-            return JsonHelpers.Envelope("member.fields", result);
+                    IncludePublic = includePublic,
+                    IncludeNonPublic = includeNonPublic,
+                    IncludeStatic = includeStatic,
+                    IncludeInstance = includeInstance,
+                    CaseSensitive = caseSensitive,
+                    NameContains = nameContains,
+                    HasAttributeContains = hasAttributeContains,
+                    // paging controlled below
+                    SortBy = sortBy,
+                    SortOrder = sortOrder
+                };
+
+                // Resolve type
+                var assembly = Assembly.LoadFrom(assemblyPath);
+                var type = assembly.GetType(typeName)
+                    ?? assembly.GetExportedTypes()
+                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+                if (type?.FullName == null)
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+
+                // Get full filtered set (no paging yet) to compute total and page safely
+                var all = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
+
+                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+                var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
+                var offset = 0;
+                string salt = TokenHelper.MakeSalt(cacheKey);
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
+                    {
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                    }
+                }
+                else if (skip.HasValue && skip.Value > 0)
+                {
+                    offset = skip.Value;
+                }
+
+                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                string? nextToken = null;
+                var nextOffset = offset + pageItems.Length;
+                if (nextOffset < all.Length)
+                {
+                    nextToken = TokenHelper.Make(nextOffset, salt);
+                }
+
+                var result = new
+                {
+                    typeName,
+                    assemblyPath,
+                    total = all.Length,
+                    count = pageItems.Length,
+                    nextToken,
+                    fields = pageItems.Select(f => new
+                    {
+                        name = f.Name,
+                        signature = f.Signature,
+                        typeName = f.TypeName,
+                        accessModifier = f.AccessModifier,
+                        isStatic = f.IsStatic,
+                        isReadOnly = f.IsReadOnly,
+                        isConst = f.IsConst,
+                        isVolatile = f.IsVolatile,
+                        isInitOnly = f.IsInitOnly,
+                        constantValue = f.ConstantValue,
+                        attributes = f.CustomAttributes
+                    }).ToArray()
+                };
+
+                return JsonHelpers.Envelope("member.fields", result);
+            }, noCache);
         }
         catch (Exception ex)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze fields: {ex.Message}");
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets detailed information about all events in a type, including handler types and access modifiers")]
     public static string GetTypeEvents(
@@ -512,7 +593,7 @@ public static class MemberAnalysisTools
             return JsonHelpers.Error("InternalError", $"Failed to analyze events: {ex.Message}");
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets detailed information about all constructors in a type, including parameters and access modifiers")]
     public static string GetTypeConstructors(
@@ -629,7 +710,7 @@ public static class MemberAnalysisTools
             return JsonHelpers.Error("InternalError", $"Failed to analyze constructors: {ex.Message}");
         }
     }
-    
+
     [McpServerTool]
     [Description("Gets comprehensive member information for a type, including all methods, properties, fields, events, and constructors")]
     public static string GetAllTypeMembers(
@@ -742,6 +823,11 @@ public static class MemberAnalysisTools
                         parameters = c.Parameters.Select(p => new { p.Name, p.TypeName, p.IsOptional, p.DefaultValue, attributes = p.CustomAttributes }).ToArray()
                     }).ToArray()
                 };
+                // Check response size before returning
+                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "GetAllTypeMembers");
+                if (sizeValidationError != null)
+                    return sizeValidationError;
+
                 return JsonHelpers.Envelope("member.all", result);
             }, noCache);
         }

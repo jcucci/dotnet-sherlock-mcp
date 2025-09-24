@@ -16,18 +16,48 @@ public static class TypeAnalysisTools
     [Description("Gets public types from an assembly, including key metadata")]
     public static string GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath)
+        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
+        [Description("Items to skip (paging)")] int? skip = null,
+        [Description("Continuation token for paging")] string? continuationToken = null)
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            var types = typeAnalysis.GetTypesFromAssembly(assemblyPath);
+            var allTypes = typeAnalysis.GetTypesFromAssembly(assemblyPath);
+
+            // Pagination logic
+            var defaultPageSize = 50;
+            var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
+            var offset = 0;
+
+            var cacheKey = $"types_from_assembly_{assemblyPath}_{pageSize}";
+            var salt = TokenHelper.MakeSalt(cacheKey);
+
+            if (!string.IsNullOrWhiteSpace(continuationToken))
+            {
+                if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
+                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+            }
+            else if (skip.HasValue && skip.Value > 0)
+            {
+                offset = skip.Value;
+            }
+
+            var types = allTypes.Skip(offset).Take(pageSize).ToArray();
+            string? nextToken = null;
+            var nextOffset = offset + types.Length;
+            if (nextOffset < allTypes.Length)
+                nextToken = TokenHelper.Make(nextOffset, salt);
+
             var result = new
             {
                 assemblyPath,
-                typeCount = types.Length,
+                totalTypeCount = allTypes.Length,
+                returnedTypeCount = types.Length,
+                nextToken,
                 types
             };
             return JsonHelpers.Envelope("type.list", result);

@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\runtime\Sherlock.MCP.Runtime.csproj" />
+    <ProjectReference Include="..\server\Sherlock.MCP.Server.csproj" />
   </ItemGroup>
 
 </Project>

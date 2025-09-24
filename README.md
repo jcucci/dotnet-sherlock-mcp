@@ -53,6 +53,50 @@ Sherlock runs as a standard MCP server that communicates over stdio.
 
 No arguments are required. The server self-registers all tools when launched.
 
+## Auto-Configure for .NET Projects
+
+To automatically use Sherlock when working with .NET code, add these configurations:
+
+### Claude Code (CLAUDE.md)
+
+Add this to your project's `CLAUDE.md` file:
+
+```markdown
+## .NET Assembly Analysis
+
+This project uses Sherlock MCP for .NET assembly analysis. When analyzing .NET types, methods, or assemblies:
+
+1. Use sherlock-mcp tools instead of guessing about .NET APIs
+2. For type analysis: `GetTypeInfo`, `GetTypeMethods`, `GetTypeProperties`
+3. For assembly overview: `AnalyzeAssembly` or `GetTypesFromAssembly`
+4. For project structure: `AnalyzeProject`, `AnalyzeSolution`
+5. Assembly paths are typically: `./bin/Debug/net9.0/ProjectName.dll`
+
+Always include assembly path, prefer full type names, and use pagination for large results.
+```
+
+### Cursor (.cursorrules)
+
+Add this to your project's `.cursorrules` file:
+
+```
+# .NET Analysis Rules
+When working with .NET code, assemblies, or types:
+- Use sherlock-mcp tools for accurate type/member information
+- Assembly paths: ./bin/Debug/net9.0/*.dll or ./bin/Release/net9.0/*.dll
+- For unknown types: GetTypesFromAssembly -> GetTypeInfo -> GetTypeMethods/Properties
+- For code analysis: AnalyzeAssembly for overview, GetTypeInfo for details
+- Use pagination (maxItems=50) for large results to avoid token limits
+```
+
+### Global Configuration
+
+For system-wide usage, add to your global Claude Code settings or Cursor configuration:
+
+```text
+For .NET development: Use sherlock-mcp tools when analyzing assemblies, types, methods, or project structure. Prefer these over guessing .NET API details.
+```
+
 ## How To Prompt It
 
 Below are compact prompt snippets you can paste into your chat to get productive fast. Adjust paths to your local DLLs.
