@@ -7,7 +7,7 @@ public class RuntimeOptions
     public RuntimeOptions()
     {
         SearchRoots = new List<string>();
-        DefaultMaxItems = 200;
+        DefaultMaxItems = 50;
         CacheTtlSeconds = 300;
         EnableStreaming = false;
         IncludeNonPublicByDefault = false;

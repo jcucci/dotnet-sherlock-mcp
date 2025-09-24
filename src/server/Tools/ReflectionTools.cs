@@ -1,8 +1,8 @@
 using ModelContextProtocol.Server;
-
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
+using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Tools;
@@ -14,7 +14,12 @@ public static class ReflectionTools
 
     [McpServerTool]
     [Description("Analyzes a .NET assembly and returns information about all public types, their members, and metadata")]
-    public static string AnalyzeAssembly([Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath)
+    public static string AnalyzeAssembly(
+        RuntimeOptions runtimeOptions,
+        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
+        [Description("Items to skip (paging)")] int? skip = null,
+        [Description("Continuation token for paging")] string? continuationToken = null)
     {
         try
         {
@@ -22,12 +27,39 @@ public static class ReflectionTools
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
             var assembly = Assembly.LoadFrom(assemblyPath);
-            var types = assembly.GetExportedTypes();
+            var allTypes = assembly.GetExportedTypes();
+
+            // Pagination logic
+            var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+            var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
+            var offset = 0;
+
+            var cacheKey = $"analyze_assembly_{assemblyPath}_{pageSize}";
+            var salt = TokenHelper.MakeSalt(cacheKey);
+
+            if (!string.IsNullOrWhiteSpace(continuationToken))
+            {
+                if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
+                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+            }
+            else if (skip.HasValue && skip.Value > 0)
+            {
+                offset = skip.Value;
+            }
+
+            var types = allTypes.Skip(offset).Take(pageSize).ToArray();
+            string? nextToken = null;
+            var nextOffset = offset + types.Length;
+            if (nextOffset < allTypes.Length)
+                nextToken = TokenHelper.Make(nextOffset, salt);
+
             var result = new
             {
                 assemblyName = assembly.FullName,
                 location = assembly.Location,
-                typeCount = types.Length,
+                totalTypeCount = allTypes.Length,
+                returnedTypeCount = types.Length,
+                nextToken,
                 types = types.Select(type => new
                 {
                     name = type.Name,
@@ -45,6 +77,11 @@ public static class ReflectionTools
                 }).ToArray()
             };
 
+            // Check response size before returning
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "AnalyzeAssembly");
+            if (sizeValidationError != null)
+                return sizeValidationError;
+
             return JsonHelpers.Envelope("reflection.assembly", result);
         }
         catch (Exception ex)
@@ -53,11 +90,110 @@ public static class ReflectionTools
         }
     }
 
+    private static List<dynamic> CollectAllMembers(
+        ConstructorInfo[] constructors, MethodInfo[] methods,
+        PropertyInfo[] properties, FieldInfo[] fields,
+        bool includeConstructors, bool includeMethods,
+        bool includeProperties, bool includeFields)
+    {
+        var allMembers = new List<dynamic>();
+
+        if (includeConstructors)
+        {
+            foreach (var constructor in constructors)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "constructor",
+                    name = constructor.Name,
+                    parameters = constructor.GetParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName,
+                        hasDefaultValue = p.HasDefaultValue,
+                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeMethods)
+        {
+            foreach (var method in methods)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "method",
+                    name = method.Name,
+                    isStatic = method.IsStatic,
+                    isAbstract = method.IsAbstract,
+                    isVirtual = method.IsVirtual,
+                    returnType = method.ReturnType.FullName,
+                    parameters = method.GetParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName,
+                        hasDefaultValue = p.HasDefaultValue,
+                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeProperties)
+        {
+            foreach (var property in properties)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "property",
+                    name = property.Name,
+                    propertyType = property.PropertyType.FullName,
+                    canRead = property.CanRead,
+                    canWrite = property.CanWrite,
+                    isStatic = (property.GetGetMethod() ?? property.GetSetMethod())?.IsStatic ?? false,
+                    isIndexer = property.GetIndexParameters().Length > 0,
+                    indexParameters = property.GetIndexParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeFields)
+        {
+            foreach (var field in fields)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "field",
+                    name = field.Name,
+                    fieldType = field.FieldType.FullName,
+                    isStatic = field.IsStatic,
+                    isReadOnly = field.IsInitOnly,
+                    isConstant = field.IsLiteral,
+                    constantValue = field.IsLiteral ? field.GetRawConstantValue()?.ToString() : null
+                });
+            }
+        }
+
+        return allMembers;
+    }
+
     [McpServerTool]
     [Description("Gets detailed information about a specific type including all its members, methods, properties, and fields")]
     public static string AnalyzeType(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName)
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Maximum number of members to return per category (default: 25)")] int? maxItems = null,
+        [Description("Items to skip (paging)")] int? skip = null,
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Include constructors in results (default: true)")] bool includeConstructors = true,
+        [Description("Include methods in results (default: true)")] bool includeMethods = true,
+        [Description("Include properties in results (default: true)")] bool includeProperties = true,
+        [Description("Include fields in results (default: true)")] bool includeFields = true)
     {
         try
         {
@@ -71,56 +207,63 @@ public static class ReflectionTools
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
-            var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
-                .Select(c => new
-                {
-                    name = c.Name,
-                    parameters = c.GetParameters().Select(p => new
-                    {
-                        name = p.Name,
-                        type = p.ParameterType.FullName,
-                        hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
-                    }).ToArray()
-                }).ToArray();
+            // Pagination logic
+            var defaultPageSize = 25;
+            var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
+            var offset = 0;
 
-            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
-                .Where(m => !m.IsSpecialName)
-                .Select(m => new
-                {
-                    name = m.Name,
-                    isStatic = m.IsStatic,
-                    isAbstract = m.IsAbstract,
-                    isVirtual = m.IsVirtual,
-                    returnType = m.ReturnType.FullName,
-                    parameters = m.GetParameters().Select(p => new
-                    {
-                        name = p.Name,
-                        type = p.ParameterType.FullName,
-                        hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
-                    }).ToArray()
-                }).ToArray();
+            var cacheKey = $"analyze_type_{assemblyPath}_{typeName}_{pageSize}";
+            var salt = TokenHelper.MakeSalt(cacheKey);
 
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
-                .Select(p => new
-                {
-                    name = p.Name,
-                    type = p.PropertyType.FullName,
-                    canRead = p.CanRead,
-                    canWrite = p.CanWrite,
-                    isStatic = p.GetGetMethod()?.IsStatic ?? p.GetSetMethod()?.IsStatic ?? false
-                }).ToArray();
+            if (!string.IsNullOrWhiteSpace(continuationToken))
+            {
+                if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
+                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+            }
+            else if (skip.HasValue && skip.Value > 0)
+            {
+                offset = skip.Value;
+            }
 
-            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
-                .Select(f => new
-                {
-                    name = f.Name,
-                    type = f.FieldType.FullName,
-                    isStatic = f.IsStatic,
-                    isReadOnly = f.IsInitOnly,
-                    isLiteral = f.IsLiteral
-                }).ToArray();
+            // Get all constructors if requested
+            var allConstructors = includeConstructors ?
+                type.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToArray() :
+                [];
+
+            // Get all methods if requested
+            var allMethods = includeMethods ?
+                type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+                    .Where(m => !m.IsSpecialName).ToArray() :
+                [];
+
+            // Get all properties if requested
+            var allProperties = includeProperties ?
+                type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
+                [];
+
+            // Get all fields if requested
+            var allFields = includeFields ?
+                type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
+                [];
+
+            // Apply pagination across all member types
+            var allMembers = CollectAllMembers(allConstructors, allMethods, allProperties, allFields,
+                includeConstructors, includeMethods, includeProperties, includeFields);
+
+            var totalMembers = allMembers.Count;
+            var pagedMembers = allMembers.Skip(offset).Take(pageSize).ToArray();
+
+            // Calculate next token
+            var nextOffset = offset + pagedMembers.Length;
+            string? nextToken = null;
+            if (nextOffset < totalMembers)
+                nextToken = TokenHelper.Make(nextOffset, salt);
+
+            // Separate members by type for response
+            var constructors = pagedMembers.Where(m => m.memberType == "constructor").ToArray();
+            var methods = pagedMembers.Where(m => m.memberType == "method").ToArray();
+            var properties = pagedMembers.Where(m => m.memberType == "property").ToArray();
+            var fields = pagedMembers.Where(m => m.memberType == "field").ToArray();
 
             var result = new
             {
@@ -135,11 +278,21 @@ public static class ReflectionTools
                 isGeneric = type.IsGenericType,
                 baseType = type.BaseType?.FullName,
                 interfaces = type.GetInterfaces().Select(i => i.FullName).ToArray(),
+                totalConstructors = allConstructors.Length,
+                totalMethods = allMethods.Length,
+                totalProperties = allProperties.Length,
+                totalFields = allFields.Length,
+                nextToken,
                 constructors,
                 methods,
                 properties,
                 fields
             };
+
+            // Check response size before returning
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "AnalyzeType");
+            if (sizeValidationError != null)
+                return sizeValidationError;
 
             return JsonHelpers.Envelope("reflection.type", result);
         }
@@ -253,7 +406,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null,
                         isIn = p.IsIn,
                         isOut = p.IsOut,
-                        isParams = p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Any()
+                        isParams = p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0
                     }).ToArray(),
                     attributes = method.GetCustomAttributes().Select(attr => new
                     {
