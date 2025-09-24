@@ -90,6 +90,98 @@ public static class ReflectionTools
         }
     }
 
+    private static List<dynamic> CollectAllMembers(
+        ConstructorInfo[] constructors, MethodInfo[] methods,
+        PropertyInfo[] properties, FieldInfo[] fields,
+        bool includeConstructors, bool includeMethods,
+        bool includeProperties, bool includeFields)
+    {
+        var allMembers = new List<dynamic>();
+
+        if (includeConstructors)
+        {
+            foreach (var constructor in constructors)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "constructor",
+                    name = constructor.Name,
+                    parameters = constructor.GetParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName,
+                        hasDefaultValue = p.HasDefaultValue,
+                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeMethods)
+        {
+            foreach (var method in methods)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "method",
+                    name = method.Name,
+                    isStatic = method.IsStatic,
+                    isAbstract = method.IsAbstract,
+                    isVirtual = method.IsVirtual,
+                    returnType = method.ReturnType.FullName,
+                    parameters = method.GetParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName,
+                        hasDefaultValue = p.HasDefaultValue,
+                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeProperties)
+        {
+            foreach (var property in properties)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "property",
+                    name = property.Name,
+                    propertyType = property.PropertyType.FullName,
+                    canRead = property.CanRead,
+                    canWrite = property.CanWrite,
+                    isStatic = (property.GetGetMethod() ?? property.GetSetMethod())?.IsStatic ?? false,
+                    isIndexer = property.GetIndexParameters().Length > 0,
+                    indexParameters = property.GetIndexParameters().Select(p => new
+                    {
+                        name = p.Name,
+                        type = p.ParameterType.FullName
+                    }).ToArray()
+                });
+            }
+        }
+
+        if (includeFields)
+        {
+            foreach (var field in fields)
+            {
+                allMembers.Add(new
+                {
+                    memberType = "field",
+                    name = field.Name,
+                    fieldType = field.FieldType.FullName,
+                    isStatic = field.IsStatic,
+                    isReadOnly = field.IsInitOnly,
+                    isConstant = field.IsLiteral,
+                    constantValue = field.IsLiteral ? field.GetRawConstantValue()?.ToString() : null
+                });
+            }
+        }
+
+        return allMembers;
+    }
+
     [McpServerTool]
     [Description("Gets detailed information about a specific type including all its members, methods, properties, and fields")]
     public static string AnalyzeType(
@@ -136,82 +228,42 @@ public static class ReflectionTools
             // Get all constructors if requested
             var allConstructors = includeConstructors ?
                 type.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToArray() :
-                new ConstructorInfo[0];
+                [];
 
             // Get all methods if requested
             var allMethods = includeMethods ?
                 type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                     .Where(m => !m.IsSpecialName).ToArray() :
-                new MethodInfo[0];
+                [];
 
             // Get all properties if requested
             var allProperties = includeProperties ?
                 type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
-                new PropertyInfo[0];
+                [];
 
             // Get all fields if requested
             var allFields = includeFields ?
                 type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
-                new FieldInfo[0];
+                [];
 
-            // Apply pagination to constructors
-            var constructors = allConstructors.Skip(offset).Take(pageSize)
-                .Select(c => new
-                {
-                    memberType = "constructor",
-                    name = c.Name,
-                    parameters = c.GetParameters().Select(p => new
-                    {
-                        name = p.Name,
-                        type = p.ParameterType.FullName,
-                        hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
-                    }).ToArray()
-                }).ToArray();
+            // Apply pagination across all member types
+            var allMembers = CollectAllMembers(allConstructors, allMethods, allProperties, allFields,
+                includeConstructors, includeMethods, includeProperties, includeFields);
 
-            // Calculate next offsets and determine if we need more pages
-            var constructorCount = constructors.Length;
-            var nextOffset = offset + constructorCount;
+            var totalMembers = allMembers.Count;
+            var pagedMembers = allMembers.Skip(offset).Take(pageSize).ToArray();
+
+            // Calculate next token
+            var nextOffset = offset + pagedMembers.Length;
             string? nextToken = null;
-
-            if (nextOffset < allConstructors.Length || allMethods.Length > 0 || allProperties.Length > 0 || allFields.Length > 0)
-            {
+            if (nextOffset < totalMembers)
                 nextToken = TokenHelper.Make(nextOffset, salt);
-            }
 
-            // If we haven't filled the page, add methods
-            var methods = new object[0];
-            if (constructorCount < pageSize && includeMethods)
-            {
-                var methodOffset = Math.Max(0, offset - allConstructors.Length);
-                var remaining = pageSize - constructorCount;
-                methods = allMethods.Skip(methodOffset).Take(remaining)
-                    .Select(m => new
-                    {
-                        memberType = "method",
-                        name = m.Name,
-                        isStatic = m.IsStatic,
-                        isAbstract = m.IsAbstract,
-                        isVirtual = m.IsVirtual,
-                        returnType = m.ReturnType.FullName,
-                        parameters = m.GetParameters().Select(p => new
-                        {
-                            name = p.Name,
-                            type = p.ParameterType.FullName,
-                            hasDefaultValue = p.HasDefaultValue,
-                            defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
-                        }).ToArray()
-                    }).ToArray();
-
-                if (methodOffset + methods.Length < allMethods.Length || allProperties.Length > 0 || allFields.Length > 0)
-                {
-                    nextToken = TokenHelper.Make(nextOffset + methods.Length, salt);
-                }
-            }
-
-            // Similar logic for properties and fields (simplified for brevity)
-            var properties = new object[0];
-            var fields = new object[0];
+            // Separate members by type for response
+            var constructors = pagedMembers.Where(m => m.memberType == "constructor").ToArray();
+            var methods = pagedMembers.Where(m => m.memberType == "method").ToArray();
+            var properties = pagedMembers.Where(m => m.memberType == "property").ToArray();
+            var fields = pagedMembers.Where(m => m.memberType == "field").ToArray();
 
             var result = new
             {
@@ -354,7 +406,7 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null,
                         isIn = p.IsIn,
                         isOut = p.IsOut,
-                        isParams = p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Any()
+                        isParams = p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0
                     }).ToArray(),
                     attributes = method.GetCustomAttributes().Select(attr => new
                     {
