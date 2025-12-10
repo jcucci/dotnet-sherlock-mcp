@@ -13,7 +13,7 @@ public static class ReflectionTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool]
-    [Description("Analyzes a .NET assembly and returns information about all public types, their members, and metadata")]
+    [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with GetTypeInfo for specific types.")]
     public static string AnalyzeAssembly(
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -30,7 +30,7 @@ public static class ReflectionTools
             var allTypes = assembly.GetExportedTypes();
 
             // Pagination logic
-            var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+            var defaultPageSize = runtimeOptions.GetMaxItemsForTool("AnalyzeAssembly");
             var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
             var offset = 0;
 
@@ -183,7 +183,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about a specific type including all its members, methods, properties, and fields")]
+    [Description("Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories. Consider GetTypeMethods etc. for targeted queries.")]
     public static string AnalyzeType(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
@@ -303,7 +303,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool]
-    [Description("Searches for an assembly by its class name in common binary folders (bin/Debug, bin/Release, etc.).")]
+    [Description("Finds assembly path by searching for a class name in bin/Debug, bin/Release folders. Use when you know the class but not the assembly path. Returns path for use with other tools.")]
     public static string FindAssemblyByClassName(
         [Description("The class name to search for (e.g., 'MyClass').")] string className,
         [Description("The root directory to start the search from.")] string workingDirectory)
@@ -331,7 +331,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool]
-    [Description("Searches for an assembly by its file name in common binary folders (bin/Debug, bin/Release, etc.).")]
+    [Description("Finds assembly path by DLL filename search. Use when you know the assembly name but not full path. Returns path for use with other tools.")]
     public static string FindAssemblyByFileName(
         [Description("The file name of the assembly to search for (e.g., 'MyProject.dll').")] string assemblyFileName,
         [Description("The root directory to start the search from.")] string workingDirectory)
@@ -359,7 +359,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about a method, including overloads, parameters, attributes, and return type")]
+    [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via GetTypeMethods. Lightweight response.")]
     public static string AnalyzeMethod(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,

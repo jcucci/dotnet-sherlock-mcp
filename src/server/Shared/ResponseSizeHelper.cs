@@ -85,13 +85,52 @@ public static class ResponseSizeHelper
         if (IsTooLarge(responseObject))
         {
             var size = EstimateSize(responseObject);
-            return JsonHelpers.Error(
+            var (suggestion, alternatives, recommended) = GetGuidanceForTool(toolName);
+
+            return JsonHelpers.ErrorWithGuidance(
                 "ResponseTooLarge",
-                $"Response from {toolName} is too large ({size:N0} characters, max: {MaxResponseSize:N0}). " +
-                $"Use pagination parameters (maxItems, skip, continuationToken) to retrieve data in smaller chunks."
+                $"Response from {toolName} is too large ({size:N0} characters, max: {MaxResponseSize:N0}).",
+                suggestion,
+                alternatives,
+                recommended
             );
         }
 
         return null;
     }
+
+    private static (string suggestion, string[] alternatives, object recommended) GetGuidanceForTool(string toolName) =>
+        toolName switch
+        {
+            "GetAllTypeMembers" => (
+                "Use specific member tools with filtering instead of retrieving all members at once.",
+                new[] { "GetTypeMethods", "GetTypeProperties", "GetTypeFields", "GetTypeConstructors" },
+                new { maxItems = 20, nameContains = "<filter_pattern>" }
+            ),
+            "GetTypeMethods" => (
+                "Filter by method name or reduce page size for types with many methods.",
+                Array.Empty<string>(),
+                new { maxItems = 15, nameContains = "<method_name_pattern>" }
+            ),
+            "GetTypeProperties" => (
+                "Filter by property name or reduce page size.",
+                Array.Empty<string>(),
+                new { maxItems = 25, nameContains = "<property_name_pattern>" }
+            ),
+            "AnalyzeAssembly" => (
+                "Use smaller page size for assemblies with many types.",
+                new[] { "GetTypesFromAssembly" },
+                new { maxItems = 25 }
+            ),
+            "AnalyzeType" => (
+                "Use specific member tools for targeted queries.",
+                new[] { "GetTypeMethods", "GetTypeProperties", "GetTypeFields" },
+                new { maxItems = 15 }
+            ),
+            _ => (
+                "Use pagination parameters to retrieve data in smaller chunks.",
+                Array.Empty<string>(),
+                new { maxItems = 25 }
+            )
+        };
 }

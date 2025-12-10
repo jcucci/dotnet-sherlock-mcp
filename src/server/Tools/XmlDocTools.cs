@@ -10,7 +10,7 @@ namespace Sherlock.MCP.Server.Tools;
 public static class XmlDocTools
 {
     [McpServerTool]
-    [Description("Gets XML documentation for a type from an adjacent .xml file")]
+    [Description("Gets XML documentation (summary, remarks, examples) for a type from adjacent .xml file. Requires XML docs to be generated during build. Lightweight response.")]
     public static string GetXmlDocsForType(
         IXmlDocService xmlDocs,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -36,7 +36,7 @@ public static class XmlDocTools
     }
 
     [McpServerTool]
-    [Description("Gets XML documentation for a member from an adjacent .xml file")]
+    [Description("Gets XML documentation (summary, params, returns, exceptions) for a member from adjacent .xml file. Requires XML docs to be generated during build. Lightweight response.")]
     public static string GetXmlDocsForMember(
         IXmlDocService xmlDocs,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,

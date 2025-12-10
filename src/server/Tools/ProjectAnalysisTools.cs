@@ -12,7 +12,7 @@ public static class ProjectAnalysisTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool]
-    [Description("Parses a .sln file and lists contained projects")]
+    [Description("Parses a .sln file and lists all contained projects with paths. Use as entry point to discover project structure before AnalyzeProject. Lightweight response.")]
     public static async Task<string> AnalyzeSolution(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the .sln file")] string solutionFilePath)
@@ -29,7 +29,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Parses a .csproj/.vbproj/.fsproj and returns metadata, refs, and outputs")]
+    [Description("Parses a project file (.csproj/.vbproj/.fsproj) returning target framework, package refs, project refs, and output paths. Use GetProjectOutputPaths to find compiled assemblies.")]
     public static async Task<string> AnalyzeProject(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath)
@@ -46,7 +46,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Computes project output folder(s) for a configuration")]
+    [Description("Gets compiled assembly output paths for a project by configuration. Use to find DLL paths for assembly analysis tools. Lightweight response.")]
     public static async Task<string> GetProjectOutputPaths(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
@@ -64,7 +64,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Resolves NuGet package references to local assembly paths (from cache)")]
+    [Description("Resolves NuGet package references to local assembly paths from NuGet cache. Use packageName filter to find specific packages. Returns paths for assembly analysis.")]
     public static async Task<string> ResolvePackageReferences(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
@@ -82,7 +82,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Scans build outputs for deps.json runtime dependencies")]
+    [Description("Parses deps.json from build output to list all runtime dependencies including transitive refs. Useful for understanding full dependency graph.")]
     public static async Task<string> FindDepsJsonDependencies(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
