@@ -1,17 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>2.3.0</Version>
+    <Version>2.4.0</Version>
   </PropertyGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Sherlock.MCP.Server</PackageId>
   </PropertyGroup>
-  
+
   <PropertyGroup>
     <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
     <ContainerRepository>jcucci/dotnet-sherlock-mcp</ContainerRepository>
