@@ -18,7 +18,7 @@ public static class MemberAnalysisTools
     };
 
     [McpServerTool]
-    [Description("Gets detailed information about all methods in a type, including signatures, parameters, overloads, and modifiers")]
+    [Description("Gets methods from a type with filtering and pagination. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency. Prefer over GetAllTypeMembers when only methods needed.")]
     public static string GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -78,7 +78,7 @@ public static class MemberAnalysisTools
                 // Get full filtered set (no paging yet) to compute total and page safely
                 var all = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
 
-                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 200;
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeMethods");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(cacheKey);
@@ -102,6 +102,36 @@ public static class MemberAnalysisTools
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
 
+                var methods = pageItems.Select(m => new
+                {
+                    name = m.Name,
+                    signature = m.Signature,
+                    returnType = m.ReturnTypeName,
+                    accessModifier = m.AccessModifier,
+                    isStatic = m.IsStatic,
+                    isVirtual = m.IsVirtual,
+                    isAbstract = m.IsAbstract,
+                    isSealed = m.IsSealed,
+                    isOverride = m.IsOverride,
+                    isOperator = m.IsOperator,
+                    isExtensionMethod = m.IsExtensionMethod,
+                    genericTypeParameters = m.GenericTypeParameters,
+                    attributes = m.CustomAttributes,
+                    parameters = m.Parameters.Select(p => new
+                    {
+                        name = p.Name,
+                        typeName = p.TypeName,
+                        defaultValue = p.DefaultValue,
+                        isOptional = p.IsOptional,
+                        isOut = p.IsOut,
+                        isRef = p.IsRef,
+                        isIn = p.IsIn,
+                        isParams = p.IsParams,
+                        attributes = p.CustomAttributes
+                    }).ToArray()
+                }).ToArray();
+
+                var methodsJson = JsonSerializer.Serialize(methods, SerializerOptions);
                 var result = new
                 {
                     typeName,
@@ -109,34 +139,8 @@ public static class MemberAnalysisTools
                     total = all.Length,
                     count = pageItems.Length,
                     nextToken,
-                    methods = pageItems.Select(m => new
-                    {
-                        name = m.Name,
-                        signature = m.Signature,
-                        returnType = m.ReturnTypeName,
-                        accessModifier = m.AccessModifier,
-                        isStatic = m.IsStatic,
-                        isVirtual = m.IsVirtual,
-                        isAbstract = m.IsAbstract,
-                        isSealed = m.IsSealed,
-                        isOverride = m.IsOverride,
-                        isOperator = m.IsOperator,
-                        isExtensionMethod = m.IsExtensionMethod,
-                        genericTypeParameters = m.GenericTypeParameters,
-                        attributes = m.CustomAttributes,
-                        parameters = m.Parameters.Select(p => new
-                        {
-                            name = p.Name,
-                            typeName = p.TypeName,
-                            defaultValue = p.DefaultValue,
-                            isOptional = p.IsOptional,
-                            isOut = p.IsOut,
-                            isRef = p.IsRef,
-                            isIn = p.IsIn,
-                            isParams = p.IsParams,
-                            attributes = p.CustomAttributes
-                        }).ToArray()
-                    }).ToArray()
+                    pagination = PaginationMetadata.Create(all.Length, pageItems.Length, nextToken, methodsJson.Length),
+                    methods
                 };
 
                 return JsonHelpers.Envelope("member.methods", result);
@@ -151,7 +155,7 @@ public static class MemberAnalysisTools
 
 
     [McpServerTool]
-    [Description("Gets custom attributes for a member (method, property, field, event, constructor)")]
+    [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via GetTypeMethods or similar tools.")]
     public static string GetMemberAttributes(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")]
@@ -194,7 +198,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets custom attributes for a parameter of a method or constructor")]
+    [Description("Gets custom attributes for a specific parameter of a method or constructor. Use when you need to inspect parameter-level attributes like [FromBody], [Required], etc.")]
     public static string GetParameterAttributes(
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
@@ -235,7 +239,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about all properties in a type, including getters, setters, indexers, and access modifiers")]
+    [Description("Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers. Prefer over GetAllTypeMembers when only properties needed.")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -295,7 +299,7 @@ public static class MemberAnalysisTools
                 // Get full filtered set (no paging yet) to compute total and page safely
                 var all = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
 
-                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeProperties");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(cacheKey);
@@ -364,7 +368,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about all fields in a type, including const, readonly, static, and volatile fields")]
+    [Description("Gets fields from a type with filtering and pagination. Returns const/readonly/volatile info and constant values. Fields are compact - can use larger maxItems (75+).")]
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -424,7 +428,7 @@ public static class MemberAnalysisTools
                 // Get full filtered set (no paging yet) to compute total and page safely
                 var all = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
 
-                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 50;
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeFields");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(cacheKey);
@@ -481,7 +485,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about all events in a type, including handler types and access modifiers")]
+    [Description("Gets events from a type with filtering and pagination. Returns event handler types and add/remove accessor info. Most types have few events.")]
     public static string GetTypeEvents(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -537,7 +541,7 @@ public static class MemberAnalysisTools
 
                 var all = memberAnalysisService.GetEvents(assemblyPath, type.FullName, options);
 
-                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 200;
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeEvents");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(cacheKey);
@@ -595,7 +599,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed information about all constructors in a type, including parameters and access modifiers")]
+    [Description("Gets constructors from a type with filtering and pagination. Returns parameter info and access modifiers. Most types have few constructors - use maxItems=30.")]
     public static string GetTypeConstructors(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -652,7 +656,7 @@ public static class MemberAnalysisTools
 
                 var all = memberAnalysisService.GetConstructors(assemblyPath, type.FullName, options);
 
-                var defaultPageSize = runtimeOptions.DefaultMaxItems > 0 ? runtimeOptions.DefaultMaxItems : 200;
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeConstructors");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(cacheKey);
@@ -712,7 +716,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets comprehensive member information for a type, including all methods, properties, fields, events, and constructors")]
+    [Description("Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types. Consider using specific member tools (GetTypeMethods, GetTypeProperties) with filtering first for better efficiency.")]
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,

@@ -9,7 +9,7 @@ namespace Sherlock.MCP.Server.Tools;
 public static class ConfigTools
 {
     [McpServerTool]
-    [Description("Gets current runtime options for paging, caching, and safety")] 
+    [Description("Gets current runtime configuration (default page sizes, cache TTL, search roots). Use to understand current settings before UpdateRuntimeOptions.")]
     public static string GetRuntimeOptions(RuntimeOptions options)
     {
         var result = new
@@ -25,7 +25,7 @@ public static class ConfigTools
     }
 
     [McpServerTool]
-    [Description("Updates runtime options. Omit fields to keep current values")]
+    [Description("Updates runtime configuration. Reduce defaultMaxItems for smaller responses, increase cacheTtlSeconds for better performance. Omit fields to keep current values.")]
     public static string UpdateRuntimeOptions(
         RuntimeOptions options,
         [Description("Default page size (maxItems)")] int? defaultMaxItems = null,

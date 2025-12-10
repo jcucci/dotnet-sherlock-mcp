@@ -13,7 +13,7 @@ public static class TypeAnalysisTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool]
-    [Description("Gets public types from an assembly, including key metadata")]
+    [Description("Lists public types from an assembly with basic metadata. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies. Follow with GetTypeInfo for detailed analysis of specific types.")]
     public static string GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -69,7 +69,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets detailed type info, with fallback for simple names")]
+    [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with GetTypeMethods etc.")]
     public static string GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -103,7 +103,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets inheritance chain, interfaces, and base types for a type")]
+    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response.")]
     public static string GetTypeHierarchy(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -126,7 +126,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets generic type information for a type")]
+    [Description("Gets generic type parameters, constraints, and variance for generic types. Only useful for types where IsGenericType=true. Lightweight response.")]
     public static string GetGenericTypeInfo(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -149,7 +149,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets custom attributes declared on a type")]
+    [Description("Gets custom attributes declared on a type (e.g., [Serializable], [Obsolete]). Returns attribute types and values. Lightweight response.")]
     public static string GetTypeAttributes(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -172,7 +172,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets nested types declared under a type")]
+    [Description("Gets nested/inner types declared within a type. Use for types with inner classes, structs, or enums. Lightweight response.")]
     public static string GetNestedTypes(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
