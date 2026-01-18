@@ -23,6 +23,7 @@ jobs:
           dotnet-version: |
             8.0.x
             9.0.x
+            10.0.x
 
       - name: Get version from tag
         id: version
@@ -50,7 +51,7 @@ jobs:
         run: dotnet test src/Sherlock.MCP.sln --configuration Release --no-restore --verbosity normal
 
       - name: Pack
-        run: dotnet pack src/server/Sherlock.MCP.Server.csproj --configuration Release --no-build -o ./artifacts
+        run: dotnet pack src/server/Sherlock.MCP.Server.csproj --configuration Release -o ./artifacts
 
       - name: Extract changelog for version
         id: changelog
