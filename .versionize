@@ -1,0 +1,32 @@
+{
+  "changelogAll": true,
+  "releaseCommitMessageFormat": "chore(release): {0}",
+  "commitParser": "default",
+  "changelog": {
+    "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n",
+    "sections": [
+      { "type": "feat", "section": "Features", "hidden": false },
+      { "type": "fix", "section": "Bug Fixes", "hidden": false },
+      { "type": "perf", "section": "Performance Improvements", "hidden": false },
+      { "type": "refactor", "section": "Code Refactoring", "hidden": false },
+      { "type": "docs", "section": "Documentation", "hidden": false },
+      { "type": "test", "section": "Tests", "hidden": true },
+      { "type": "build", "section": "Build System", "hidden": true },
+      { "type": "ci", "section": "CI/CD", "hidden": true },
+      { "type": "chore", "section": "Chores", "hidden": true }
+    ],
+    "linkTemplates": {
+      "issue": "https://github.com/jcucci/dotnet-sherlock-mcp/issues/{0}",
+      "commit": "https://github.com/jcucci/dotnet-sherlock-mcp/commit/{0}"
+    }
+  },
+  "projects": [
+    {
+      "name": "Sherlock.MCP.Server",
+      "path": "src/server/Sherlock.MCP.Server.csproj"
+    }
+  ],
+  "tagPrefix": "v",
+  "preReleaseTag": "",
+  "aggregatePreReleases": true
+}

@@ -219,11 +219,75 @@ Common error codes include `AssemblyNotFound`, `TypeNotFound`, `MemberNotFound`,
 
 ## Contributing
 
-Contributions are welcome. This repo includes an `.editorconfig` with modern C# preferences (file-scoped namespaces, expression-bodied members, 4-space indentation). Please:
+Contributions are welcome. This repo includes an `.editorconfig` with modern C# preferences (file-scoped namespaces, expression-bodied members, 4-space indentation).
+
+### Commit Message Format
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated changelog generation. All commits must follow this format:
+
+```
+type(scope): description
+```
+
+**Valid types:**
+- `feat` - A new feature
+- `fix` - A bug fix
+- `docs` - Documentation only changes
+- `style` - Code style changes (formatting, semicolons, etc)
+- `refactor` - Code change that neither fixes a bug nor adds a feature
+- `perf` - Performance improvement
+- `test` - Adding or correcting tests
+- `build` - Changes to build system or dependencies
+- `ci` - Changes to CI configuration
+- `chore` - Other changes that don't modify src or test files
+- `revert` - Reverts a previous commit
+
+**Examples:**
+```bash
+git commit -m "feat(tools): add new assembly analysis tool"
+git commit -m "fix: resolve null reference in type loader"
+git commit -m "docs(readme): update installation instructions"
+```
+
+### Development Setup
+
+```bash
+# Restore .NET tools (versionize, husky)
+dotnet tool restore
+
+# Install git hooks for commit validation
+dotnet husky install
+```
+
+### Guidelines
 
 * Keep changes small and focused; add unit tests for new behavior.
 * Follow the response envelope and error code conventions when adding tools.
 * Run `dotnet build` and `dotnet test` locally before opening a PR.
+
+### Creating a Release
+
+Maintainers can create releases using:
+
+```bash
+# Restore tools if not already done
+dotnet tool restore
+
+# Preview what will change
+dotnet versionize --dry-run
+
+# Create release (bumps version, updates changelog, creates git tag)
+dotnet versionize
+
+# Push changes and tag to trigger release workflow
+git push --follow-tags
+```
+
+The release workflow will automatically:
+1. Build and test the project
+2. Create a GitHub Release with changelog notes
+3. Publish the NuGet package
+4. Update `server.json` with the new version
 
 ## MCP Registry
 mcp-name: io.github.jcucci/dotnet-sherlock-mcp
