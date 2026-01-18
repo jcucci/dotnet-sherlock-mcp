@@ -3,7 +3,7 @@
   "releaseCommitMessageFormat": "chore(release): {0}",
   "commitParser": "default",
   "changelog": {
-    "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n",
+    "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n",
     "sections": [
       { "type": "feat", "section": "Features", "hidden": false },
       { "type": "fix", "section": "Bug Fixes", "hidden": false },

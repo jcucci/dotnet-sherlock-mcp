@@ -28,6 +28,18 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Verify server.json version
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          FILE_VERSION=$(grep -m 1 '"version"' server.json | sed -E 's/.*"version": *"([^"]*)".*/\1/')
+          echo "Tag version: $VERSION"
+          echo "server.json version: $FILE_VERSION"
+          if [ "$FILE_VERSION" != "$VERSION" ]; then
+            echo "::error::server.json version ($FILE_VERSION) does not match tag version ($VERSION)."
+            echo "Please update server.json before creating the release tag."
+            exit 1
+          fi
+
       - name: Restore dependencies
         run: dotnet restore src/Sherlock.MCP.sln
 
@@ -67,16 +79,3 @@ jobs:
 
       - name: Publish to NuGet
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-
-      - name: Update server.json version
-        run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          # Update version fields in server.json
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/g" server.json
-
-      - name: Commit server.json update
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: sync server.json to v${{ steps.version.outputs.VERSION }}"
-          file_pattern: server.json
-          branch: main
