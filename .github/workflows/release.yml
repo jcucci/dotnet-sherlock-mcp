@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Restore dependencies
+        run: dotnet restore src/Sherlock.MCP.sln
+
+      - name: Build
+        run: dotnet build src/Sherlock.MCP.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test src/Sherlock.MCP.sln --configuration Release --no-restore --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/server/Sherlock.MCP.Server.csproj --configuration Release --no-build -o ./artifacts
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Extract the section for this version from CHANGELOG.md
+          CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release v$VERSION"
+          fi
+          # Escape for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.VERSION }}
+          body: ${{ steps.changelog.outputs.NOTES }}
+          files: ./artifacts/*.nupkg
+          generate_release_notes: false
+
+      - name: Publish to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Update server.json version
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Update version fields in server.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/g" server.json
+
+      - name: Commit server.json update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync server.json to v${{ steps.version.outputs.VERSION }}"
+          file_pattern: server.json
+          branch: main

@@ -1,0 +1,9 @@
+{
+  "tasks": [
+    {
+      "name": "validate-commit-msg",
+      "command": "bash",
+      "args": [".husky/validate-commit-msg.sh", "${args}"]
+    }
+  ]
+}
