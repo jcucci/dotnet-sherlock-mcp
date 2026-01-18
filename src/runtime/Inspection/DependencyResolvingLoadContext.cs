@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -6,7 +7,7 @@ namespace Sherlock.MCP.Runtime.Inspection;
 public sealed class DependencyResolvingLoadContext : AssemblyLoadContext, IDisposable
 {
     private readonly string _baseDirectory;
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new(StringComparer.OrdinalIgnoreCase);
 
     public DependencyResolvingLoadContext(string name, string baseDirectory)
         : base(name, isCollectible: true)
@@ -15,7 +16,11 @@ public sealed class DependencyResolvingLoadContext : AssemblyLoadContext, IDispo
         Resolving += OnResolving;
     }
 
-    public void Dispose() => Unload();
+    public void Dispose()
+    {
+        Resolving -= OnResolving;
+        Unload();
+    }
 
     private Assembly? OnResolving(AssemblyLoadContext context, AssemblyName name)
     {

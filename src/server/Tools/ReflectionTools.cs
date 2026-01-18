@@ -36,7 +36,7 @@ public static class ReflectionTools
             }
             catch (ReflectionTypeLoadException ex)
             {
-                allTypes = ex.Types.Where(t => t != null).ToArray()!;
+                allTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
             }
 
             // Pagination logic
@@ -219,7 +219,7 @@ public static class ReflectionTools
             }
             catch (ReflectionTypeLoadException ex)
             {
-                exportedTypes = ex.Types.Where(t => t != null).ToArray()!;
+                exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
             }
 
             var type = assembly.GetType(typeName)
@@ -400,7 +400,7 @@ public static class ReflectionTools
             }
             catch (ReflectionTypeLoadException ex)
             {
-                exportedTypes = ex.Types.Where(t => t != null).ToArray()!;
+                exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
             }
 
             var type = assembly.GetType(typeName)

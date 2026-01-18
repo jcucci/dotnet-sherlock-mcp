@@ -19,7 +19,7 @@ public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.Where(t => t != null)!;
+            return ex.Types.Where(t => t != null).Cast<Type>();
         }
     }
 
