@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Tools;
@@ -26,8 +27,17 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            var assembly = Assembly.LoadFrom(assemblyPath);
-            var allTypes = assembly.GetExportedTypes();
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var assembly = ctx.Assembly;
+            Type[] allTypes;
+            try
+            {
+                allTypes = assembly.GetExportedTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                allTypes = ex.Types.Where(t => t != null).ToArray()!;
+            }
 
             // Pagination logic
             var defaultPageSize = runtimeOptions.GetMaxItemsForTool("AnalyzeAssembly");
@@ -200,9 +210,20 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            var assembly = Assembly.LoadFrom(assemblyPath);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var assembly = ctx.Assembly;
+            Type[] exportedTypes;
+            try
+            {
+                exportedTypes = assembly.GetExportedTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                exportedTypes = ex.Types.Where(t => t != null).ToArray()!;
+            }
+
             var type = assembly.GetType(typeName)
-                ?? assembly.GetExportedTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal) || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+                ?? exportedTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal) || string.Equals(t.Name, typeName, StringComparison.Ordinal));
 
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
@@ -370,10 +391,20 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            var assembly = Assembly.LoadFrom(assemblyPath);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var assembly = ctx.Assembly;
+            Type[] exportedTypes;
+            try
+            {
+                exportedTypes = assembly.GetExportedTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                exportedTypes = ex.Types.Where(t => t != null).ToArray()!;
+            }
+
             var type = assembly.GetType(typeName)
-                ?? assembly.GetExportedTypes()
-                    .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                ?? exportedTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
                                        || string.Equals(t.Name, typeName, StringComparison.Ordinal));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");

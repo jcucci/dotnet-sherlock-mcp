@@ -2,7 +2,6 @@ using System.Reflection;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
-// Minimal placeholder using runtime reflection for now; will switch to MetadataLoadContext.
 public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
 {
     public MetadataOnlyInspectionContext(string assemblyPath)
@@ -12,12 +11,31 @@ public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
 
     public Assembly Assembly { get; }
 
-    public IEnumerable<Type> GetTypes() => Assembly.GetTypes();
+    public IEnumerable<Type> GetTypes()
+    {
+        try
+        {
+            return Assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(t => t != null)!;
+        }
+    }
 
-    public MemberInfo[] GetMembers(Type type, BindingFlags flags) => type.GetMembers(flags);
+    public MemberInfo[] GetMembers(Type type, BindingFlags flags)
+    {
+        try
+        {
+            return type.GetMembers(flags);
+        }
+        catch (TypeLoadException)
+        {
+            return [];
+        }
+    }
 
     public void Dispose()
     {
     }
 }
-

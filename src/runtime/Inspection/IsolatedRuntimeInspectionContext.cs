@@ -1,31 +1,48 @@
 using System.Reflection;
-using System.Runtime.Loader;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
-// Placeholder that mirrors MetadataOnlyInspectionContext until isolation is added
 public sealed class IsolatedRuntimeInspectionContext : IAssemblyInspectionContext
 {
-    private readonly AssemblyLoadContext _alc;
+    private readonly DependencyResolvingLoadContext _alc;
 
     public IsolatedRuntimeInspectionContext(string assemblyPath)
     {
-        _alc = new AssemblyLoadContext($"sherlock_{Path.GetFileNameWithoutExtension(assemblyPath)}", isCollectible: true);
-        using var stream = File.OpenRead(assemblyPath);
-        var bytes = new byte[stream.Length];
-        _ = stream.Read(bytes, 0, bytes.Length);
-        Assembly = _alc.LoadFromStream(new MemoryStream(bytes));
+        var assemblyDirectory = Path.GetDirectoryName(assemblyPath) ?? ".";
+        var contextName = $"sherlock_{Path.GetFileNameWithoutExtension(assemblyPath)}_{Guid.NewGuid():N}";
+
+        _alc = new DependencyResolvingLoadContext(contextName, assemblyDirectory);
+        Assembly = _alc.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
     }
 
     public Assembly Assembly { get; }
 
-    public IEnumerable<Type> GetTypes() => Assembly.GetTypes();
+    public IEnumerable<Type> GetTypes()
+    {
+        try
+        {
+            return Assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(t => t != null)!;
+        }
+    }
 
-    public MemberInfo[] GetMembers(Type type, BindingFlags flags) => type.GetMembers(flags);
+    public MemberInfo[] GetMembers(Type type, BindingFlags flags)
+    {
+        try
+        {
+            return type.GetMembers(flags);
+        }
+        catch (TypeLoadException)
+        {
+            return [];
+        }
+    }
 
     public void Dispose()
     {
         _alc.Unload();
     }
 }
-
