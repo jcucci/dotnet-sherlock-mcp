@@ -173,7 +173,7 @@ public static class MemberAnalysisTools
             using var ctx = InspectionContextFactory.Create(assemblyPath);
             var asm = ctx.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName, false, !caseSensitive)
+            var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
@@ -216,7 +216,7 @@ public static class MemberAnalysisTools
             using var ctx = InspectionContextFactory.Create(assemblyPath);
             var asm = ctx.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName, false, !caseSensitive)
+            var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");

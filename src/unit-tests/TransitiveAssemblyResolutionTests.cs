@@ -96,7 +96,7 @@ public class TransitiveAssemblyResolutionTests
     }
 
     [Fact]
-    public void MetadataOnlyContext_ReadsAttributeData_WithoutResolvingAttributeDependencies()
+    public void MetadataOnlyContext_ReadsCustomAttributeData_ForExternallyDefinedAttribute()
     {
         var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
 
@@ -111,7 +111,7 @@ public class TransitiveAssemblyResolutionTests
     }
 
     [Fact]
-    public void MetadataOnlyContext_ReadsExternalAttributeUsage_WithoutThrowing()
+    public void MetadataOnlyContext_ProjectsMemberAttributesToContractRecords()
     {
         var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
 

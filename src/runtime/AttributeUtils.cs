@@ -66,8 +66,18 @@ public static class AttributeUtils
             if (usage == null) return (false, AttributeTargets.All);
 
             var validOn = AttributeTargets.All;
-            if (usage.ConstructorArguments.Count > 0 && usage.ConstructorArguments[0].Value is int targets)
-                validOn = (AttributeTargets)targets;
+            if (usage.ConstructorArguments.Count > 0)
+            {
+                var value = usage.ConstructorArguments[0].Value;
+                if (value is AttributeTargets targets)
+                {
+                    validOn = targets;
+                }
+                else if (value is byte or sbyte or short or ushort or int or uint or long or ulong)
+                {
+                    validOn = (AttributeTargets)System.Convert.ToInt64(value);
+                }
+            }
 
             var allowMultiple = false;
             foreach (var named in usage.NamedArguments)
