@@ -116,6 +116,122 @@ public class PaginationTests
     }
 
     [Fact]
+    public void GetTypesFromAssembly_DefaultProjection_IsSummary()
+    {
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, _testAssemblyPath, maxItems: 3);
+
+        Assert.DoesNotContain("\"error\"", result);
+        var jsonDoc = JsonDocument.Parse(result);
+        var data = jsonDoc.RootElement.GetProperty("data");
+
+        Assert.Equal("summary", data.GetProperty("projection").GetString());
+
+        var types = data.GetProperty("types");
+        Assert.True(types.GetArrayLength() > 0, "Expected at least one type in the page");
+        var first = types[0];
+
+        Assert.True(first.TryGetProperty("FullName", out _), "Summary type should have FullName");
+        Assert.True(first.TryGetProperty("Namespace", out _), "Summary type should have Namespace");
+        Assert.True(first.TryGetProperty("Kind", out _), "Summary type should have Kind");
+
+        Assert.False(first.TryGetProperty("Attributes", out _), "Summary type should NOT include Attributes");
+        Assert.False(first.TryGetProperty("Interfaces", out _), "Summary type should NOT include Interfaces");
+        Assert.False(first.TryGetProperty("GenericParameters", out _), "Summary type should NOT include GenericParameters");
+        Assert.False(first.TryGetProperty("NestedTypes", out _), "Summary type should NOT include NestedTypes");
+    }
+
+    [Fact]
+    public void GetTypesFromAssembly_FullProjection_IncludesHeavyFields()
+    {
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, _testAssemblyPath, maxItems: 3, projection: "full");
+
+        Assert.DoesNotContain("\"error\"", result);
+        var jsonDoc = JsonDocument.Parse(result);
+        var data = jsonDoc.RootElement.GetProperty("data");
+
+        Assert.Equal("full", data.GetProperty("projection").GetString());
+
+        var types = data.GetProperty("types");
+        Assert.True(types.GetArrayLength() > 0, "Expected at least one type in the page");
+        var first = types[0];
+
+        Assert.True(first.TryGetProperty("Attributes", out _), "Full type should include Attributes");
+        Assert.True(first.TryGetProperty("Interfaces", out _), "Full type should include Interfaces");
+        Assert.True(first.TryGetProperty("GenericParameters", out _), "Full type should include GenericParameters");
+    }
+
+    [Fact]
+    public void GetTypesFromAssembly_InvalidProjection_ReturnsError()
+    {
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, _testAssemblyPath, projection: "partial");
+
+        Assert.Contains("InvalidProjection", result);
+    }
+
+    [Fact]
+    public void GetTypeMethods_DefaultProjection_IsSummary()
+    {
+        var typeName = typeof(TestSampleClass).FullName!;
+
+        var result = MemberAnalysisTools.GetTypeMethods(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, maxItems: 3);
+
+        Assert.DoesNotContain("\"error\"", result);
+        var jsonDoc = JsonDocument.Parse(result);
+        var data = jsonDoc.RootElement.GetProperty("data");
+
+        Assert.Equal("summary", data.GetProperty("projection").GetString());
+
+        var methods = data.GetProperty("methods");
+        Assert.True(methods.GetArrayLength() > 0, "Expected at least one method in the page");
+        var first = methods[0];
+
+        Assert.True(first.TryGetProperty("name", out _), "Summary method should have name");
+        Assert.True(first.TryGetProperty("signature", out _), "Summary method should have signature");
+
+        Assert.False(first.TryGetProperty("parameters", out _), "Summary method should NOT include parameters");
+        Assert.False(first.TryGetProperty("attributes", out _), "Summary method should NOT include attributes");
+        Assert.False(first.TryGetProperty("returnType", out _), "Summary method should NOT include returnType");
+    }
+
+    [Fact]
+    public void GetTypeMethods_FullProjection_IncludesParameters()
+    {
+        var typeName = typeof(TestSampleClass).FullName!;
+
+        var result = MemberAnalysisTools.GetTypeMethods(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, maxItems: 3, projection: "full");
+
+        Assert.DoesNotContain("\"error\"", result);
+        var jsonDoc = JsonDocument.Parse(result);
+        var data = jsonDoc.RootElement.GetProperty("data");
+
+        Assert.Equal("full", data.GetProperty("projection").GetString());
+
+        var methods = data.GetProperty("methods");
+        Assert.True(methods.GetArrayLength() > 0, "Expected at least one method in the page");
+        var first = methods[0];
+
+        Assert.True(first.TryGetProperty("parameters", out _), "Full method should include parameters");
+        Assert.True(first.TryGetProperty("returnType", out _), "Full method should include returnType");
+        Assert.True(first.TryGetProperty("attributes", out _), "Full method should include attributes");
+    }
+
+    [Fact]
+    public void GetTypeMethods_InvalidProjection_ReturnsError()
+    {
+        var typeName = typeof(TestSampleClass).FullName!;
+
+        var result = MemberAnalysisTools.GetTypeMethods(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, projection: "partial");
+
+        Assert.Contains("InvalidProjection", result);
+    }
+
+    [Fact]
     public void DefaultPageSize_UsesConfiguredValue()
     {
         // Arrange
