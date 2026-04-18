@@ -51,6 +51,14 @@ public static class MemberAnalysisTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
+            // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
+            // params (continuationToken, skip, take, maxItems) and rendering params (projection)
+            // so a token minted on page 1 still validates on page 2.
+            var saltSeed = CacheKeyHelper.Build(
+                "member.methods.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.methods",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -88,7 +96,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeMethods");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -282,6 +290,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.properties.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.properties",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -319,7 +332,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeProperties");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -412,6 +425,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.fields.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.fields",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -449,7 +467,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeFields");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -529,6 +547,11 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var saltSeed = CacheKeyHelper.Build(
+                "member.events.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.events",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -563,7 +586,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeEvents");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -645,6 +668,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.constructors.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.constructors",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -679,7 +707,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeConstructors");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)

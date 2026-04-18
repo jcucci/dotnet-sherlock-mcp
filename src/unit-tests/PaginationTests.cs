@@ -220,6 +220,59 @@ public class PaginationTests
     }
 
     [Fact]
+    public void GetTypeMethods_ContinuationToken_RoundTripsToNextPage()
+    {
+        var typeName = typeof(TestSampleClass).FullName!;
+
+        var page1 = MemberAnalysisTools.GetTypeMethods(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, maxItems: 1, noCache: true);
+
+        Assert.DoesNotContain("\"error\"", page1);
+        var page1Doc = JsonDocument.Parse(page1);
+        var page1Data = page1Doc.RootElement.GetProperty("data");
+        Assert.True(page1Data.GetProperty("total").GetInt32() > 1, "Need >1 method on TestSampleClass for round-trip test");
+
+        var nextToken = page1Data.GetProperty("nextToken").GetString();
+        Assert.False(string.IsNullOrEmpty(nextToken), "Page 1 should mint a nextToken when more pages remain");
+
+        var page2 = MemberAnalysisTools.GetTypeMethods(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, maxItems: 1, continuationToken: nextToken, noCache: true);
+
+        Assert.DoesNotContain("InvalidContinuationToken", page2);
+        Assert.DoesNotContain("\"error\"", page2);
+        var page2Data = JsonDocument.Parse(page2).RootElement.GetProperty("data");
+        Assert.Equal(1, page2Data.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public void GetTypeProperties_ContinuationToken_RoundTripsToNextPage()
+    {
+        var typeName = typeof(TestSampleClass).FullName!;
+
+        var page1 = MemberAnalysisTools.GetTypeProperties(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, includeNonPublic: true, maxItems: 1, noCache: true);
+
+        Assert.DoesNotContain("\"error\"", page1);
+        var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
+        Assert.True(page1Data.GetProperty("total").GetInt32() > 1, "Need >1 property on TestSampleClass for round-trip test");
+
+        var nextToken = page1Data.GetProperty("nextToken").GetString();
+        Assert.False(string.IsNullOrEmpty(nextToken), "Page 1 should mint a nextToken when more pages remain");
+
+        var page2 = MemberAnalysisTools.GetTypeProperties(
+            _memberAnalysisService, _middleware, _runtimeOptions,
+            _testAssemblyPath, typeName, includeNonPublic: true, maxItems: 1, continuationToken: nextToken, noCache: true);
+
+        Assert.DoesNotContain("InvalidContinuationToken", page2);
+        Assert.DoesNotContain("\"error\"", page2);
+        var page2Data = JsonDocument.Parse(page2).RootElement.GetProperty("data");
+        Assert.Equal(1, page2Data.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
     public void GetTypeMethods_InvalidProjection_ReturnsError()
     {
         var typeName = typeof(TestSampleClass).FullName!;
