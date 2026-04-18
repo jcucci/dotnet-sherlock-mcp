@@ -437,11 +437,11 @@ public static class ReflectionTools
                         defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null,
                         isIn = p.IsIn,
                         isOut = p.IsOut,
-                        isParams = p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0
+                        isParams = p.CustomAttributes.Any(a => a.AttributeType.FullName == "System.ParamArrayAttribute")
                     }).ToArray(),
-                    attributes = method.GetCustomAttributes().Select(attr => new
+                    attributes = method.GetCustomAttributesData().Select(attr => new
                     {
-                        type = attr.GetType().FullName,
+                        type = attr.AttributeType.FullName,
                         toString = attr.ToString()
                     }).ToArray()
                 }).ToArray()
