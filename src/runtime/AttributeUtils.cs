@@ -36,13 +36,13 @@ public static class AttributeUtils
     public static AttributeInfo Convert(CustomAttributeData attributeData)
     {
         var constructorArgs = attributeData.ConstructorArguments
-            .Select(arg => arg.Value)
+            .Select(arg => ProjectValue(arg.Value))
             .ToArray();
 
         var namedArgs = attributeData.NamedArguments
             .ToDictionary(
                 arg => arg.MemberName,
-                arg => arg.TypedValue.Value
+                arg => ProjectValue(arg.TypedValue.Value)
             );
 
         var attributeType = attributeData.AttributeType;
@@ -56,6 +56,15 @@ public static class AttributeUtils
             ValidOn: validOn
         );
     }
+
+    private static object? ProjectValue(object? raw) => raw switch
+    {
+        null => null,
+        Type t => new TypeRef(t.FullName ?? t.Name, t.Assembly.GetName().Name),
+        IReadOnlyCollection<CustomAttributeTypedArgument> elems
+            => elems.Select(e => ProjectValue(e.Value)).ToArray(),
+        _ => raw
+    };
 
     private static (bool AllowMultiple, AttributeTargets ValidOn) ReadAttributeUsage(Type attributeType)
     {
