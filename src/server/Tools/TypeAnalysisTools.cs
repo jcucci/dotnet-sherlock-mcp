@@ -13,18 +13,23 @@ public static class TypeAnalysisTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool]
-    [Description("Lists public types from an assembly with basic metadata. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies. Follow with GetTypeInfo for detailed analysis of specific types.")]
+    [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer GetTypeInfo for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
     public static string GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
-        [Description("Continuation token for paging")] string? continuationToken = null)
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Response shape. 'summary' (default, token-lean): { FullName, Namespace, Kind } only - use for browsing/searching. 'full': adds attributes, base type, interfaces, generic params, nested types - use only when you need those fields on every item.")] string projection = "summary")
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+
+            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
+            if (normalizedProjection != "summary" && normalizedProjection != "full")
+                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
             var allTypes = typeAnalysis.GetTypesFromAssembly(assemblyPath);
 
@@ -46,17 +51,22 @@ public static class TypeAnalysisTools
                 offset = skip.Value;
             }
 
-            var types = allTypes.Skip(offset).Take(pageSize).ToArray();
+            var pageTypes = allTypes.Skip(offset).Take(pageSize).ToArray();
             string? nextToken = null;
-            var nextOffset = offset + types.Length;
+            var nextOffset = offset + pageTypes.Length;
             if (nextOffset < allTypes.Length)
                 nextToken = TokenHelper.Make(nextOffset, salt);
+
+            object types = normalizedProjection == "summary"
+                ? pageTypes.Select(t => new { t.FullName, t.Namespace, t.Kind }).ToArray()
+                : pageTypes;
 
             var result = new
             {
                 assemblyPath,
+                projection = normalizedProjection,
                 totalTypeCount = allTypes.Length,
-                returnedTypeCount = types.Length,
+                returnedTypeCount = pageTypes.Length,
                 nextToken,
                 types
             };

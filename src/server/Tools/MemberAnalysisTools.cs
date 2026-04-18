@@ -19,7 +19,7 @@ public static class MemberAnalysisTools
     };
 
     [McpServerTool]
-    [Description("Gets methods from a type with filtering and pagination. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency. Prefer over GetAllTypeMembers when only methods needed.")]
+    [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer AnalyzeMethod for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
     public static string GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -39,17 +39,30 @@ public static class MemberAnalysisTools
         [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        [Description("Response shape. 'summary' (default, token-lean): { name, signature } only - the C# signature already carries return type, parameters, and modifiers. 'full': adds parameters[], attributes, returnType, and all modifier booleans - use only when you need structured access to those fields.")] string projection = "summary")
     {
         try
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
+            if (normalizedProjection != "summary" && normalizedProjection != "full")
+                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+
+            // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
+            // params (continuationToken, skip, take, maxItems) and rendering params (projection)
+            // so a token minted on page 1 still validates on page 2.
+            var saltSeed = CacheKeyHelper.Build(
+                "member.methods.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.methods",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
-                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take, normalizedProjection);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -83,7 +96,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeMethods");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -104,40 +117,47 @@ public static class MemberAnalysisTools
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
 
-                var methods = pageItems.Select(m => new
-                {
-                    name = m.Name,
-                    signature = m.Signature,
-                    returnType = m.ReturnTypeName,
-                    accessModifier = m.AccessModifier,
-                    isStatic = m.IsStatic,
-                    isVirtual = m.IsVirtual,
-                    isAbstract = m.IsAbstract,
-                    isSealed = m.IsSealed,
-                    isOverride = m.IsOverride,
-                    isOperator = m.IsOperator,
-                    isExtensionMethod = m.IsExtensionMethod,
-                    genericTypeParameters = m.GenericTypeParameters,
-                    attributes = m.CustomAttributes,
-                    parameters = m.Parameters.Select(p => new
+                object methods = normalizedProjection == "summary"
+                    ? pageItems.Select(m => new
                     {
-                        name = p.Name,
-                        typeName = p.TypeName,
-                        defaultValue = p.DefaultValue,
-                        isOptional = p.IsOptional,
-                        isOut = p.IsOut,
-                        isRef = p.IsRef,
-                        isIn = p.IsIn,
-                        isParams = p.IsParams,
-                        attributes = p.CustomAttributes
+                        name = m.Name,
+                        signature = m.Signature
                     }).ToArray()
-                }).ToArray();
+                    : pageItems.Select(m => new
+                    {
+                        name = m.Name,
+                        signature = m.Signature,
+                        returnType = m.ReturnTypeName,
+                        accessModifier = m.AccessModifier,
+                        isStatic = m.IsStatic,
+                        isVirtual = m.IsVirtual,
+                        isAbstract = m.IsAbstract,
+                        isSealed = m.IsSealed,
+                        isOverride = m.IsOverride,
+                        isOperator = m.IsOperator,
+                        isExtensionMethod = m.IsExtensionMethod,
+                        genericTypeParameters = m.GenericTypeParameters,
+                        attributes = m.CustomAttributes,
+                        parameters = m.Parameters.Select(p => new
+                        {
+                            name = p.Name,
+                            typeName = p.TypeName,
+                            defaultValue = p.DefaultValue,
+                            isOptional = p.IsOptional,
+                            isOut = p.IsOut,
+                            isRef = p.IsRef,
+                            isIn = p.IsIn,
+                            isParams = p.IsParams,
+                            attributes = p.CustomAttributes
+                        }).ToArray()
+                    }).ToArray();
 
                 var methodsJson = JsonSerializer.Serialize(methods, SerializerOptions);
                 var result = new
                 {
                     typeName,
                     assemblyPath,
+                    projection = normalizedProjection,
                     total = all.Length,
                     count = pageItems.Length,
                     nextToken,
@@ -270,6 +290,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.properties.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.properties",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -307,7 +332,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeProperties");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -400,6 +425,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.fields.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.fields",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -437,7 +467,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeFields");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -517,6 +547,11 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var saltSeed = CacheKeyHelper.Build(
+                "member.events.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.events",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -551,7 +586,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeEvents");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
@@ -633,6 +668,11 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var saltSeed = CacheKeyHelper.Build(
+                "member.constructors.salt",
+                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
             var cacheKey = CacheKeyHelper.Build(
                 "member.constructors",
                 assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -667,7 +707,7 @@ public static class MemberAnalysisTools
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeConstructors");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
-                string salt = TokenHelper.MakeSalt(cacheKey);
+                string salt = TokenHelper.MakeSalt(saltSeed);
                 if (!string.IsNullOrWhiteSpace(continuationToken))
                 {
                     if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
