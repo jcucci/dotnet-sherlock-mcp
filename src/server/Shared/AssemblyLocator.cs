@@ -1,4 +1,4 @@
-using System.Reflection;
+using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Server.Shared;
 
@@ -33,8 +33,8 @@ internal static class AssemblyLocator
       try
       {
          var assemblyPath = assemblyPaths.First();
-         var assembly = Assembly.LoadFrom(assemblyPath);
-         var types = assembly.GetExportedTypes();
+         using var ctx = InspectionContextFactory.Create(assemblyPath);
+         var types = ctx.Assembly.GetExportedTypes();
          var matchingType = types.FirstOrDefault(type =>
             type.Name.Equals(className, StringComparison.OrdinalIgnoreCase) ||
             type.FullName?.Equals(className, StringComparison.OrdinalIgnoreCase) == true);

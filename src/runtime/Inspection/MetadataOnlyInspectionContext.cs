@@ -4,9 +4,14 @@ namespace Sherlock.MCP.Runtime.Inspection;
 
 public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
 {
+    private readonly MetadataLoadContext _mlc;
+
     public MetadataOnlyInspectionContext(string assemblyPath)
     {
-        Assembly = Assembly.LoadFrom(assemblyPath);
+        var resolver = MetadataResolverFactory.Create(assemblyPath);
+        var coreAssemblyName = typeof(object).Assembly.GetName().Name;
+        _mlc = new MetadataLoadContext(resolver, coreAssemblyName);
+        Assembly = _mlc.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
     }
 
     public Assembly Assembly { get; }
@@ -35,7 +40,5 @@ public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
         }
     }
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() => _mlc.Dispose();
 }

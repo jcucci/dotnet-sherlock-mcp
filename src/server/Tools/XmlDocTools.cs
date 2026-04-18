@@ -1,5 +1,6 @@
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -20,9 +21,11 @@ public static class XmlDocTools
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var asm = Assembly.LoadFrom(assemblyPath);
-            var type = asm.GetType(typeName, false, !caseSensitive)
-                    ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) || string.Equals(t.Name, typeName, caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase));
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var asm = ctx.Assembly;
+            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            var type = asm.GetType(typeName)
+                    ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var info = xmlDocs.GetXmlDocsForType(type);
             return info == null
@@ -47,9 +50,10 @@ public static class XmlDocTools
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var asm = Assembly.LoadFrom(assemblyPath);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var asm = ctx.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName, false, !caseSensitive)
+            var type = asm.GetType(typeName)
                     ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)

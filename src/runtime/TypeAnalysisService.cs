@@ -1,5 +1,5 @@
+using System.Collections.Concurrent;
 using System.Reflection;
-using System.Runtime.Loader;
 using Sherlock.MCP.Runtime.Inspection;
 using TypeAnalysisInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeInfo;
 using TypeAnalysisHierarchy = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeHierarchy;
@@ -12,9 +12,11 @@ using TypeAnalysisGenericVariance = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.
 
 namespace Sherlock.MCP.Runtime;
 
-public class TypeAnalysisService : ITypeAnalysisService
+public class TypeAnalysisService : ITypeAnalysisService, IDisposable
 {
-    private readonly Dictionary<string, IAssemblyInspectionContext> _contexts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, IAssemblyInspectionContext> _contexts
+        = new(StringComparer.OrdinalIgnoreCase);
+    private bool _disposed;
 
     public Assembly? LoadAssembly(string assemblyPath)
     {
@@ -26,14 +28,29 @@ public class TypeAnalysisService : ITypeAnalysisService
                 return existing.Assembly;
             }
 
-            var ctx = InspectionContextFactory.Create(assemblyPath);
-            _contexts[assemblyPath] = ctx;
-            return ctx.Assembly;
+            var created = InspectionContextFactory.Create(assemblyPath);
+            var stored = _contexts.GetOrAdd(assemblyPath, created);
+            if (!ReferenceEquals(stored, created))
+            {
+                created.Dispose();
+            }
+            return stored.Assembly;
         }
         catch
         {
             return null;
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        foreach (var ctx in _contexts.Values)
+        {
+            try { ctx.Dispose(); } catch { }
+        }
+        _contexts.Clear();
     }
 
     public TypeAnalysisInfo GetTypeInfo(Type type)
@@ -183,6 +200,16 @@ public class TypeAnalysisService : ITypeAnalysisService
         }
     }
 
+    private static bool InheritsFromDelegate(Type type)
+    {
+        for (var current = type.BaseType; current != null; current = current.BaseType)
+        {
+            if (current.FullName == "System.Delegate" || current.FullName == "System.MulticastDelegate")
+                return true;
+        }
+        return false;
+    }
+
     private static TypeAnalysisTypeKind GetTypeKind(Type type)
     {
         if (type.IsEnum) return TypeAnalysisTypeKind.Enum;
@@ -192,7 +219,7 @@ public class TypeAnalysisService : ITypeAnalysisService
         if (type.IsPointer) return TypeAnalysisTypeKind.Pointer;
         if (type.IsByRef) return TypeAnalysisTypeKind.ByRef;
         if (type.IsGenericParameter) return TypeAnalysisTypeKind.GenericParameter;
-        if (typeof(Delegate).IsAssignableFrom(type)) return TypeAnalysisTypeKind.Delegate;
+        if (InheritsFromDelegate(type)) return TypeAnalysisTypeKind.Delegate;
         if (type.IsClass) return TypeAnalysisTypeKind.Class;
         return TypeAnalysisTypeKind.Unknown;
     }

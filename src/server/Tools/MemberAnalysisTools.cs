@@ -1,6 +1,7 @@
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
@@ -67,7 +68,8 @@ public static class MemberAnalysisTools
                 };
 
                 // Resolve type
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
@@ -168,9 +170,10 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var asm = Assembly.LoadFrom(assemblyPath);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var asm = ctx.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName, false, !caseSensitive)
+            var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
@@ -210,9 +213,10 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var asm = Assembly.LoadFrom(assemblyPath);
+            using var ctx = InspectionContextFactory.Create(assemblyPath);
+            var asm = ctx.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName, false, !caseSensitive)
+            var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
@@ -288,7 +292,8 @@ public static class MemberAnalysisTools
                 };
 
                 // Resolve type
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
@@ -417,7 +422,8 @@ public static class MemberAnalysisTools
                 };
 
                 // Resolve type
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
@@ -531,7 +537,8 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
@@ -646,7 +653,8 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
@@ -747,7 +755,8 @@ public static class MemberAnalysisTools
                     IncludeInstance = includeInstance
                 };
 
-                var assembly = Assembly.LoadFrom(assemblyPath);
+                using var ctx = InspectionContextFactory.Create(assemblyPath);
+                var assembly = ctx.Assembly;
                 var type = assembly.GetType(typeName)
                     ?? assembly.GetExportedTypes()
                         .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)

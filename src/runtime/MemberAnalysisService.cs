@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
@@ -5,12 +6,35 @@ using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Runtime;
 
-public class MemberAnalysisService : IMemberAnalysisService
+public class MemberAnalysisService : IMemberAnalysisService, IDisposable
 {
+    private readonly ConcurrentDictionary<string, IAssemblyInspectionContext> _contexts
+        = new(StringComparer.OrdinalIgnoreCase);
+    private bool _disposed;
+
+    private IAssemblyInspectionContext GetContext(string assemblyPath)
+    {
+        if (_contexts.TryGetValue(assemblyPath, out var existing)) return existing;
+        var created = InspectionContextFactory.Create(assemblyPath);
+        var stored = _contexts.GetOrAdd(assemblyPath, created);
+        if (!ReferenceEquals(stored, created)) created.Dispose();
+        return stored;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        foreach (var ctx in _contexts.Values)
+        {
+            try { ctx.Dispose(); } catch { }
+        }
+        _contexts.Clear();
+    }
 
     public MemberInfo[] GetAllMembers(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
 
@@ -19,7 +43,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public MethodDetails[] GetMethods(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var methods = type.GetMethods(bindingFlags);
@@ -66,7 +90,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public PropertyDetails[] GetProperties(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var properties = type.GetProperties(bindingFlags);
@@ -110,7 +134,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public FieldDetails[] GetFields(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var fields = type.GetFields(bindingFlags);
@@ -154,7 +178,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public EventDetails[] GetEvents(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var events = type.GetEvents(bindingFlags);
@@ -192,7 +216,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     public ConstructorDetails[] GetConstructors(string assemblyPath, string typeName, MemberFilterOptions? options = null)
     {
-        using var ctx = InspectionContextFactory.Create(assemblyPath);
+        var ctx = GetContext(assemblyPath);
         var type = LoadTypeFromAssembly(ctx.Assembly, typeName, options);
         var bindingFlags = GetBindingFlags(options);
         var constructors = type.GetConstructors(bindingFlags);
@@ -222,7 +246,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         var caseSensitive = options?.CaseSensitive ?? true;
 
         var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        var type = assembly.GetType(typeName, false, !caseSensitive);
+        var type = assembly.GetType(typeName);
         if (type == null)
         {
             var allTypes = assembly.GetTypes();
@@ -262,15 +286,21 @@ public class MemberAnalysisService : IMemberAnalysisService
         return parameters.Select(p => new ParameterDetails(
             Name: p.Name ?? "param",
             TypeName: GetFriendlyTypeName(p.ParameterType),
-            DefaultValue: p.HasDefaultValue ? p.DefaultValue?.ToString() : null,
+            DefaultValue: p.HasDefaultValue ? SafeGetRawDefaultValue(p)?.ToString() : null,
             IsOptional: p.IsOptional,
             IsOut: p.IsOut,
             IsRef: p.ParameterType.IsByRef && !p.IsOut,
             IsIn: p.IsIn,
-            IsParams: p.GetCustomAttribute<ParamArrayAttribute>() != null,
+            IsParams: p.CustomAttributes.Any(a => a.AttributeType.FullName == "System.ParamArrayAttribute"),
             Attributes: p.Attributes,
             CustomAttributes: AttributeUtils.FromParameter(p)
         )).ToArray();
+    }
+
+    private static object? SafeGetRawDefaultValue(ParameterInfo p)
+    {
+        try { return p.RawDefaultValue; }
+        catch { return null; }
     }
 
     private static IEnumerable<T> ApplyMemberFilters<T>(IEnumerable<T> source, MemberFilterOptions? options, Func<T, string> nameSelector, Func<T, Sherlock.MCP.Runtime.Contracts.TypeAnalysis.AttributeInfo[]> attrSelector)
@@ -330,27 +360,31 @@ public class MemberAnalysisService : IMemberAnalysisService
             var genericArgs = type.GetGenericArguments().Select(GetFriendlyTypeName);
             return $"{friendlyName}<{string.Join(", ", genericArgs)}>";
         }
-        var builtInTypes = new Dictionary<Type, string>
-        {
-            { typeof(bool), "bool" },
-            { typeof(byte), "byte" },
-            { typeof(sbyte), "sbyte" },
-            { typeof(char), "char" },
-            { typeof(decimal), "decimal" },
-            { typeof(double), "double" },
-            { typeof(float), "float" },
-            { typeof(int), "int" },
-            { typeof(uint), "uint" },
-            { typeof(long), "long" },
-            { typeof(ulong), "ulong" },
-            { typeof(short), "short" },
-            { typeof(ushort), "ushort" },
-            { typeof(object), "object" },
-            { typeof(string), "string" },
-            { typeof(void), "void" }
-        };
-        return builtInTypes.TryGetValue(type, out var builtInName) ? builtInName : type.Name;
+        return type.FullName is string fullName && BuiltInTypeNames.TryGetValue(fullName, out var builtInName)
+            ? builtInName
+            : type.Name;
     }
+
+    private static readonly Dictionary<string, string> BuiltInTypeNames = new(StringComparer.Ordinal)
+    {
+        ["System.Boolean"] = "bool",
+        ["System.Byte"] = "byte",
+        ["System.SByte"] = "sbyte",
+        ["System.Char"] = "char",
+        ["System.Decimal"] = "decimal",
+        ["System.Double"] = "double",
+        ["System.Single"] = "float",
+        ["System.Int32"] = "int",
+        ["System.UInt32"] = "uint",
+        ["System.Int64"] = "long",
+        ["System.UInt64"] = "ulong",
+        ["System.Int16"] = "short",
+        ["System.UInt16"] = "ushort",
+        ["System.Object"] = "object",
+        ["System.String"] = "string",
+        ["System.Void"] = "void"
+    };
+
     private static string GetAccessModifier(MemberInfo member)
     {
         return member switch
@@ -377,21 +411,19 @@ public class MemberAnalysisService : IMemberAnalysisService
     }
     private static bool IsExtensionMethod(MethodInfo method)
     {
-        return method.IsStatic && 
-               method.GetCustomAttribute<System.Runtime.CompilerServices.ExtensionAttribute>() != null;
+        return method.IsStatic &&
+               method.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.ExtensionAttribute");
     }
     private static bool IsOverrideMethod(MethodBase method)
     {
-        if (method is MethodInfo methodInfo)
-        {
-            return methodInfo.GetBaseDefinition() != methodInfo;
-        }
-        return false;
+        if (method is not MethodInfo methodInfo) return false;
+        if (!methodInfo.IsVirtual) return false;
+        return (methodInfo.Attributes & MethodAttributes.NewSlot) == 0;
     }
     private static bool IsVolatileField(FieldInfo field)
     {
         var requiredModifiers = field.GetRequiredCustomModifiers();
-        return requiredModifiers.Any(m => m == typeof(System.Runtime.CompilerServices.IsVolatile));
+        return requiredModifiers.Any(m => m.FullName == "System.Runtime.CompilerServices.IsVolatile");
     }
     private static string BuildMethodSignature(MethodInfo method, ParameterDetails[] parameters, string[] genericParams)
     {

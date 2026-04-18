@@ -46,14 +46,54 @@ public static class AttributeUtils
             );
 
         var attributeType = attributeData.AttributeType;
-        var attributeUsage = attributeType.GetCustomAttribute<AttributeUsageAttribute>();
+        var (allowMultiple, validOn) = ReadAttributeUsage(attributeType);
 
         return new AttributeInfo(
             AttributeType: attributeType.FullName ?? attributeType.Name,
             ConstructorArguments: constructorArgs,
             NamedArguments: namedArgs,
-            AllowMultiple: attributeUsage?.AllowMultiple ?? false,
-            ValidOn: attributeUsage?.ValidOn ?? AttributeTargets.All
+            AllowMultiple: allowMultiple,
+            ValidOn: validOn
         );
+    }
+
+    private static (bool AllowMultiple, AttributeTargets ValidOn) ReadAttributeUsage(Type attributeType)
+    {
+        try
+        {
+            var usage = attributeType.GetCustomAttributesData()
+                .FirstOrDefault(a => a.AttributeType.FullName == "System.AttributeUsageAttribute");
+            if (usage == null) return (false, AttributeTargets.All);
+
+            var validOn = AttributeTargets.All;
+            if (usage.ConstructorArguments.Count > 0)
+            {
+                var value = usage.ConstructorArguments[0].Value;
+                if (value is AttributeTargets targets)
+                {
+                    validOn = targets;
+                }
+                else if (value is byte or sbyte or short or ushort or int or uint or long or ulong)
+                {
+                    validOn = (AttributeTargets)System.Convert.ToInt64(value);
+                }
+            }
+
+            var allowMultiple = false;
+            foreach (var named in usage.NamedArguments)
+            {
+                if (named.MemberName == "AllowMultiple" && named.TypedValue.Value is bool b)
+                {
+                    allowMultiple = b;
+                    break;
+                }
+            }
+
+            return (allowMultiple, validOn);
+        }
+        catch
+        {
+            return (false, AttributeTargets.All);
+        }
     }
 }
