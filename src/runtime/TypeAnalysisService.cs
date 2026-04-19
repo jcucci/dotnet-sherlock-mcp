@@ -56,7 +56,7 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     public TypeAnalysisInfo GetTypeInfo(Type type)
     {
         return new TypeAnalysisInfo(
-            FullName: type.FullName ?? type.Name,
+            FullName: TypeNameFormatter.FriendlyFullName(type),
             Name: type.Name,
             Namespace: type.Namespace,
             Kind: GetTypeKind(type),
@@ -67,8 +67,8 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
             IsGeneric: type.IsGenericType,
             IsNested: type.IsNested,
             AssemblyName: type.Assembly.GetName().Name,
-            BaseType: type.BaseType?.FullName,
-            Interfaces: [.. type.GetInterfaces().Select(i => i.FullName ?? i.Name)],
+            BaseType: type.BaseType is null ? null : TypeNameFormatter.FriendlyFullName(type.BaseType),
+            Interfaces: [.. type.GetInterfaces().Select(TypeNameFormatter.FriendlyFullName)],
             Attributes: GetTypeAttributes(type),
             GenericParameters: type.IsGenericType ? GetGenericParameters(type) : [],
             NestedTypes: GetNestedTypes(type)
@@ -97,20 +97,20 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
 
         while (current != null)
         {
-            inheritanceChain.Add(current.FullName ?? current.Name);
+            inheritanceChain.Add(TypeNameFormatter.FriendlyFullName(current));
             baseTypes.Add(GetTypeInfo(current));
             current = current.BaseType;
         }
 
         var allInterfaces = type.GetInterfaces()
-            .Select(i => i.FullName ?? i.Name)
+            .Select(TypeNameFormatter.FriendlyFullName)
             .ToArray();
 
         // Note: Getting derived types requires scanning all loaded assemblies
         // This is expensive and might not be practical in all scenarios
         var derivedTypes = Array.Empty<TypeAnalysisInfo>();
         return new TypeAnalysisHierarchy(
-            TypeName: type.FullName ?? type.Name,
+            TypeName: TypeNameFormatter.FriendlyFullName(type),
             InheritanceChain: inheritanceChain.ToArray(),
             AllInterfaces: allInterfaces,
             BaseTypes: baseTypes.ToArray(),
@@ -123,7 +123,7 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
         if (!type.IsGenericType)
         {
             return new TypeAnalysisGenericTypeInfo(
-                TypeName: type.FullName ?? type.Name,
+                TypeName: TypeNameFormatter.FriendlyFullName(type),
                 IsGenericTypeDefinition: false,
                 IsConstructedGenericType: false,
                 GenericParameters: [],
@@ -135,14 +135,14 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
         var genericParameters = GetGenericParameters(type);
         var genericArguments = type.IsGenericTypeDefinition
             ? []
-            : type.GetGenericArguments().Select(t => t.FullName ?? t.Name).ToArray();
+            : type.GetGenericArguments().Select(TypeNameFormatter.FriendlyFullName).ToArray();
 
         var variances = type.IsGenericTypeDefinition
             ? type.GetGenericArguments().Select(GetGenericVariance).ToArray()
             : [];
 
         return new TypeAnalysisGenericTypeInfo(
-            TypeName: type.FullName ?? type.Name,
+            TypeName: TypeNameFormatter.FriendlyFullName(type),
             IsGenericTypeDefinition: type.IsGenericTypeDefinition,
             IsConstructedGenericType: type.IsConstructedGenericType,
             GenericParameters: genericParameters,
@@ -250,7 +250,7 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     private TypeAnalysisGenericParameterInfo CreateGenericParameterInfo(Type genericParameter)
     {
         var constraints = genericParameter.GetGenericParameterConstraints()
-            .Select(t => t.FullName ?? t.Name)
+            .Select(TypeNameFormatter.FriendlyFullName)
             .ToArray();
 
         var attrs = genericParameter.GenericParameterAttributes;

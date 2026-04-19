@@ -19,13 +19,13 @@ public class ReverseLookupService : IReverseLookupService
                 {
                     var matchedInterfaces = GetInterfacesSafe(candidate)
                         .Where(i => TypeNameMatcher.Matches(i, typeName, options.CaseSensitive))
-                        .Select(i => i.FullName ?? i.Name)
+                        .Select(TypeNameFormatter.FriendlyFullName)
                         .ToArray();
 
                     var baseTypeChain = GetBaseTypeChain(candidate);
                     var matchedBases = baseTypeChain
                         .Where(b => TypeNameMatcher.Matches(b, typeName, options.CaseSensitive))
-                        .Select(b => b.FullName ?? b.Name)
+                        .Select(TypeNameFormatter.FriendlyFullName)
                         .ToArray();
 
                     if (matchedInterfaces.Length == 0 && matchedBases.Length == 0) continue;
@@ -33,10 +33,10 @@ public class ReverseLookupService : IReverseLookupService
                     var kind = matchedInterfaces.Length > 0 ? "interface" : "baseType";
                     hits.Add(new ImplementationHit(
                         AssemblyPath: path,
-                        TypeFullName: candidate.FullName ?? candidate.Name,
+                        TypeFullName: TypeNameFormatter.FriendlyFullName(candidate),
                         Kind: kind,
                         MatchedInterfaces: matchedInterfaces,
-                        BaseTypeChain: baseTypeChain.Select(b => b.FullName ?? b.Name).ToArray()));
+                        BaseTypeChain: baseTypeChain.Select(TypeNameFormatter.FriendlyFullName).ToArray()));
                 }
             })) continue;
         }
@@ -69,7 +69,7 @@ public class ReverseLookupService : IReverseLookupService
 
                         hits.Add(new MethodReturnHit(
                             AssemblyPath: path,
-                            DeclaringTypeFullName: candidate.FullName ?? candidate.Name,
+                            DeclaringTypeFullName: TypeNameFormatter.FriendlyFullName(candidate),
                             MethodName: method.Name,
                             Signature: FormatMethodSignature(method),
                             ReturnTypeFriendlyName: FriendlyTypeName(returnType),
@@ -113,7 +113,7 @@ public class ReverseLookupService : IReverseLookupService
             {
                 if (hits.Count >= cap) { truncated = true; break; }
 
-                var declaringName = candidate.FullName ?? candidate.Name;
+                var declaringName = TypeNameFormatter.FriendlyFullName(candidate);
 
                 Type? baseType = null;
                 try { baseType = candidate.BaseType; } catch { }
@@ -121,7 +121,7 @@ public class ReverseLookupService : IReverseLookupService
                 {
                     hits.Add(MakeRefHit(path, declaringName, "type", declaringName, "baseType",
                         $"{declaringName} : {FriendlyTypeName(baseType)}",
-                        disambiguator: baseType.FullName ?? baseType.Name));
+                        disambiguator: TypeNameFormatter.FriendlyFullName(baseType)));
                 }
 
                 foreach (var iface in GetInterfacesSafe(candidate))
@@ -130,7 +130,7 @@ public class ReverseLookupService : IReverseLookupService
                     if (!TypeNameMatcher.Matches(iface, typeName, options.CaseSensitive)) continue;
                     hits.Add(MakeRefHit(path, declaringName, "type", declaringName, "interface",
                         $"{declaringName} : {FriendlyTypeName(iface)}",
-                        disambiguator: iface.FullName ?? iface.Name));
+                        disambiguator: TypeNameFormatter.FriendlyFullName(iface)));
                 }
 
                 if (truncated) break;
@@ -145,7 +145,7 @@ public class ReverseLookupService : IReverseLookupService
                         if (!TypeNameMatcher.Matches(arg, typeName, options.CaseSensitive)) continue;
                         hits.Add(MakeRefHit(path, declaringName, "type", declaringName, "genericArg",
                             $"{declaringName}<{FriendlyTypeName(arg)}>",
-                            disambiguator: arg.FullName ?? arg.Name));
+                            disambiguator: TypeNameFormatter.FriendlyFullName(arg)));
                     }
                     if (truncated) break;
                 }
@@ -161,7 +161,7 @@ public class ReverseLookupService : IReverseLookupService
                     if (returnMatch != null)
                     {
                         hits.Add(MakeRefHit(path, declaringName, "method", method.Name, "return", sig,
-                            disambiguator: returnMatch.FullName ?? returnMatch.Name));
+                            disambiguator: TypeNameFormatter.FriendlyFullName(returnMatch)));
                     }
 
                     ParameterInfo[] parameters;
@@ -188,7 +188,7 @@ public class ReverseLookupService : IReverseLookupService
                     if (propMatch == null) continue;
                     hits.Add(MakeRefHit(path, declaringName, "property", prop.Name, "property",
                         $"{FriendlyTypeName(pt)} {prop.Name}",
-                        disambiguator: propMatch.FullName ?? propMatch.Name));
+                        disambiguator: TypeNameFormatter.FriendlyFullName(propMatch)));
                 }
 
                 if (truncated) break;
@@ -202,7 +202,7 @@ public class ReverseLookupService : IReverseLookupService
                     if (fieldMatch == null) continue;
                     hits.Add(MakeRefHit(path, declaringName, "field", field.Name, "field",
                         $"{FriendlyTypeName(ft)} {field.Name}",
-                        disambiguator: fieldMatch.FullName ?? fieldMatch.Name));
+                        disambiguator: TypeNameFormatter.FriendlyFullName(fieldMatch)));
                 }
 
                 if (truncated) break;
@@ -216,7 +216,7 @@ public class ReverseLookupService : IReverseLookupService
                     if (eventMatch == null) continue;
                     hits.Add(MakeRefHit(path, declaringName, "event", evt.Name, "event",
                         $"event {FriendlyTypeName(et!)} {evt.Name}",
-                        disambiguator: eventMatch.FullName ?? eventMatch.Name));
+                        disambiguator: TypeNameFormatter.FriendlyFullName(eventMatch)));
                 }
             }
             }

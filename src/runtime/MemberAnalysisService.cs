@@ -286,7 +286,7 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
         return parameters.Select(p => new ParameterDetails(
             Name: p.Name ?? "param",
             TypeName: GetFriendlyTypeName(p.ParameterType),
-            DefaultValue: p.HasDefaultValue ? SafeGetRawDefaultValue(p)?.ToString() : null,
+            DefaultValue: p.HasDefaultValue ? FormatDefaultLiteral(SafeGetRawDefaultValue(p)) : null,
             IsOptional: p.IsOptional,
             IsOut: p.IsOut,
             IsRef: p.ParameterType.IsByRef && !p.IsOut,
@@ -302,6 +302,42 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
         try { return p.RawDefaultValue; }
         catch { return null; }
     }
+
+    private static string FormatDefaultLiteral(object? value) => value switch
+    {
+        null => "null",
+        bool b => b ? "true" : "false",
+        string s => $"\"{EscapeCSharpString(s)}\"",
+        char c => $"'{EscapeCSharpChar(c)}'",
+        Enum e => $"{e.GetType().Name}.{e}",
+        IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? "null"
+    };
+
+    private static string EscapeCSharpString(string value)
+    {
+        var sb = new StringBuilder(value.Length);
+        foreach (var c in value) sb.Append(EscapeCSharpChar(c, isCharLiteral: false));
+        return sb.ToString();
+    }
+
+    private static string EscapeCSharpChar(char c) => EscapeCSharpChar(c, isCharLiteral: true);
+
+    private static string EscapeCSharpChar(char c, bool isCharLiteral) => c switch
+    {
+        '\\' => "\\\\",
+        '\0' => "\\0",
+        '\a' => "\\a",
+        '\b' => "\\b",
+        '\f' => "\\f",
+        '\n' => "\\n",
+        '\r' => "\\r",
+        '\t' => "\\t",
+        '\v' => "\\v",
+        '"' when !isCharLiteral => "\\\"",
+        '\'' when isCharLiteral => "\\'",
+        _ => c.ToString()
+    };
 
     private static IEnumerable<T> ApplyMemberFilters<T>(IEnumerable<T> source, MemberFilterOptions? options, Func<T, string> nameSelector, Func<T, Sherlock.MCP.Runtime.Contracts.TypeAnalysis.AttributeInfo[]> attrSelector)
     {
@@ -347,6 +383,10 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
             var rank = type.GetArrayRank();
             var brackets = rank == 1 ? "[]" : "[" + new string(',', rank - 1) + "]";
             return elementType + brackets;
+        }
+        if (type.IsGenericType && !type.IsGenericTypeDefinition && type.GetGenericTypeDefinition().FullName == "System.Nullable`1")
+        {
+            return GetFriendlyTypeName(type.GetGenericArguments()[0]) + "?";
         }
         if (type.IsGenericType)
         {
@@ -425,14 +465,22 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
         var requiredModifiers = field.GetRequiredCustomModifiers();
         return requiredModifiers.Any(m => m.FullName == "System.Runtime.CompilerServices.IsVolatile");
     }
+    private static bool IsInterfaceMember(MemberInfo member) => member.DeclaringType?.IsInterface == true;
+
     private static string BuildMethodSignature(MethodInfo method, ParameterDetails[] parameters, string[] genericParams)
     {
         var sb = new StringBuilder();
-        sb.Append(GetAccessModifier(method));
-        sb.Append(' ');
+        var onInterface = IsInterfaceMember(method);
+        var suppressPublic = onInterface && method.IsPublic;
+        var suppressImplicitAbstractVirtual = onInterface && !method.IsStatic;
+        if (!suppressPublic)
+        {
+            sb.Append(GetAccessModifier(method));
+            sb.Append(' ');
+        }
         if (method.IsStatic) sb.Append("static ");
-        if (method.IsAbstract) sb.Append("abstract ");
-        else if (method.IsVirtual && !method.IsFinal && !IsOverrideMethod(method)) sb.Append("virtual ");
+        if (method.IsAbstract && !suppressImplicitAbstractVirtual) sb.Append("abstract ");
+        else if (method.IsVirtual && !method.IsFinal && !IsOverrideMethod(method) && !suppressImplicitAbstractVirtual) sb.Append("virtual ");
         else if (IsOverrideMethod(method)) sb.Append("override ");
         else if (method.IsFinal && method.IsVirtual) sb.Append("sealed ");
         sb.Append(GetFriendlyTypeName(method.ReturnType));
@@ -453,16 +501,22 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
     private static string BuildPropertySignature(PropertyInfo property, ParameterDetails[] indexerParams)
     {
         var sb = new StringBuilder();
+        var onInterface = IsInterfaceMember(property);
         var getMethod = property.GetGetMethod(true);
         var setMethod = property.GetSetMethod(true);
         var primaryMethod = getMethod ?? setMethod;
         if (primaryMethod != null)
         {
-            sb.Append(GetAccessModifier(primaryMethod));
-            sb.Append(' ');
+            var suppressPublic = onInterface && primaryMethod.IsPublic;
+            var suppressImplicitAbstractVirtual = onInterface && !primaryMethod.IsStatic;
+            if (!suppressPublic)
+            {
+                sb.Append(GetAccessModifier(primaryMethod));
+                sb.Append(' ');
+            }
             if (primaryMethod.IsStatic) sb.Append("static ");
-            if (primaryMethod.IsAbstract) sb.Append("abstract ");
-            else if (primaryMethod.IsVirtual && !primaryMethod.IsFinal && !IsOverrideMethod(primaryMethod)) sb.Append("virtual ");
+            if (primaryMethod.IsAbstract && !suppressImplicitAbstractVirtual) sb.Append("abstract ");
+            else if (primaryMethod.IsVirtual && !primaryMethod.IsFinal && !IsOverrideMethod(primaryMethod) && !suppressImplicitAbstractVirtual) sb.Append("virtual ");
             else if (IsOverrideMethod(primaryMethod)) sb.Append("override ");
             else if (primaryMethod.IsFinal && primaryMethod.IsVirtual) sb.Append("sealed ");
         }
@@ -502,15 +556,21 @@ public class MemberAnalysisService : IMemberAnalysisService, IDisposable
     private static string BuildEventSignature(EventInfo eventInfo)
     {
         var sb = new StringBuilder();
+        var onInterface = IsInterfaceMember(eventInfo);
         var addMethod = eventInfo.GetAddMethod(true);
         var primaryMethod = addMethod;
         if (primaryMethod != null)
         {
-            sb.Append(GetAccessModifier(primaryMethod));
-            sb.Append(' ');
+            var suppressPublic = onInterface && primaryMethod.IsPublic;
+            var suppressImplicitAbstractVirtual = onInterface && !primaryMethod.IsStatic;
+            if (!suppressPublic)
+            {
+                sb.Append(GetAccessModifier(primaryMethod));
+                sb.Append(' ');
+            }
             if (primaryMethod.IsStatic) sb.Append("static ");
-            if (primaryMethod.IsAbstract) sb.Append("abstract ");
-            else if (primaryMethod.IsVirtual && !primaryMethod.IsFinal && !IsOverrideMethod(primaryMethod)) sb.Append("virtual ");
+            if (primaryMethod.IsAbstract && !suppressImplicitAbstractVirtual) sb.Append("abstract ");
+            else if (primaryMethod.IsVirtual && !primaryMethod.IsFinal && !IsOverrideMethod(primaryMethod) && !suppressImplicitAbstractVirtual) sb.Append("virtual ");
             else if (IsOverrideMethod(primaryMethod)) sb.Append("override ");
             else if (primaryMethod.IsFinal && primaryMethod.IsVirtual) sb.Append("sealed ");
         }
