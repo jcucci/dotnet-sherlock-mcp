@@ -9,5 +9,6 @@ public interface IProjectAnalysisService
     public Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null);
     public Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null);
     public Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug");
+    public Task<NugetAssemblyLookup> FindAssemblyInNugetCacheAsync(string packageId, string? version = null, string? tfm = null);
 }
 
