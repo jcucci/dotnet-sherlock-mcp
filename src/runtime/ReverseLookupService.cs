@@ -13,31 +13,32 @@ public class ReverseLookupService : IReverseLookupService
         foreach (var path in assemblyPaths)
         {
             if (!File.Exists(path)) continue;
-
-            using var ctx = InspectionContextFactory.Create(path);
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            if (!TryScanAssembly(path, ctx =>
             {
-                var matchedInterfaces = GetInterfacesSafe(candidate)
-                    .Where(i => TypeNameMatcher.Matches(i, typeName, options.CaseSensitive))
-                    .Select(i => i.FullName ?? i.Name)
-                    .ToArray();
+                foreach (var candidate in GetScannableTypes(ctx, options))
+                {
+                    var matchedInterfaces = GetInterfacesSafe(candidate)
+                        .Where(i => TypeNameMatcher.Matches(i, typeName, options.CaseSensitive))
+                        .Select(i => i.FullName ?? i.Name)
+                        .ToArray();
 
-                var baseTypeChain = GetBaseTypeChain(candidate);
-                var matchedBases = baseTypeChain
-                    .Where(b => TypeNameMatcher.Matches(b, typeName, options.CaseSensitive))
-                    .Select(b => b.FullName ?? b.Name)
-                    .ToArray();
+                    var baseTypeChain = GetBaseTypeChain(candidate);
+                    var matchedBases = baseTypeChain
+                        .Where(b => TypeNameMatcher.Matches(b, typeName, options.CaseSensitive))
+                        .Select(b => b.FullName ?? b.Name)
+                        .ToArray();
 
-                if (matchedInterfaces.Length == 0 && matchedBases.Length == 0) continue;
+                    if (matchedInterfaces.Length == 0 && matchedBases.Length == 0) continue;
 
-                var kind = matchedInterfaces.Length > 0 ? "interface" : "baseType";
-                hits.Add(new ImplementationHit(
-                    AssemblyPath: path,
-                    TypeFullName: candidate.FullName ?? candidate.Name,
-                    Kind: kind,
-                    MatchedInterfaces: matchedInterfaces,
-                    BaseTypeChain: baseTypeChain.Select(b => b.FullName ?? b.Name).ToArray()));
-            }
+                    var kind = matchedInterfaces.Length > 0 ? "interface" : "baseType";
+                    hits.Add(new ImplementationHit(
+                        AssemblyPath: path,
+                        TypeFullName: candidate.FullName ?? candidate.Name,
+                        Kind: kind,
+                        MatchedInterfaces: matchedInterfaces,
+                        BaseTypeChain: baseTypeChain.Select(b => b.FullName ?? b.Name).ToArray()));
+                }
+            })) continue;
         }
 
         return hits
@@ -54,27 +55,28 @@ public class ReverseLookupService : IReverseLookupService
         foreach (var path in assemblyPaths)
         {
             if (!File.Exists(path)) continue;
-
-            using var ctx = InspectionContextFactory.Create(path);
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            if (!TryScanAssembly(path, ctx =>
             {
-                foreach (var method in GetMethodsSafe(candidate, flags))
+                foreach (var candidate in GetScannableTypes(ctx, options))
                 {
-                    Type? returnType;
-                    try { returnType = method.ReturnType; }
-                    catch { continue; }
+                    foreach (var method in GetMethodsSafe(candidate, flags))
+                    {
+                        Type? returnType;
+                        try { returnType = method.ReturnType; }
+                        catch { continue; }
 
-                    if (!TypeNameMatcher.Matches(returnType, typeName, options.CaseSensitive)) continue;
+                        if (!TypeNameMatcher.Matches(returnType, typeName, options.CaseSensitive)) continue;
 
-                    hits.Add(new MethodReturnHit(
-                        AssemblyPath: path,
-                        DeclaringTypeFullName: candidate.FullName ?? candidate.Name,
-                        MethodName: method.Name,
-                        Signature: FormatMethodSignature(method),
-                        ReturnTypeFriendlyName: FriendlyTypeName(returnType),
-                        IsStatic: method.IsStatic));
+                        hits.Add(new MethodReturnHit(
+                            AssemblyPath: path,
+                            DeclaringTypeFullName: candidate.FullName ?? candidate.Name,
+                            MethodName: method.Name,
+                            Signature: FormatMethodSignature(method),
+                            ReturnTypeFriendlyName: FriendlyTypeName(returnType),
+                            IsStatic: method.IsStatic));
+                    }
                 }
-            }
+            })) continue;
         }
 
         return hits
@@ -97,7 +99,16 @@ public class ReverseLookupService : IReverseLookupService
             if (truncated) break;
             if (!File.Exists(path)) continue;
 
-            using var ctx = InspectionContextFactory.Create(path);
+            IAssemblyInspectionContext? ctx;
+            try { ctx = InspectionContextFactory.Create(path); }
+            catch (BadImageFormatException) { continue; }
+            catch (FileLoadException) { continue; }
+            catch (ReflectionTypeLoadException) { continue; }
+            catch (IOException) { continue; }
+
+            using (ctx)
+            try
+            {
             foreach (var candidate in GetScannableTypes(ctx, options))
             {
                 if (hits.Count >= cap) { truncated = true; break; }
@@ -208,6 +219,11 @@ public class ReverseLookupService : IReverseLookupService
                         disambiguator: eventMatch.FullName ?? eventMatch.Name));
                 }
             }
+            }
+            catch (BadImageFormatException) { }
+            catch (FileLoadException) { }
+            catch (ReflectionTypeLoadException) { }
+            catch (IOException) { }
         }
 
         var sorted = hits
@@ -224,9 +240,32 @@ public class ReverseLookupService : IReverseLookupService
 
     private static ReferenceHit MakeRefHit(
         string assemblyPath, string declaringType, string memberKind, string memberName,
-        string referenceKind, string signature, string disambiguator) =>
-        new(assemblyPath, declaringType, memberKind, memberName, referenceKind, signature,
-            DedupeKey: $"{declaringType}|{memberKind}|{memberName}|{referenceKind}|{disambiguator}");
+        string referenceKind, string signature, string disambiguator)
+    {
+        var isMethodLike =
+            string.Equals(memberKind, "method", StringComparison.Ordinal) ||
+            string.Equals(memberKind, "constructor", StringComparison.Ordinal);
+
+        var dedupeKey = isMethodLike
+            ? $"{declaringType}|{memberKind}|{memberName}|{referenceKind}|{signature}|{disambiguator}"
+            : $"{declaringType}|{memberKind}|{memberName}|{referenceKind}|{disambiguator}";
+
+        return new(assemblyPath, declaringType, memberKind, memberName, referenceKind, signature, dedupeKey);
+    }
+
+    private static bool TryScanAssembly(string path, Action<IAssemblyInspectionContext> scan)
+    {
+        try
+        {
+            using var ctx = InspectionContextFactory.Create(path);
+            scan(ctx);
+            return true;
+        }
+        catch (BadImageFormatException) { return false; }
+        catch (FileLoadException) { return false; }
+        catch (ReflectionTypeLoadException) { return false; }
+        catch (IOException) { return false; }
+    }
 
     private static Type? FindMatchingType(Type? container, string userName, bool caseSensitive)
     {

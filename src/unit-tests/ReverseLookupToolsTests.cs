@@ -171,7 +171,7 @@ public class ReverseLookupToolsTests
     }
 
     [Fact]
-    public void FindReferencesTo_SmallMaxItems_TruncatedTrueWhenHardCapHit()
+    public void FindReferencesTo_SmallMaxItems_ReportsFloor500HardCap()
     {
         var result = ReverseLookupTools.FindReferencesTo(
             _svc, _middleware, _runtimeOptions,
@@ -180,6 +180,19 @@ public class ReverseLookupToolsTests
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
         var hardCap = data.GetProperty("hardCap").GetInt32();
         Assert.Equal(500, hardCap);
+        Assert.False(data.GetProperty("truncated").GetBoolean(),
+            "Small test assembly should not exceed the 500-hit floor.");
+    }
+
+    [Fact]
+    public void FindReferencesTo_LargeMaxItems_ScalesHardCapAboveFloor()
+    {
+        var result = ReverseLookupTools.FindReferencesTo(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "RecordedEvent", maxItems: 200, noCache: true);
+
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        Assert.Equal(800, data.GetProperty("hardCap").GetInt32());
     }
 
     [Fact]

@@ -328,7 +328,15 @@ public static class ReverseLookupTools
         if (!File.Exists(assemblyPath))
             return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}") };
 
-        var paths = new List<string> { assemblyPath };
+        var pathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
+        var seen = new HashSet<string>(pathComparer);
+        var paths = new List<string>();
+
+        var normalizedPrimary = Path.GetFullPath(assemblyPath);
+        if (seen.Add(normalizedPrimary)) paths.Add(normalizedPrimary);
+
         if (additionalAssemblies != null)
         {
             foreach (var extra in additionalAssemblies)
@@ -336,7 +344,8 @@ public static class ReverseLookupTools
                 if (string.IsNullOrWhiteSpace(extra)) continue;
                 if (!File.Exists(extra))
                     return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {extra}") };
-                paths.Add(extra);
+                var normalizedExtra = Path.GetFullPath(extra);
+                if (seen.Add(normalizedExtra)) paths.Add(normalizedExtra);
             }
         }
         return new ScopeResult { Paths = paths.ToArray() };
