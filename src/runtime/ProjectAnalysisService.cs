@@ -167,6 +167,217 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return dependencies.ToArray();
     }
 
+    public Task<NugetAssemblyLookup> FindAssemblyInNugetCacheAsync(string packageId, string? version = null, string? tfm = null)
+    {
+        var cacheRoot = GetNugetCacheRoot();
+        var packageDir = Path.Combine(cacheRoot, packageId.ToLowerInvariant());
+        if (!Directory.Exists(packageDir))
+        {
+            return Task.FromResult(new NugetAssemblyLookup(
+                packageId,
+                version,
+                tfm,
+                ResolvedVersion: null,
+                ResolvedTfm: null,
+                cacheRoot,
+                FoundAssembly: null,
+                AvailableVersions: Array.Empty<string>(),
+                AvailableTfms: Array.Empty<string>(),
+                Failure: NugetLookupFailure.PackageNotFound));
+        }
+
+        var availableVersions = Directory.GetDirectories(packageDir)
+            .Select(Path.GetFileName)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Cast<string>()
+            .ToArray();
+
+        string? resolvedVersion;
+        if (version is not null)
+        {
+            resolvedVersion = availableVersions
+                .FirstOrDefault(v => v.Equals(version, StringComparison.OrdinalIgnoreCase));
+            if (resolvedVersion is null)
+            {
+                return Task.FromResult(new NugetAssemblyLookup(
+                    packageId,
+                    version,
+                    tfm,
+                    ResolvedVersion: null,
+                    ResolvedTfm: null,
+                    cacheRoot,
+                    FoundAssembly: null,
+                    AvailableVersions: SortVersionsDescending(availableVersions),
+                    AvailableTfms: Array.Empty<string>(),
+                    Failure: NugetLookupFailure.VersionNotFound));
+            }
+        }
+        else
+        {
+            resolvedVersion = PickHighestVersion(availableVersions);
+            if (resolvedVersion is null)
+            {
+                return Task.FromResult(new NugetAssemblyLookup(
+                    packageId,
+                    version,
+                    tfm,
+                    ResolvedVersion: null,
+                    ResolvedTfm: null,
+                    cacheRoot,
+                    FoundAssembly: null,
+                    AvailableVersions: Array.Empty<string>(),
+                    AvailableTfms: Array.Empty<string>(),
+                    Failure: NugetLookupFailure.VersionNotFound));
+            }
+        }
+
+        var libDir = Path.Combine(packageDir, resolvedVersion, "lib");
+        if (!Directory.Exists(libDir))
+        {
+            return Task.FromResult(new NugetAssemblyLookup(
+                packageId,
+                version,
+                tfm,
+                resolvedVersion,
+                ResolvedTfm: null,
+                cacheRoot,
+                FoundAssembly: null,
+                AvailableVersions: SortVersionsDescending(availableVersions),
+                AvailableTfms: Array.Empty<string>(),
+                Failure: NugetLookupFailure.AssemblyNotFound));
+        }
+
+        var availableTfms = Directory.GetDirectories(libDir)
+            .Select(Path.GetFileName)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Cast<string>()
+            .ToArray();
+
+        var resolvedTfm = tfm is not null
+            ? PickCompatibleTfm(availableTfms, tfm)
+            : PickBestTfm(availableTfms);
+
+        if (resolvedTfm is null)
+        {
+            return Task.FromResult(new NugetAssemblyLookup(
+                packageId,
+                version,
+                tfm,
+                resolvedVersion,
+                ResolvedTfm: null,
+                cacheRoot,
+                FoundAssembly: null,
+                AvailableVersions: SortVersionsDescending(availableVersions),
+                AvailableTfms: availableTfms,
+                Failure: NugetLookupFailure.AssemblyNotFound));
+        }
+
+        var tfmDir = Path.Combine(libDir, resolvedTfm);
+        var dlls = Directory.GetFiles(tfmDir, "*.dll", SearchOption.TopDirectoryOnly);
+        var foundAssembly = PickAssemblyForPackage(dlls, packageId);
+
+        return Task.FromResult(new NugetAssemblyLookup(
+            packageId,
+            version,
+            tfm,
+            resolvedVersion,
+            resolvedTfm,
+            cacheRoot,
+            foundAssembly,
+            AvailableVersions: SortVersionsDescending(availableVersions),
+            AvailableTfms: availableTfms,
+            Failure: foundAssembly is null ? NugetLookupFailure.AssemblyNotFound : null));
+    }
+
+    private static string GetNugetCacheRoot()
+    {
+        var overridePath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+        if (!string.IsNullOrWhiteSpace(overridePath))
+            return overridePath;
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(userProfile, ".nuget", "packages");
+    }
+
+    private static string? PickHighestVersion(string[] versions)
+    {
+        if (versions.Length == 0)
+            return null;
+        var parsed = versions
+            .Select(v => (raw: v, parsed: TryParseVersion(v)))
+            .ToArray();
+        var withParsed = parsed.Where(p => p.parsed is not null).ToArray();
+        if (withParsed.Length > 0)
+            return withParsed.OrderByDescending(p => p.parsed!).First().raw;
+        return versions.OrderByDescending(v => v, StringComparer.OrdinalIgnoreCase).First();
+    }
+
+    private static Version? TryParseVersion(string raw)
+    {
+        var dash = raw.IndexOf('-');
+        var core = dash >= 0 ? raw[..dash] : raw;
+        return Version.TryParse(core, out var v) ? v : null;
+    }
+
+    private static string[] SortVersionsDescending(string[] versions)
+    {
+        return versions
+            .Select(v => (raw: v, parsed: TryParseVersion(v)))
+            .OrderByDescending(p => p.parsed ?? new Version(0, 0))
+            .ThenByDescending(p => p.raw, StringComparer.OrdinalIgnoreCase)
+            .Select(p => p.raw)
+            .ToArray();
+    }
+
+    private static string? PickBestTfm(string[] availableTfms)
+    {
+        if (availableTfms.Length == 0)
+            return null;
+        var ranked = availableTfms
+            .Select(t => (raw: t, rank: RankTfm(t)))
+            .OrderBy(t => t.rank.family)
+            .ThenByDescending(t => t.rank.version)
+            .ThenBy(t => t.raw, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return ranked[0].raw;
+    }
+
+    private static string? PickCompatibleTfm(string[] availableTfms, string requested)
+    {
+        var exact = availableTfms.FirstOrDefault(t => t.Equals(requested, StringComparison.OrdinalIgnoreCase));
+        if (exact is not null)
+            return exact;
+        var compatible = availableTfms
+            .Where(t => IsCompatibleFramework(t, requested))
+            .OrderByDescending(t => t, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+        return compatible;
+    }
+
+    private static (int family, Version version) RankTfm(string tfm)
+    {
+        var lower = tfm.ToLowerInvariant();
+        if (lower.StartsWith("net") && !lower.StartsWith("netstandard") && !lower.StartsWith("netcoreapp") && !lower.Contains("framework"))
+        {
+            var rest = lower[3..];
+            return (0, TryParseVersion(rest) ?? new Version(0, 0));
+        }
+        if (lower.StartsWith("netcoreapp"))
+            return (1, TryParseVersion(lower[10..]) ?? new Version(0, 0));
+        if (lower.StartsWith("netstandard"))
+            return (2, TryParseVersion(lower[11..]) ?? new Version(0, 0));
+        return (3, new Version(0, 0));
+    }
+
+    private static string? PickAssemblyForPackage(string[] dlls, string packageId)
+    {
+        if (dlls.Length == 0)
+            return null;
+        var preferredName = packageId + ".dll";
+        var preferred = dlls.FirstOrDefault(d =>
+            Path.GetFileName(d).Equals(preferredName, StringComparison.OrdinalIgnoreCase));
+        return preferred ?? dlls.OrderBy(d => d, StringComparer.OrdinalIgnoreCase).First();
+    }
+
     private static string? GetPropertyValue(IEnumerable<XElement> propertyGroups, string propertyName)
     {
         return propertyGroups
@@ -182,8 +393,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
     private async Task<string[]> ResolvePackageAssemblyPathsAsync(PackageReference package, string[] targetFrameworks)
     {
         var assemblyPaths = new List<string>();
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var nugetCachePath = Path.Combine(userProfile, ".nuget", "packages");
+        var nugetCachePath = GetNugetCacheRoot();
         if (Directory.Exists(nugetCachePath))
         {
             var packagePath = Path.Combine(nugetCachePath, package.Name.ToLowerInvariant(), package.Version);

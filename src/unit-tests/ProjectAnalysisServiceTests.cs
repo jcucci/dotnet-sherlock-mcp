@@ -133,6 +133,128 @@ public class ProjectAnalysisServiceTests
     }
 
     [Fact]
+    public async Task FindAssemblyInNugetCache_Returns_ExactMatch_When_Version_And_Tfm_Provided()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Sharp.Events", "41.0.1", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Sharp.Events", "41.0.1", "net9.0");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("41.0.1", result.ResolvedVersion);
+        Assert.Equal("net9.0", result.ResolvedTfm);
+        Assert.NotNull(result.FoundAssembly);
+        Assert.EndsWith(Path.Combine("lib", "net9.0", "Sharp.Events.dll"), result.FoundAssembly);
+        Assert.True(File.Exists(result.FoundAssembly));
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Picks_Highest_Version_When_Omitted()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Sharp.Events", "41.0.1", "net9.0");
+        SeedPackage(cache.Path, "Sharp.Events", "41.2.0", "net9.0");
+        SeedPackage(cache.Path, "Sharp.Events", "40.9.5", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Sharp.Events");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("41.2.0", result.ResolvedVersion);
+        Assert.Contains("41.2.0", result.AvailableVersions);
+        Assert.Contains("41.0.1", result.AvailableVersions);
+        Assert.Contains("40.9.5", result.AvailableVersions);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Picks_Best_Tfm_When_Omitted()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Some.Pkg", "1.0.0", "netstandard2.0");
+        SeedPackage(cache.Path, "Some.Pkg", "1.0.0", "net8.0");
+        SeedPackage(cache.Path, "Some.Pkg", "1.0.0", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Some.Pkg", "1.0.0");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("net9.0", result.ResolvedTfm);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Falls_Back_To_Compatible_Tfm()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Legacy.Pkg", "1.0.0", "netstandard2.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Legacy.Pkg", "1.0.0", "net9.0");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("netstandard2.0", result.ResolvedTfm);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Reports_PackageNotFound()
+    {
+        using var cache = new TempDir();
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Does.Not.Exist");
+
+        Assert.Equal(NugetLookupFailure.PackageNotFound, result.Failure);
+        Assert.Null(result.FoundAssembly);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Reports_VersionNotFound_With_Available()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Sharp.Events", "41.0.1", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Sharp.Events", "99.0.0");
+
+        Assert.Equal(NugetLookupFailure.VersionNotFound, result.Failure);
+        Assert.Contains("41.0.1", result.AvailableVersions);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Reports_AssemblyNotFound_When_Tfm_Missing()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Sharp.Events", "41.0.1", "net6.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Sharp.Events", "41.0.1", "net481");
+
+        Assert.Equal(NugetLookupFailure.AssemblyNotFound, result.Failure);
+        Assert.Contains("net6.0", result.AvailableTfms);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Honors_NUGET_PACKAGES_Env_Var()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "EnvVar.Pkg", "2.0.0", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("EnvVar.Pkg");
+
+        Assert.Null(result.Failure);
+        Assert.Equal(cache.Path, result.CacheRoot);
+        Assert.StartsWith(cache.Path, result.FoundAssembly!);
+    }
+
+    private static void SeedPackage(string cacheRoot, string packageId, string version, string tfm)
+    {
+        var tfmDir = Path.Combine(cacheRoot, packageId.ToLowerInvariant(), version, "lib", tfm);
+        Directory.CreateDirectory(tfmDir);
+        File.WriteAllBytes(Path.Combine(tfmDir, packageId + ".dll"), new byte[] { 0x4D, 0x5A });
+    }
+
+    [Fact]
     public async Task FindDepsJson_Parses_Libraries_When_File_Exists()
     {
         using var temp = new TempDir();
@@ -173,4 +295,17 @@ internal sealed class TempDir : IDisposable
     {
         try { Directory.Delete(Path, true); } catch { }
     }
+}
+
+internal sealed class EnvVar : IDisposable
+{
+    private readonly string _name;
+    private readonly string? _previous;
+    public EnvVar(string name, string? value)
+    {
+        _name = name;
+        _previous = Environment.GetEnvironmentVariable(name);
+        Environment.SetEnvironmentVariable(name, value);
+    }
+    public void Dispose() => Environment.SetEnvironmentVariable(_name, _previous);
 }

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Shared;
 
@@ -382,6 +383,67 @@ public static class ReflectionTools
         catch (Exception ex)
         {
             return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
+        }
+    }
+
+    [McpServerTool]
+    [Description("Finds an assembly in the local NuGet cache by package id. Probes ~/.nuget/packages (or NUGET_PACKAGES env var). Use when you know the package id/version but not the DLL path. Picks highest version and best TFM when omitted.")]
+    public static async Task<string> FindAssemblyByNugetPackage(
+        IProjectAnalysisService projectAnalysis,
+        [Description("The NuGet package id (case-insensitive, e.g., 'Newtonsoft.Json').")] string packageId,
+        [Description("Optional package version (e.g., '13.0.3'). If omitted, the highest available version is picked.")] string? version = null,
+        [Description("Optional target framework moniker (e.g., 'net9.0'). If omitted, the best available TFM is picked.")] string? tfm = null)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(packageId))
+                return JsonHelpers.Error("InvalidArgument", "packageId must be provided.");
+
+            var lookup = await projectAnalysis.FindAssemblyInNugetCacheAsync(packageId, version, tfm);
+
+            if (lookup.Failure is NugetLookupFailure failure)
+            {
+                var code = failure switch
+                {
+                    NugetLookupFailure.PackageNotFound => "PackageNotFound",
+                    NugetLookupFailure.VersionNotFound => "VersionNotFound",
+                    _ => "AssemblyNotFound"
+                };
+                var message = failure switch
+                {
+                    NugetLookupFailure.PackageNotFound => $"Package '{packageId}' not found under NuGet cache '{lookup.CacheRoot}'.",
+                    NugetLookupFailure.VersionNotFound => version is null
+                        ? $"No versions available for package '{packageId}' under '{lookup.CacheRoot}'."
+                        : $"Version '{version}' not found for package '{packageId}'.",
+                    _ => $"No compatible assembly found for '{packageId}' {lookup.ResolvedVersion} (tfm: {tfm ?? "any"})."
+                };
+                return JsonHelpers.Error(code, message, new
+                {
+                    packageId,
+                    requestedVersion = version,
+                    requestedTfm = tfm,
+                    resolvedVersion = lookup.ResolvedVersion,
+                    cacheRoot = lookup.CacheRoot,
+                    availableVersions = lookup.AvailableVersions,
+                    availableTfms = lookup.AvailableTfms
+                });
+            }
+
+            var result = new
+            {
+                packageId = lookup.PackageId,
+                requestedVersion = lookup.RequestedVersion,
+                requestedTfm = lookup.RequestedTfm,
+                resolvedVersion = lookup.ResolvedVersion,
+                resolvedTfm = lookup.ResolvedTfm,
+                cacheRoot = lookup.CacheRoot,
+                foundAssembly = lookup.FoundAssembly
+            };
+            return JsonHelpers.Envelope("reflection.findByNugetPackage", result);
+        }
+        catch (Exception ex)
+        {
+            return JsonHelpers.Error("InternalError", $"Failed to resolve NuGet package: {ex.Message}");
         }
     }
 
