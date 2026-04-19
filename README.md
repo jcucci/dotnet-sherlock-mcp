@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 28+ specialized tools for .NET assembly analysis
+*   **Comprehensive MCP Server**: Provides 31+ specialized tools for .NET assembly analysis
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -159,6 +159,11 @@ Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name,
 - **`GetTypeEvents`**: Event declarations with handler types
 - **`GetTypeConstructors`**: Constructor signatures and parameters
 - **`AnalyzeMethod`**: Deep method analysis with overloads and attributes
+
+### Reverse Lookup
+- **`FindImplementationsOf`**: Types implementing an interface or deriving from a base class
+- **`FindMethodsReturning`**: Methods whose return type matches a given type (open-generic match supported)
+- **`FindReferencesTo`**: Broader sweep across parameters, fields, properties, events, and generic arguments
 
 ### Attributes & Metadata
 - **`GetMemberAttributes`**: Attributes for specific members
