@@ -7,12 +7,12 @@
     "url": "https://github.com/jcucci/dotnet-sherlock-mcp",
     "source": "github"
   },
-  "version": "2.7.2",
+  "version": "2.9.0",
   "packages": [
     {
       "registryType": "nuget",
       "identifier": "Sherlock.MCP.Server",
-      "version": "2.7.2",
+      "version": "2.9.0",
       "transport": {
         "type": "stdio"
       }
