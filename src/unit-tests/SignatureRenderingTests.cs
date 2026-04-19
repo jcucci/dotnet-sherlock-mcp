@@ -62,6 +62,29 @@ public class SignatureRenderingTests
     }
 
     [Fact]
+    public void StaticAbstractInterfaceMember_KeepsStaticAbstract()
+    {
+        var methods = _memberService.GetMethods(_testAssemblyPath,
+            "Sherlock.MCP.Tests.ITestSignatureShape");
+        var create = methods.FirstOrDefault(m => m.Name == "StaticCreate");
+        Assert.NotNull(create);
+        Assert.Contains("static", create.Signature);
+        Assert.Contains("abstract", create.Signature);
+        Assert.DoesNotContain("public", create.Signature);
+    }
+
+    [Fact]
+    public void StringAndCharDefaults_AreEscaped()
+    {
+        var methods = _memberService.GetMethods(_testAssemblyPath,
+            "Sherlock.MCP.Tests.NullableAndDefaults");
+        var quoted = methods.FirstOrDefault(m => m.Name == "QuotedDefaults");
+        Assert.NotNull(quoted);
+        Assert.Equal("\"a\\\"b\\\\c\"", quoted.Parameters[0].DefaultValue);
+        Assert.Equal("'\\''", quoted.Parameters[1].DefaultValue);
+    }
+
+    [Fact]
     public void GenericTypeFullName_HasNoBacktick()
     {
         var info = _typeService.GetTypeInfo(typeof(GenericHolder<,>));
