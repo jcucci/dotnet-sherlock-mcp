@@ -3,6 +3,10 @@ using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
 
 namespace Sherlock.MCP.Tests;
 
+[CollectionDefinition(nameof(EnvVarCollection), DisableParallelization = true)]
+public class EnvVarCollection { }
+
+[Collection(nameof(EnvVarCollection))]
 public class ProjectAnalysisServiceTests
 {
     private readonly IProjectAnalysisService _service = new ProjectAnalysisService();
@@ -231,6 +235,50 @@ public class ProjectAnalysisServiceTests
 
         Assert.Equal(NugetLookupFailure.AssemblyNotFound, result.Failure);
         Assert.Contains("net6.0", result.AvailableTfms);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Does_Not_Rank_Net48_Above_Net9()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Some.Pkg", "1.0.0", "net48");
+        SeedPackage(cache.Path, "Some.Pkg", "1.0.0", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Some.Pkg", "1.0.0");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("net9.0", result.ResolvedTfm);
+    }
+
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Prefers_Stable_Over_PreRelease()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Some.Pkg", "1.2.3", "net9.0");
+        SeedPackage(cache.Path, "Some.Pkg", "1.2.3-preview1", "net9.0");
+        SeedPackage(cache.Path, "Some.Pkg", "1.2.4-preview1", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Some.Pkg");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("1.2.3", result.ResolvedVersion);
+    }
+
+    [Theory]
+    [InlineData("../../etc/passwd")]
+    [InlineData("Some/Pkg")]
+    [InlineData("Some\\Pkg")]
+    [InlineData("/absolute/path")]
+    [InlineData("Pkg!Name")]
+    public async Task FindAssemblyInNugetCache_Rejects_Invalid_PackageId(string packageId)
+    {
+        using var cache = new TempDir();
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.FindAssemblyInNugetCacheAsync(packageId));
     }
 
     [Fact]

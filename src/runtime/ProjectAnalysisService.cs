@@ -169,6 +169,9 @@ public class ProjectAnalysisService : IProjectAnalysisService
 
     public Task<NugetAssemblyLookup> FindAssemblyInNugetCacheAsync(string packageId, string? version = null, string? tfm = null)
     {
+        ValidatePackageId(packageId);
+        ValidateOptionalPathSegment(version, nameof(version));
+        ValidateOptionalPathSegment(tfm, nameof(tfm));
         var cacheRoot = GetNugetCacheRoot();
         var packageDir = Path.Combine(cacheRoot, packageId.ToLowerInvariant());
         if (!Directory.Exists(packageDir))
@@ -289,6 +292,42 @@ public class ProjectAnalysisService : IProjectAnalysisService
             Failure: foundAssembly is null ? NugetLookupFailure.AssemblyNotFound : null));
     }
 
+    private static readonly char[] PathSeparators = { '/', '\\' };
+
+    private static void ValidatePackageId(string packageId)
+    {
+        if (string.IsNullOrWhiteSpace(packageId))
+            throw new ArgumentException("packageId must be provided.", nameof(packageId));
+        ValidatePathSegment(packageId, nameof(packageId));
+        foreach (var ch in packageId)
+            if (!IsValidNugetIdChar(ch))
+                throw new ArgumentException($"packageId contains invalid character '{ch}'. NuGet ids allow letters, digits, '.', '_', and '-'.", nameof(packageId));
+    }
+
+    private static void ValidateOptionalPathSegment(string? value, string paramName)
+    {
+        if (value is null)
+            return;
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException($"{paramName} must not be whitespace.", paramName);
+        ValidatePathSegment(value, paramName);
+    }
+
+    private static void ValidatePathSegment(string value, string paramName)
+    {
+        if (Path.IsPathRooted(value))
+            throw new ArgumentException($"{paramName} must not be a rooted path.", paramName);
+        if (value.IndexOfAny(PathSeparators) >= 0)
+            throw new ArgumentException($"{paramName} must not contain path separators.", paramName);
+        if (value == ".." || value == "." || value.Contains(".."))
+            throw new ArgumentException($"{paramName} must not contain parent-directory segments.", paramName);
+        if (value.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new ArgumentException($"{paramName} contains invalid path characters.", paramName);
+    }
+
+    private static bool IsValidNugetIdChar(char ch) =>
+        char.IsLetterOrDigit(ch) || ch == '.' || ch == '_' || ch == '-';
+
     private static string GetNugetCacheRoot()
     {
         var overridePath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
@@ -313,9 +352,9 @@ public class ProjectAnalysisService : IProjectAnalysisService
 
     private static Version? TryParseVersion(string raw)
     {
-        var dash = raw.IndexOf('-');
-        var core = dash >= 0 ? raw[..dash] : raw;
-        return Version.TryParse(core, out var v) ? v : null;
+        if (raw.Contains('-'))
+            return null;
+        return Version.TryParse(raw, out var v) ? v : null;
     }
 
     private static string[] SortVersionsDescending(string[] versions)
@@ -359,13 +398,35 @@ public class ProjectAnalysisService : IProjectAnalysisService
         if (lower.StartsWith("net") && !lower.StartsWith("netstandard") && !lower.StartsWith("netcoreapp") && !lower.Contains("framework"))
         {
             var rest = lower[3..];
+            if (IsFrameworkStyleTfm(rest))
+                return (3, ParseFrameworkStyleVersion(rest));
             return (0, TryParseVersion(rest) ?? new Version(0, 0));
         }
         if (lower.StartsWith("netcoreapp"))
             return (1, TryParseVersion(lower[10..]) ?? new Version(0, 0));
         if (lower.StartsWith("netstandard"))
             return (2, TryParseVersion(lower[11..]) ?? new Version(0, 0));
-        return (3, new Version(0, 0));
+        return (4, new Version(0, 0));
+    }
+
+    private static bool IsFrameworkStyleTfm(string rest)
+    {
+        if (rest.Length is not (2 or 3))
+            return false;
+        foreach (var ch in rest)
+            if (!char.IsDigit(ch))
+                return false;
+        return rest[0] is >= '1' and <= '4';
+    }
+
+    private static Version ParseFrameworkStyleVersion(string rest)
+    {
+        var major = rest[0] - '0';
+        var minor = rest[1] - '0';
+        if (rest.Length == 2)
+            return new Version(major, minor);
+        var patch = rest[2] - '0';
+        return new Version(major, minor, patch);
     }
 
     private static string? PickAssemblyForPackage(string[] dlls, string packageId)

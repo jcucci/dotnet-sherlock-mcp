@@ -399,7 +399,15 @@ public static class ReflectionTools
             if (string.IsNullOrWhiteSpace(packageId))
                 return JsonHelpers.Error("InvalidArgument", "packageId must be provided.");
 
-            var lookup = await projectAnalysis.FindAssemblyInNugetCacheAsync(packageId, version, tfm);
+            NugetAssemblyLookup lookup;
+            try
+            {
+                lookup = await projectAnalysis.FindAssemblyInNugetCacheAsync(packageId, version, tfm);
+            }
+            catch (ArgumentException ex)
+            {
+                return JsonHelpers.Error("InvalidArgument", ex.Message);
+            }
 
             if (lookup.Failure is NugetLookupFailure failure)
             {
