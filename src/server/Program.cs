@@ -32,6 +32,7 @@ builder.Services
     .AddSingleton<ITypeAnalysisService, TypeAnalysisService>()
     .AddSingleton<IXmlDocService, XmlDocService>()
     .AddSingleton<IProjectAnalysisService, ProjectAnalysisService>()
+    .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<ToolMiddleware>()
     .AddMcpServer()
     .WithStdioServerTransport()

@@ -20,7 +20,10 @@ public class RuntimeOptions
             ["GetAllTypeMembers"] = 20,    // Combined view, keep small
             ["AnalyzeAssembly"] = 50,      // Type summaries
             ["AnalyzeType"] = 25,          // Combined members
-            ["GetTypesFromAssembly"] = 50  // Type summaries
+            ["GetTypesFromAssembly"] = 50, // Type summaries
+            ["FindImplementationsOf"] = 50,
+            ["FindMethodsReturning"] = 50,
+            ["FindReferencesTo"] = 25      // Broader sweep, keep smaller
         };
     }
 
