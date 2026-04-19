@@ -41,3 +41,21 @@ public class TestSampleClass
     public void OnPublicEvent() => PublicEvent?.Invoke();
 }
 
+public interface ITestSignatureShape
+{
+    void AbstractOp(int id);
+    string Label { get; }
+    event Action Fired;
+}
+
+public class NullableAndDefaults
+{
+    public void Nullables(int? maybeInt, System.Nullable<double> maybeDouble) { }
+    public void Defaults(bool flag = false, string? name = null, int count = 0) { }
+}
+
+public class GenericHolder<T, U>
+{
+    public T? Value { get; set; }
+}
+
