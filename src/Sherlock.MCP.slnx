@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="server/Sherlock.MCP.Server.csproj" />
+  <Project Path="runtime/Sherlock.MCP.Runtime.csproj" />
+  <Project Path="unit-tests/Sherlock.MCP.Tests.csproj" />
+  <Project Path="integration-tests/Sherlock.MCP.IntegrationTests.csproj" />
+  <Project Path="example/Sherlock.MCP.Example.csproj" />
+</Solution>

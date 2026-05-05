@@ -36,10 +36,10 @@ jobs:
             10.0.x
 
       - name: Restore dependencies
-        run: dotnet restore src/Sherlock.MCP.sln
+        run: dotnet restore src/Sherlock.MCP.slnx
 
       - name: Build
-        run: dotnet build src/Sherlock.MCP.sln --configuration Release --no-restore
+        run: dotnet build src/Sherlock.MCP.slnx --configuration Release --no-restore
 
   test:
     name: Test
@@ -56,7 +56,7 @@ jobs:
             10.0.x
 
       - name: Restore dependencies
-        run: dotnet restore src/Sherlock.MCP.sln
+        run: dotnet restore src/Sherlock.MCP.slnx
 
       - name: Test
-        run: dotnet test src/Sherlock.MCP.sln --configuration Release --no-restore --verbosity normal
+        run: dotnet test src/Sherlock.MCP.slnx --configuration Release --no-restore --verbosity normal

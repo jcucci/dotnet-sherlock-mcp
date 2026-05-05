@@ -17,7 +17,10 @@ if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
     return 0;
 }
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings
+{
+    Args = args,
+});
 builder.Logging.AddConsole(consoleLogOptions =>
 {
     consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;

@@ -31,7 +31,7 @@ The project is organized into the following components:
 To build the entire solution, run the following command from the root directory:
 
 ```bash
-dotnet build src/Sherlock.MCP.sln
+dotnet build src/Sherlock.MCP.slnx
 ```
 
 ### Running the Server
