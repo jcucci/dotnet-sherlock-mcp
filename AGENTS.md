@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/Sherlock.MCP.sln`: Solution file.
+- `src/Sherlock.MCP.slnx`: Solution file (XML format).
 - `src/server`: MCP server (`Sherlock.MCP.Server`) and entry point.
 - `src/runtime`: Core analysis services and contracts (`Sherlock.MCP.Runtime`).
 - `src/unit-tests`: xUnit tests (e.g., `MemberAnalysisServiceTests.cs`).
@@ -9,7 +9,7 @@
 - `src/docs`: Roadmap and supporting docs.
 
 ## Build, Test, and Development Commands
-- `dotnet restore && dotnet build src/Sherlock.MCP.sln`: Restore and build (net9.0).
+- `dotnet restore && dotnet build src/Sherlock.MCP.slnx`: Restore and build (net9.0).
 - `dotnet run --project src/server/Sherlock.MCP.Server.csproj`: Run MCP server over stdio.
 - `dotnet test src/unit-tests/Sherlock.MCP.Tests.csproj`: Run unit tests.
 - `dotnet test --collect:"XPlat Code Coverage"`: Run tests with coverage (coverlet).

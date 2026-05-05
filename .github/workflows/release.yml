@@ -42,13 +42,13 @@ jobs:
           fi
 
       - name: Restore dependencies
-        run: dotnet restore src/Sherlock.MCP.sln
+        run: dotnet restore src/Sherlock.MCP.slnx
 
       - name: Build
-        run: dotnet build src/Sherlock.MCP.sln --configuration Release --no-restore
+        run: dotnet build src/Sherlock.MCP.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test src/Sherlock.MCP.sln --configuration Release --no-restore --verbosity normal
+        run: dotnet test src/Sherlock.MCP.slnx --configuration Release --no-restore --verbosity normal
 
       - name: Pack
         run: dotnet pack src/server/Sherlock.MCP.Server.csproj --configuration Release -o ./artifacts

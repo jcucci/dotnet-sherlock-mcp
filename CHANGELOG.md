@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.1] - 2026-05-05
+
+### Fixed
+
+- Excessive inotify watch consumption on Linux that could exhaust `fs.inotify.max_user_watches`. The host builder previously wired up the default `appsettings.json` reload pipeline, which on Linux backs `PhysicalFileProvider` with a `FileSystemWatcher` rooted at the process working directory and configured with `IncludeSubdirectories = true`. When `sherlock-mcp` was launched from a project root or `$HOME` (the typical client CWD for a stdio MCP server installed as a `dotnet tool`), this recursively allocated one inotify watch per subdirectory across the entire tree. Sherlock does not consume `IConfiguration` anywhere, so the host now uses `Host.CreateEmptyApplicationBuilder`, eliminating the watcher entirely. A new `Sherlock.MCP.IntegrationTests` project pins the contract on Linux by spawning the server in a directory of stub subdirectories and asserting the resulting inotify watch count via `/proc/<pid>/fdinfo`. (#31)
+
 ## [2.9.0] - 2026-04-19
 
 ### Added
@@ -56,6 +62,7 @@ This is the baseline release for conventional commits adoption. Prior versions w
 
 Versions prior to 2.7.0 were not tracked with conventional commits. This changelog begins with 2.7.0 as the baseline.
 
+[2.9.1]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.9.1
 [2.9.0]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.9.0
 [2.7.2]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.2
 [2.7.1]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.1

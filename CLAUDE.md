@@ -8,7 +8,7 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 
 ## Project Structure
 
-- `src/Sherlock.MCP.sln` - Visual Studio solution file
+- `src/Sherlock.MCP.slnx` - Visual Studio solution file (XML format)
 - `src/server/Sherlock.MCP.Server.csproj` - Main MCP server application
 - `src/runtime/Sherlock.MCP.Runtime.csproj` - Core reflection and assembly discovery services
 - `src/unit-tests/Sherlock.MCP.Tests.csproj` - Unit tests for all functionality
