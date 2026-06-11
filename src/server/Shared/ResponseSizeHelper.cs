@@ -127,6 +127,11 @@ public static class ResponseSizeHelper
                 new[] { "GetTypeMethods", "GetTypeProperties", "GetTypeFields" },
                 new { maxItems = 15 }
             ),
+            "GetAssemblyInfo" => (
+                "Use the lean projection to avoid returning every assembly attribute.",
+                Array.Empty<string>(),
+                new { projection = "summary" }
+            ),
             _ => (
                 "Use pagination parameters to retrieve data in smaller chunks.",
                 Array.Empty<string>(),

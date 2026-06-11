@@ -114,6 +114,10 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
+            if (normalizedProjection != "summary" && normalizedProjection != "full")
+                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
             var name = assembly.GetName();
@@ -123,7 +127,7 @@ public static class ReflectionTools
                 .OrderBy(r => r, StringComparer.Ordinal)
                 .ToArray();
 
-            var isFull = string.Equals(projection, "full", StringComparison.OrdinalIgnoreCase);
+            var isFull = normalizedProjection == "full";
 
             object result = isFull
                 ? new
@@ -147,6 +151,10 @@ public static class ReflectionTools
                     targetFramework = ReadTargetFramework(assembly),
                     referencedAssemblies
                 };
+
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "GetAssemblyInfo");
+            if (sizeValidationError != null)
+                return sizeValidationError;
 
             return JsonHelpers.Envelope("reflection.assemblyInfo", result);
         }

@@ -43,6 +43,27 @@ public class ReflectionToolsTests : IDisposable
     }
 
     [Fact]
+    public void GetAssemblyInfo_InvalidProjection_ReturnsInvalidProjection()
+    {
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "verbose");
+
+        var doc = JsonDocument.Parse(result);
+        Assert.Equal("error", doc.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("InvalidProjection", doc.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public void GetAssemblyInfo_ProjectionIsNormalized()
+    {
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "  FULL  ");
+
+        Assert.DoesNotContain("\"error\"", result);
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        Assert.Equal("full", data.GetProperty("projection").GetString());
+        Assert.True(data.GetProperty("attributes").GetArrayLength() > 0);
+    }
+
+    [Fact]
     public void GetAssemblyInfo_MissingFile_ReturnsAssemblyNotFound()
     {
         var result = ReflectionTools.GetAssemblyInfo(_contexts, "/no/such/assembly.dll");
