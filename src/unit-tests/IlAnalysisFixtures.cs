@@ -28,3 +28,12 @@ public class IlSampleSubject
         public abstract void Nothing();
     }
 }
+
+public class StaticCtorSubject
+{
+    private static readonly List<int> _shared = CreateShared();
+
+    private static List<int> CreateShared() => new();
+
+    public int UseShared() => _shared.Count;
+}

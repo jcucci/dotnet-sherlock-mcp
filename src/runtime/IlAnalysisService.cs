@@ -39,9 +39,15 @@ public class IlAnalysisService : IIlAnalysisService
                 {
                     if (NameEquals(method.Name, methodName, options.CaseSensitive)) targets.Add(method);
                 }
-                if (IsConstructorName(methodName))
+                if (IsStaticConstructorName(methodName))
                 {
-                    foreach (var ctor in SafeGetConstructors(candidate, flags)) targets.Add(ctor);
+                    var cctor = SafeGetTypeInitializer(candidate);
+                    if (cctor != null) targets.Add(cctor);
+                }
+                else if (IsInstanceConstructorName(methodName))
+                {
+                    foreach (var ctor in SafeGetConstructors(candidate, flags))
+                        if (!ctor.IsStatic) targets.Add(ctor);
                 }
                 break;
             }
@@ -151,6 +157,7 @@ public class IlAnalysisService : IIlAnalysisService
             if (!pe.HasMetadata) return;
             var md = pe.GetMetadataReader();
             var resolver = new MetadataTokenResolver(md);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var typeHandle in md.TypeDefinitions)
             {
@@ -177,7 +184,10 @@ public class IlAnalysisService : IIlAnalysisService
                         if (resolved == null) continue;
                         if (!MetadataTypeNameMatcher.Matches(resolved.Value.DeclaringType, typeName, options.CaseSensitive)) continue;
 
-                        if (!tryAdd(new InboundCallHit(path, callerType, callerMethod, ReferenceKindName(tokenRef.Kind), resolved.Value.Display)))
+                        var referenceKind = ReferenceKindName(tokenRef.Kind);
+                        if (!seen.Add($"{callerType}|{callerMethod}|{referenceKind}|{resolved.Value.Display}")) continue;
+
+                        if (!tryAdd(new InboundCallHit(path, callerType, callerMethod, referenceKind, resolved.Value.Display)))
                             return;
                     }
                 }
@@ -233,11 +243,20 @@ public class IlAnalysisService : IIlAnalysisService
         catch { return Array.Empty<ConstructorInfo>(); }
     }
 
+    private static ConstructorInfo? SafeGetTypeInitializer(Type t)
+    {
+        try { return t.TypeInitializer; }
+        catch { return null; }
+    }
+
     private static bool NameEquals(string a, string b, bool caseSensitive) =>
         string.Equals(a, b, caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsConstructorName(string methodName) =>
-        methodName is ".ctor" or ".cctor" or "ctor" or "cctor";
+    private static bool IsInstanceConstructorName(string methodName) =>
+        methodName is ".ctor" or "ctor";
+
+    private static bool IsStaticConstructorName(string methodName) =>
+        methodName is ".cctor" or "cctor";
 
     private static bool IsFieldAccess(IlRefKind kind) =>
         kind is IlRefKind.LdFld or IlRefKind.LdsFld or IlRefKind.StFld or IlRefKind.StsFld;

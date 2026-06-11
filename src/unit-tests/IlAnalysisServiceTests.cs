@@ -75,6 +75,17 @@ public class IlAnalysisServiceTests
     }
 
     [Fact]
+    public void GetMethodCalls_StaticConstructor_AnalyzesTypeInitializerBody()
+    {
+        var result = _svc.GetMethodCalls(_testAssemblyPath, "StaticCtorSubject", ".cctor", _options);
+
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.MatchedOverloads);
+        Assert.False(result.AnyBodyless);
+        Assert.Contains(result.Calls, c => c.Target == $"{typeof(StaticCtorSubject).FullName}.CreateShared");
+    }
+
+    [Fact]
     public void GetMethodCalls_UnknownMethod_ReturnsNull()
     {
         Assert.Null(_svc.GetMethodCalls(_testAssemblyPath, "IlSampleSubject", "NoSuchMethod", _options));
@@ -90,6 +101,21 @@ public class IlAnalysisServiceTests
             h.CallerTypeFullName == SubjectFullName &&
             h.CallerMethod == "DoWork" &&
             h.ReferenceKind == "ilCall");
+    }
+
+    [Fact]
+    public void FindInboundCallers_DeduplicatesRepeatedCallsToSameTarget()
+    {
+        // DoWork calls Console.WriteLine twice; the inbound hit must appear only once.
+        var hits = _svc.FindInboundCallers([_testAssemblyPath], "Console", new ReverseLookupOptions());
+
+        var writeLineFromDoWork = hits.Count(h =>
+            h.CallerTypeFullName == SubjectFullName &&
+            h.CallerMethod == "DoWork" &&
+            h.TargetMember == "System.Console.WriteLine" &&
+            h.ReferenceKind == "ilCall");
+
+        Assert.Equal(1, writeLineFromDoWork);
     }
 
     [Fact]
