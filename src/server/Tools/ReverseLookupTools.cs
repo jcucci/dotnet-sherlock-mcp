@@ -301,9 +301,10 @@ public static class ReverseLookupTools
     }
 
     [McpServerTool]
-    [Description("Finds all references to a type across one or more assemblies: base types, implemented interfaces, method returns/parameters, field/property/event types (recurses into generic arguments). Bounded sweep with hardCap to protect against runaway scans; check truncated=true. Returns lean summary by default; projection='full' adds assemblyPath, signature, dedupeKey.")]
+    [Description("Finds all references to a type across one or more assemblies: base types, implemented interfaces, method returns/parameters, field/property/event types (recurses into generic arguments). With analysisDepth='il', also scans method bodies for inbound callers ('who calls into this type?'). Bounded sweep with hardCap to protect against runaway scans; check truncated=true. Returns lean summary by default; projection='full' adds assemblyPath, signature, dedupeKey.")]
     public static string FindReferencesTo(
         IReverseLookupService reverseLookup,
+        IIlAnalysisService ilAnalysis,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -311,6 +312,7 @@ public static class ReverseLookupTools
         [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public members and types (default: false)")] bool includeNonPublic = false,
+        [Description("Analysis depth. 'signatures' (default): type usage in signatures and member declarations. 'il': additionally scan method bodies for inbound callers (referenceKind 'ilCall'/'ilFieldRead'/'ilFieldWrite'). IL scanning is slower.")] string analysisDepth = "signatures",
         [Description("Maximum items to return (default: 25)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
@@ -326,14 +328,18 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
+            var normalizedDepth = (analysisDepth ?? "signatures").Trim().ToLowerInvariant();
+            if (normalizedDepth != "signatures" && normalizedDepth != "il")
+                return JsonHelpers.Error("InvalidAnalysisDepth", "analysisDepth must be 'signatures' or 'il'");
+
             var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.references.salt",
-                scopeKey, typeName, caseSensitive, includeNonPublic);
+                scopeKey, typeName, caseSensitive, includeNonPublic, normalizedDepth);
 
             var cacheKey = CacheKeyHelper.Build(
                 "reverselookup.references",
-                scopeKey, typeName, caseSensitive, includeNonPublic, maxItems, continuationToken, skip, normalizedProjection);
+                scopeKey, typeName, caseSensitive, includeNonPublic, normalizedDepth, maxItems, continuationToken, skip, normalizedProjection);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -347,6 +353,33 @@ public static class ReverseLookupTools
 
                 var scanResult = reverseLookup.FindReferences(scope.Paths, typeName, options);
                 var allHits = scanResult.Hits;
+                var truncated = scanResult.Truncated;
+
+                if (normalizedDepth == "il")
+                {
+                    var inbound = ilAnalysis.FindInboundCallers(scope.Paths, typeName, options);
+                    if (inbound.Length > 0)
+                    {
+                        var inboundHits = inbound.Select(h => new ReferenceHit(
+                            AssemblyPath: h.AssemblyPath,
+                            DeclaringTypeFullName: h.CallerTypeFullName,
+                            MemberKind: "method",
+                            MemberName: h.CallerMethod,
+                            ReferenceKind: h.ReferenceKind,
+                            Signature: $"{h.CallerMethod} -> {h.TargetMember}",
+                            DedupeKey: $"{h.CallerTypeFullName}|method|{h.CallerMethod}|{h.ReferenceKind}|{h.TargetMember}"));
+
+                        allHits = allHits.Concat(inboundHits)
+                            .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
+                            .ThenBy(h => h.DeclaringTypeFullName, StringComparer.Ordinal)
+                            .ThenBy(h => h.MemberKind, StringComparer.Ordinal)
+                            .ThenBy(h => h.MemberName, StringComparer.Ordinal)
+                            .ThenBy(h => h.ReferenceKind, StringComparer.Ordinal)
+                            .ThenBy(h => h.DedupeKey, StringComparer.Ordinal)
+                            .ToArray();
+                    }
+                    truncated = truncated || inbound.Length >= options.HardCap;
+                }
 
                 var offset = 0;
                 var salt = TokenHelper.MakeSalt(saltSeed);
@@ -393,7 +426,7 @@ public static class ReverseLookupTools
                     projection = normalizedProjection,
                     total = allHits.Length,
                     count = page.Length,
-                    truncated = scanResult.Truncated,
+                    truncated,
                     hardCap,
                     nextToken,
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
