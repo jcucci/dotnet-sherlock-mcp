@@ -12,6 +12,7 @@ namespace Sherlock.MCP.Tests;
 public class ReverseLookupToolsTests
 {
     private readonly IReverseLookupService _svc = new ReverseLookupService();
+    private readonly IIlAnalysisService _il = new IlAnalysisService();
     private readonly RuntimeOptions _runtimeOptions = new();
     private readonly ToolMiddleware _middleware;
     private readonly string _testAssemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -231,7 +232,7 @@ public class ReverseLookupToolsTests
     public void FindReferencesTo_Envelope_IncludesTruncatedFlag()
     {
         var result = ReverseLookupTools.FindReferencesTo(
-            _svc, _middleware, _runtimeOptions,
+            _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent", noCache: true);
 
         Assert.DoesNotContain("\"error\"", result);
@@ -247,7 +248,7 @@ public class ReverseLookupToolsTests
     public void FindReferencesTo_SmallMaxItems_ReportsFloor500HardCap()
     {
         var result = ReverseLookupTools.FindReferencesTo(
-            _svc, _middleware, _runtimeOptions,
+            _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true);
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -261,7 +262,7 @@ public class ReverseLookupToolsTests
     public void FindReferencesTo_LargeMaxItems_ScalesHardCapAboveFloor()
     {
         var result = ReverseLookupTools.FindReferencesTo(
-            _svc, _middleware, _runtimeOptions,
+            _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent", maxItems: 200, noCache: true);
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -272,7 +273,7 @@ public class ReverseLookupToolsTests
     public void FindReferencesTo_ContinuationToken_RoundTrips()
     {
         var page1 = ReverseLookupTools.FindReferencesTo(
-            _svc, _middleware, _runtimeOptions,
+            _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true);
 
         var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
@@ -282,7 +283,7 @@ public class ReverseLookupToolsTests
         Assert.False(string.IsNullOrEmpty(nextToken));
 
         var page2 = ReverseLookupTools.FindReferencesTo(
-            _svc, _middleware, _runtimeOptions,
+            _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent",
             maxItems: 1, continuationToken: nextToken, noCache: true);
 
