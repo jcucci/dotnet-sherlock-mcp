@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Xml.Linq;
 using Sherlock.MCP.Runtime.Contracts.XmlDocs;
@@ -6,63 +7,105 @@ namespace Sherlock.MCP.Runtime;
 
 public class XmlDocService : IXmlDocService
 {
-    private readonly Dictionary<string, XDocument?> _xmlCache = new();
+    private const int MaxCachedDocs = 32;
+
+    private sealed record CachedDoc(long StampTicks, long Length, Dictionary<string, XElement> MembersById);
+
+    private readonly ConcurrentDictionary<string, Lazy<CachedDoc?>> _docs = new(StringComparer.OrdinalIgnoreCase);
 
     public XmlDocInfo? GetXmlDocsForType(Type type)
     {
-        var doc = LoadXml(type.Assembly);
+        var doc = LoadDoc(type.Assembly);
         if (doc == null) return null;
         var id = $"T:{type.FullName}";
-        return Extract(doc, id);
+        return doc.MembersById.TryGetValue(id, out var el) ? Extract(el) : null;
     }
 
     public XmlDocInfo? GetXmlDocsForMember(MemberInfo member)
     {
-        var doc = LoadXml(member.Module.Assembly);
+        var doc = LoadDoc(member.Module.Assembly);
         if (doc == null) return null;
         var id = BuildMemberId(member);
-        if (id != null)
-        {
-            var info = Extract(doc, id);
-            if (info != null) return info;
-        }
+        if (id != null && doc.MembersById.TryGetValue(id, out var el))
+            return Extract(el);
+
         // Fallback for methods without signature resolution: first by name
         if (member is MethodBase mb && mb.DeclaringType?.FullName is string fullName)
         {
             var prefix = $"M:{fullName}.{mb.Name}";
-            var e = doc.Descendants("member").FirstOrDefault(x => {
-                var n = (string?)x.Attribute("name");
-                return n != null && n.StartsWith(prefix, StringComparison.Ordinal);
-            });
-            if (e != null) return Extract(e);
+            var match = doc.MembersById
+                .Where(p => p.Key.StartsWith(prefix, StringComparison.Ordinal))
+                .OrderBy(p => p.Key, StringComparer.Ordinal)
+                .Select(p => p.Value)
+                .FirstOrDefault();
+            if (match != null) return Extract(match);
         }
         return null;
     }
 
-    private XDocument? LoadXml(Assembly assembly)
+    private CachedDoc? LoadDoc(Assembly assembly)
     {
         var key = assembly.Location;
         if (string.IsNullOrEmpty(key)) return null;
-        if (_xmlCache.TryGetValue(key, out var cached)) return cached;
+
+        var xmlPath = Path.ChangeExtension(key, ".xml");
+        var fileInfo = new FileInfo(xmlPath);
+        if (!fileInfo.Exists) return null;
+
+        var stampTicks = fileInfo.LastWriteTimeUtc.Ticks;
+        var length = fileInfo.Length;
+
+        while (true)
+        {
+            var lazy = _docs.GetOrAdd(key, _ => new Lazy<CachedDoc?>(
+                () => ParseDoc(xmlPath, stampTicks, length),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+            var cached = lazy.Value;
+            if (cached == null)
+            {
+                _docs.TryRemove(new KeyValuePair<string, Lazy<CachedDoc?>>(key, lazy));
+                return null;
+            }
+
+            if (cached.StampTicks != stampTicks || cached.Length != length)
+            {
+                _docs.TryRemove(new KeyValuePair<string, Lazy<CachedDoc?>>(key, lazy));
+                continue;
+            }
+
+            EvictOverflow();
+            return cached;
+        }
+    }
+
+    private static CachedDoc? ParseDoc(string xmlPath, long stampTicks, long length)
+    {
         try
         {
-            var xmlPath = Path.ChangeExtension(key, ".xml");
-            if (!File.Exists(xmlPath)) { _xmlCache[key] = null; return null; }
             var doc = XDocument.Load(xmlPath);
-            _xmlCache[key] = doc;
-            return doc;
+            var membersById = new Dictionary<string, XElement>(StringComparer.Ordinal);
+            foreach (var el in doc.Descendants("member"))
+            {
+                var name = (string?)el.Attribute("name");
+                if (name != null) membersById.TryAdd(name, el);
+            }
+            return new CachedDoc(stampTicks, length, membersById);
         }
         catch
         {
-            _xmlCache[key] = null;
             return null;
         }
     }
 
-    private static XmlDocInfo? Extract(XDocument doc, string memberId)
+    private void EvictOverflow()
     {
-        var el = doc.Descendants("member").FirstOrDefault(x => (string?)x.Attribute("name") == memberId);
-        return el != null ? Extract(el) : (XmlDocInfo?)null;
+        if (_docs.Count <= MaxCachedDocs) return;
+        foreach (var pair in _docs.ToArray())
+        {
+            if (_docs.Count <= MaxCachedDocs) return;
+            _docs.TryRemove(pair);
+        }
     }
 
     private static XmlDocInfo Extract(XElement el)

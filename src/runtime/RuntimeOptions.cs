@@ -9,6 +9,8 @@ public class RuntimeOptions
         CacheTtlSeconds = 300;
         EnableStreaming = false;
         IncludeNonPublicByDefault = false;
+        MaxLoadedAssemblies = 64;
+        MaxCachedResponses = 256;
 
         ToolSpecificMaxItems = new Dictionary<string, int>
         {
@@ -36,6 +38,10 @@ public class RuntimeOptions
     public bool EnableStreaming { get; set; }
 
     public bool IncludeNonPublicByDefault { get; set; }
+
+    public int MaxLoadedAssemblies { get; set; }
+
+    public int MaxCachedResponses { get; set; }
 
     public Dictionary<string, int> ToolSpecificMaxItems { get; }
 

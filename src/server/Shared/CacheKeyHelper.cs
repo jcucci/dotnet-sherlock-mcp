@@ -13,6 +13,19 @@ public static class CacheKeyHelper
         return $"{baseKey}:{hash}";
     }
 
+    public static string FileStamp(string path)
+    {
+        try
+        {
+            var info = new FileInfo(Path.GetFullPath(path));
+            return info.Exists ? $"{info.FullName}|{info.LastWriteTimeUtc.Ticks}|{info.Length}" : info.FullName;
+        }
+        catch
+        {
+            return path;
+        }
+    }
+
     public static string Sha256(string input)
     {
         using var sha = SHA256.Create();
