@@ -35,6 +35,40 @@ public class ProjectAnalysisServiceTests
     }
 
     [Fact]
+    public async Task AnalyzeSolutionFile_Parses_Slnx_Projects_Including_Nested_And_Filtered()
+    {
+        using var temp = new TempDir();
+        var appDir = Path.Combine(temp.Path, "src", "App");
+        var libDir = Path.Combine(temp.Path, "src", "Lib");
+        Directory.CreateDirectory(appDir);
+        Directory.CreateDirectory(libDir);
+        await File.WriteAllTextAsync(Path.Combine(appDir, "App.csproj"), MinimalCsproj());
+        await File.WriteAllTextAsync(Path.Combine(libDir, "Lib.csproj"), MinimalCsproj());
+
+        var slnx = """
+<Solution>
+  <Project Path="src/App/App.csproj" />
+  <Folder Name="/Libraries/">
+    <Project Path="src/Lib/Lib.csproj" />
+  </Folder>
+  <Project Path="docs/readme.md" />
+</Solution>
+""";
+        var slnxPath = Path.Combine(temp.Path, "Test.slnx");
+        await File.WriteAllTextAsync(slnxPath, slnx);
+
+        var projects = await _service.AnalyzeSolutionFileAsync(slnxPath);
+
+        Assert.Equal(2, projects.Length);
+        var app = projects.Single(p => p.Name == "App");
+        var lib = projects.Single(p => p.Name == "Lib");
+        Assert.EndsWith("src/App/App.csproj", app.RelativePath.Replace('\\', '/'));
+        Assert.EndsWith("src/Lib/Lib.csproj", lib.RelativePath.Replace('\\', '/'));
+        Assert.True(File.Exists(app.FullPath));
+        Assert.True(File.Exists(lib.FullPath));
+    }
+
+    [Fact]
     public async Task AnalyzeProjectFile_Parses_Metadata_And_References()
     {
         using var temp = new TempDir();

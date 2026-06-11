@@ -22,6 +22,13 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
         var solutionDirectory = Path.GetDirectoryName(solutionFilePath) ?? string.Empty;
         var content = await File.ReadAllTextAsync(solutionFilePath);
+        return Path.GetExtension(solutionFilePath).Equals(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? ParseSlnxProjects(content, solutionDirectory)
+            : ParseSlnProjects(content, solutionDirectory);
+    }
+
+    private static ProjectInfo[] ParseSlnProjects(string content, string solutionDirectory)
+    {
         var projects = new List<ProjectInfo>();
         var matches = SolutionProjectRegex.Matches(content);
         foreach (Match match in matches)
@@ -41,6 +48,30 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 fullPath,
                 projectGuid,
                 projectTypeGuid
+            ));
+        }
+        return projects.ToArray();
+    }
+
+    private static ProjectInfo[] ParseSlnxProjects(string content, string solutionDirectory)
+    {
+        var doc = XDocument.Parse(content);
+        var projects = new List<ProjectInfo>();
+        foreach (var element in doc.Descendants("Project"))
+        {
+            var relativePath = element.Attribute("Path")?.Value;
+            if (string.IsNullOrWhiteSpace(relativePath))
+                continue;
+            if (!SupportedProjectExtensions.Any(ext => relativePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            var normalized = relativePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+            var fullPath = Path.GetFullPath(Path.Combine(solutionDirectory, normalized));
+            projects.Add(new ProjectInfo(
+                Path.GetFileNameWithoutExtension(normalized),
+                relativePath,
+                fullPath,
+                string.Empty,
+                string.Empty
             ));
         }
         return projects.ToArray();
@@ -342,19 +373,24 @@ public class ProjectAnalysisService : IProjectAnalysisService
         if (versions.Length == 0)
             return null;
         var parsed = versions
-            .Select(v => (raw: v, parsed: TryParseVersion(v)))
+            .Select(v => (raw: v, parsed: TryParseVersion(v), isStable: !v.Contains('-')))
+            .Where(p => p.parsed is not null)
             .ToArray();
-        var withParsed = parsed.Where(p => p.parsed is not null).ToArray();
-        if (withParsed.Length > 0)
-            return withParsed.OrderByDescending(p => p.parsed!).First().raw;
+        if (parsed.Length > 0)
+            return parsed
+                .OrderByDescending(p => p.isStable)
+                .ThenByDescending(p => p.parsed!)
+                .First().raw;
         return versions.OrderByDescending(v => v, StringComparer.OrdinalIgnoreCase).First();
     }
 
     private static Version? TryParseVersion(string raw)
     {
-        if (raw.Contains('-'))
-            return null;
-        return Version.TryParse(raw, out var v) ? v : null;
+        var core = raw.AsSpan();
+        var cut = core.IndexOfAny('-', '+');
+        if (cut >= 0)
+            core = core[..cut];
+        return Version.TryParse(core, out var v) ? v : null;
     }
 
     private static string[] SortVersionsDescending(string[] versions)
