@@ -17,7 +17,7 @@ public static class SearchTools
         new(StringComparer.OrdinalIgnoreCase) { "method", "property", "field", "event", "type" };
 
     [McpServerTool]
-    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of GetTypeMethods/Properties (e.g., 'where is ParseConnectionString defined?'). Returns a lean summary ({ declaringType, memberKind, name, signature }) by default. Pass projection='full' to add assemblyPath. Filter by memberKinds (csv: method|property|field|event|type).")]
+    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of GetTypeMethods/Properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
     public static string SearchMembers(
         ISearchService searchService,
         ToolMiddleware middleware,
@@ -30,7 +30,6 @@ public static class SearchTools
         [Description("Maximum items to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Response shape. 'summary' (default, token-lean): { declaringType, memberKind, name, signature }. 'full': adds assemblyPath.")] string projection = "summary",
         [Description("Bypass cache for this request")] bool noCache = false)
     {
         try
@@ -41,10 +40,6 @@ public static class SearchTools
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             if (string.IsNullOrWhiteSpace(nameContains))
                 return JsonHelpers.Error("InvalidArgument", "nameContains is required");
-
-            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
-            if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
             IReadOnlySet<string>? kinds = null;
             string normalizedKinds = "all";
@@ -71,7 +66,7 @@ public static class SearchTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "search.members",
-                assemblyStamp, nameContains, normalizedKinds, caseSensitive, includeNonPublic, maxItems, continuationToken, skip, normalizedProjection);
+                assemblyStamp, nameContains, normalizedKinds, caseSensitive, includeNonPublic, maxItems, continuationToken, skip);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -102,29 +97,19 @@ public static class SearchTools
                 var nextOffset = offset + page.Length;
                 if (nextOffset < pageResult.Total) nextToken = TokenHelper.Make(nextOffset, salt);
 
-                object results = normalizedProjection == "summary"
-                    ? page.Select(h => new
-                    {
-                        declaringType = h.DeclaringType,
-                        memberKind = h.MemberKind,
-                        name = h.Name,
-                        signature = h.Signature
-                    }).ToArray()
-                    : page.Select(h => new
-                    {
-                        declaringType = h.DeclaringType,
-                        memberKind = h.MemberKind,
-                        name = h.Name,
-                        signature = h.Signature,
-                        assemblyPath
-                    }).ToArray();
+                var results = page.Select(h => new
+                {
+                    declaringType = h.DeclaringType,
+                    memberKind = h.MemberKind,
+                    name = h.Name,
+                    signature = h.Signature
+                }).ToArray();
 
                 var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
                 var result = new
                 {
                     assemblyPath,
                     nameContains,
-                    projection = normalizedProjection,
                     total = pageResult.Total,
                     count = page.Length,
                     nextToken,
