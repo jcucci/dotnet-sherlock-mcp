@@ -25,7 +25,8 @@ public class RuntimeOptions
             ["GetTypesFromAssembly"] = 50, // Type summaries
             ["FindImplementationsOf"] = 50,
             ["FindMethodsReturning"] = 50,
-            ["FindReferencesTo"] = 25      // Broader sweep, keep smaller
+            ["FindReferencesTo"] = 25,     // Broader sweep, keep smaller
+            ["SearchMembers"] = 50
         };
     }
 
