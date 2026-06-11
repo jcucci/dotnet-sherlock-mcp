@@ -166,7 +166,7 @@ public class ReverseLookupService : IReverseLookupService
                         try { pt = p.ParameterType; } catch { continue; }
                         if (FindMatchingType(pt, typeName, options.CaseSensitive) == null) continue;
                         if (!TryAdd(MakeRefHit(path, declaringName, "method", method.Name, "parameter", sig,
-                            disambiguator: p.Name ?? p.Position.ToString()))) return;
+                            disambiguator: p.Name ?? p.Position.ToString(System.Globalization.CultureInfo.InvariantCulture)))) return;
                     }
                 }
 

@@ -58,6 +58,7 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
             try { lease.Dispose(); } catch { }
         }
         _pinned.Clear();
+        GC.SuppressFinalize(this);
     }
 
     public TypeAnalysisInfo GetTypeInfo(Type type)

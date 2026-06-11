@@ -38,3 +38,34 @@ dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
 dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
 dotnet_style_prefer_conditional_expression_over_return = true:suggestion
 
+# Analyzer rules intentionally disabled for this reflection-domain library
+# CA1716: Identifiers should not match reserved language keywords.
+# Internal interfaces use natural names like Get/Set (e.g. IToolResponseCache); this rule
+# targets cross-language public library APIs and does not apply here.
+dotnet_diagnostic.CA1716.severity = none
+# CA1720: Identifier contains a type name.
+# Contract enums deliberately mirror .NET reflection vocabulary (TypeKind.Pointer, Array, ByRef);
+# renaming would distort the domain model and change tool output contracts.
+dotnet_diagnostic.CA1720.severity = none
+
+# Test projects: relax library-design and naming analyzers that conflict with test
+# conventions and reflection fixtures. Production code (runtime/server) stays fully strict.
+[src/{unit-tests,integration-tests}/**.cs]
+# Underscored test method names (Method_Scenario_Expectation), the standard xUnit convention.
+dotnet_diagnostic.CA1707.severity = none
+# Reflection fixtures intentionally expose public fields, instance members, field-like and
+# virtual events, and custom attributes as targets for the reflection under test.
+dotnet_diagnostic.CA1051.severity = none
+dotnet_diagnostic.CA1070.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1018.severity = none
+dotnet_diagnostic.CA1715.severity = none
+dotnet_diagnostic.CS0067.severity = none
+# Minor design/perf rules that are noise in test and setup code.
+dotnet_diagnostic.CA1852.severity = none
+dotnet_diagnostic.CA1859.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1816.severity = none
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1861.severity = none
+

@@ -3,10 +3,10 @@ namespace Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 public class MemberFilterOptions
 {
     public bool IncludePublic { get; set; } = true;
-    public bool IncludeNonPublic { get; set; } = false;
+    public bool IncludeNonPublic { get; set; }
     public bool IncludeStatic { get; set; } = true;
     public bool IncludeInstance { get; set; } = true;
-    public bool IncludeInherited { get; set; } = false;
+    public bool IncludeInherited { get; set; }
     public bool IncludeDeclaredOnly { get; set; } = true;
     public bool CaseSensitive { get; set; } = true;
     public string? NameContains { get; set; }

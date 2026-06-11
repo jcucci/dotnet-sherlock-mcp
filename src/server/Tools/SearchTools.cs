@@ -16,6 +16,8 @@ public static class SearchTools
     private static readonly HashSet<string> ValidKinds =
         new(StringComparer.OrdinalIgnoreCase) { "method", "property", "field", "event", "type" };
 
+    private static readonly char[] KindSeparators = { ',', '|' };
+
     [McpServerTool]
     [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of GetTypeMethods/Properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
     public static string SearchMembers(
@@ -46,7 +48,7 @@ public static class SearchTools
             if (!string.IsNullOrWhiteSpace(memberKinds))
             {
                 var parsed = memberKinds
-                    .Split(new[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Split(KindSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Select(k => k.ToLowerInvariant())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var invalid = parsed.Where(k => !ValidKinds.Contains(k)).ToArray();

@@ -69,7 +69,7 @@ public static class TypeNameMatcher
             yield return "System." + clr;
         }
 
-        if (s.EndsWith("?") && s.Length > 1)
+        if (s.EndsWith('?') && s.Length > 1)
         {
             var inner = s.Substring(0, s.Length - 1).Trim();
             yield return $"Nullable<{inner}>";

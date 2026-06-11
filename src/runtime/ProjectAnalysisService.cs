@@ -432,16 +432,16 @@ public class ProjectAnalysisService : IProjectAnalysisService
     private static (int family, Version version) RankTfm(string tfm)
     {
         var lower = tfm.ToLowerInvariant();
-        if (lower.StartsWith("net") && !lower.StartsWith("netstandard") && !lower.StartsWith("netcoreapp") && !lower.Contains("framework"))
+        if (lower.StartsWith("net", StringComparison.Ordinal) && !lower.StartsWith("netstandard", StringComparison.Ordinal) && !lower.StartsWith("netcoreapp", StringComparison.Ordinal) && !lower.Contains("framework"))
         {
             var rest = lower[3..];
             if (IsFrameworkStyleTfm(rest))
                 return (3, ParseFrameworkStyleVersion(rest));
             return (0, TryParseVersion(rest) ?? new Version(0, 0));
         }
-        if (lower.StartsWith("netcoreapp"))
+        if (lower.StartsWith("netcoreapp", StringComparison.Ordinal))
             return (1, TryParseVersion(lower[10..]) ?? new Version(0, 0));
-        if (lower.StartsWith("netstandard"))
+        if (lower.StartsWith("netstandard", StringComparison.Ordinal))
             return (2, TryParseVersion(lower[11..]) ?? new Version(0, 0));
         return (4, new Version(0, 0));
     }
@@ -488,7 +488,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return parent.Element(childName)?.Value;
     }
 
-    private async Task<string[]> ResolvePackageAssemblyPathsAsync(PackageReference package, string[] targetFrameworks)
+    private static async Task<string[]> ResolvePackageAssemblyPathsAsync(PackageReference package, string[] targetFrameworks)
     {
         var assemblyPaths = new List<string>();
         var nugetCachePath = GetNugetCacheRoot();
@@ -551,7 +551,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
     {
         if (availableFramework.Equals(targetFramework, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (targetFramework.StartsWith("net") && !targetFramework.Contains("framework"))
+        if (targetFramework.StartsWith("net", StringComparison.Ordinal) && !targetFramework.Contains("framework"))
         {
             if (availableFramework.Equals("netstandard2.0", StringComparison.OrdinalIgnoreCase) ||
                 availableFramework.Equals("netstandard2.1", StringComparison.OrdinalIgnoreCase))
@@ -560,7 +560,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return false;
     }
 
-    private async Task<RuntimeDependency[]> ParseDepsJsonFileAsync(string depsJsonPath)
+    private static async Task<RuntimeDependency[]> ParseDepsJsonFileAsync(string depsJsonPath)
     {
         var dependencies = new List<RuntimeDependency>();
         try
