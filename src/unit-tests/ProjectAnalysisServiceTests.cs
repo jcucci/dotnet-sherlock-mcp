@@ -329,6 +329,20 @@ public class ProjectAnalysisServiceTests
         Assert.StartsWith(cache.Path, result.FoundAssembly!);
     }
 
+    [Fact]
+    public async Task FindAssemblyInNugetCache_Picks_Highest_PreRelease_When_No_Stable()
+    {
+        using var cache = new TempDir();
+        SeedPackage(cache.Path, "Pre.Pkg", "2.0.0-alpha", "net9.0");
+        SeedPackage(cache.Path, "Pre.Pkg", "2.0.0-beta", "net9.0");
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var result = await _service.FindAssemblyInNugetCacheAsync("Pre.Pkg");
+
+        Assert.Null(result.Failure);
+        Assert.Equal("2.0.0-beta", result.ResolvedVersion);
+    }
+
     private static void SeedPackage(string cacheRoot, string packageId, string version, string tfm)
     {
         var tfmDir = Path.Combine(cacheRoot, packageId.ToLowerInvariant(), version, "lib", tfm);

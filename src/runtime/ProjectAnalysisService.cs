@@ -380,6 +380,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
             return parsed
                 .OrderByDescending(p => p.isStable)
                 .ThenByDescending(p => p.parsed!)
+                .ThenByDescending(p => p.raw, StringComparer.OrdinalIgnoreCase)
                 .First().raw;
         return versions.OrderByDescending(v => v, StringComparer.OrdinalIgnoreCase).First();
     }
