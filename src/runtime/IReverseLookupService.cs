@@ -8,6 +8,8 @@ public interface IReverseLookupService
 
     MethodReturnHit[] FindMethodsReturning(string[] assemblyPaths, string typeName, ReverseLookupOptions options);
 
+    ExtensionMethodHit[] FindExtensionMethodsFor(string[] assemblyPaths, string typeName, ReverseLookupOptions options);
+
     ReferencesResult FindReferences(string[] assemblyPaths, string typeName, ReverseLookupOptions options);
 }
 

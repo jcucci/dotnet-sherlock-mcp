@@ -40,6 +40,13 @@ public class SnapshotFactory
     public Task<Snapshot<string>> CreateAsync() => Task.FromResult(new Snapshot<string>());
 }
 
+public static class SampleExtensions
+{
+    public static string Shout(this string s) => s.ToUpperInvariant();
+    public static int CountAll<T>(this IEnumerable<T> source) => source.Count();
+    public static T? FirstOrNull<T>(this ISampleEventReader<T> reader) where T : class => reader.Next();
+}
+
 public class EventStore
 {
     public RecordedEvent? LastEvent;

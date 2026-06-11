@@ -88,6 +88,50 @@ public class ReverseLookupService : IReverseLookupService
             .ToArray();
     }
 
+    public ExtensionMethodHit[] FindExtensionMethodsFor(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    {
+        var hits = new ConcurrentBag<ExtensionMethodHit>();
+        var flags = BuildMemberFlags(options);
+
+        ScanInParallel(assemblyPaths, (path, ctx) =>
+        {
+            foreach (var candidate in GetScannableTypes(ctx, options))
+            {
+                if (!IsStaticClass(candidate)) continue;
+
+                foreach (var method in GetMethodsSafe(candidate, flags))
+                {
+                    if (!IsExtensionMethod(method)) continue;
+
+                    ParameterInfo[] parameters;
+                    try { parameters = method.GetParameters(); }
+                    catch { continue; }
+                    if (parameters.Length == 0) continue;
+
+                    Type extendedType;
+                    try { extendedType = parameters[0].ParameterType; }
+                    catch { continue; }
+
+                    if (!TypeNameMatcher.Matches(extendedType, typeName, options.CaseSensitive)) continue;
+
+                    hits.Add(new ExtensionMethodHit(
+                        AssemblyPath: path,
+                        DeclaringTypeFullName: TypeNameFormatter.FriendlyFullName(candidate),
+                        MethodName: method.Name,
+                        Signature: FormatMethodSignature(method),
+                        ExtendedTypeFriendlyName: FriendlyTypeName(extendedType)));
+                }
+            }
+        });
+
+        return hits
+            .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
+            .ThenBy(h => h.DeclaringTypeFullName, StringComparer.Ordinal)
+            .ThenBy(h => h.MethodName, StringComparer.Ordinal)
+            .ThenBy(h => h.Signature, StringComparer.Ordinal)
+            .ToArray();
+    }
+
     public ReferencesResult FindReferences(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
     {
         var hits = new ConcurrentBag<ReferenceHit>();
@@ -373,4 +417,16 @@ public class ReverseLookupService : IReverseLookupService
     }
 
     private static string FriendlyTypeName(Type t) => TypeNameFormatter.FriendlyName(t);
+
+    private static bool IsStaticClass(Type t) => t.IsAbstract && t.IsSealed && !t.IsGenericType;
+
+    private static bool IsExtensionMethod(MethodInfo method)
+    {
+        if (!method.IsStatic) return false;
+        try
+        {
+            return method.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.ExtensionAttribute");
+        }
+        catch { return false; }
+    }
 }

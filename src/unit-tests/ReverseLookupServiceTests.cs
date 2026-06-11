@@ -107,6 +107,64 @@ public class ReverseLookupServiceTests
     }
 
     [Fact]
+    public void FindExtensionMethodsFor_ConcreteType_FindsExtension()
+    {
+        var hits = _svc.FindExtensionMethodsFor(
+            [_testAssemblyPath],
+            "string",
+            _defaultOptions);
+
+        Assert.Contains(hits, h => h.MethodName == nameof(SampleExtensions.Shout)
+            && h.DeclaringTypeFullName == typeof(SampleExtensions).FullName);
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_OpenGenericInterface_MatchesExtension()
+    {
+        var hits = _svc.FindExtensionMethodsFor(
+            [_testAssemblyPath],
+            "IEnumerable<>",
+            _defaultOptions);
+
+        Assert.Contains(hits, h => h.MethodName == nameof(SampleExtensions.CountAll));
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_OpenGenericCustomInterface_MatchesExtension()
+    {
+        var hits = _svc.FindExtensionMethodsFor(
+            [_testAssemblyPath],
+            "ISampleEventReader<>",
+            _defaultOptions);
+
+        Assert.Contains(hits, h => h.MethodName == nameof(SampleExtensions.FirstOrNull));
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_NonExtendedType_ReturnsNoHits()
+    {
+        var hits = _svc.FindExtensionMethodsFor(
+            [_testAssemblyPath],
+            "EventStore",
+            _defaultOptions);
+
+        Assert.Empty(hits);
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_PopulatesSignatureAndExtendedType()
+    {
+        var hits = _svc.FindExtensionMethodsFor(
+            [_testAssemblyPath],
+            "string",
+            _defaultOptions);
+
+        var hit = hits.First(h => h.MethodName == nameof(SampleExtensions.Shout));
+        Assert.Contains("Shout", hit.Signature);
+        Assert.Contains("string", hit.ExtendedTypeFriendlyName);
+    }
+
+    [Fact]
     public void FindReferences_EmitsAllReferenceKinds()
     {
         var result = _svc.FindReferences(
