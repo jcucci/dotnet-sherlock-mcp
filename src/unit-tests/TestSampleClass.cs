@@ -29,6 +29,7 @@ public class TestSampleClass
     /// <summary>Method with parameters and attribute for testing</summary>
     /// <param name="required">required</param>
     /// <param name="optional">optional</param>
+    /// <param name="values">values</param>
     /// <returns>none</returns>
     [Sample]
     public void MethodWithParameters([Sample] int required, string optional = "default", params object[] values) { }

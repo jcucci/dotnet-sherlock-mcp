@@ -100,8 +100,8 @@ public class MemberAnalysisService : IMemberAnalysisService
     }
 
     private static bool IsAccessorMethod(MethodInfo method) =>
-        method.IsSpecialName && (method.Name.StartsWith("get_") || method.Name.StartsWith("set_") ||
-            method.Name.StartsWith("add_") || method.Name.StartsWith("remove_"));
+        method.IsSpecialName && (method.Name.StartsWith("get_", StringComparison.Ordinal) || method.Name.StartsWith("set_", StringComparison.Ordinal) ||
+            method.Name.StartsWith("add_", StringComparison.Ordinal) || method.Name.StartsWith("remove_", StringComparison.Ordinal));
 
     private static MethodDetails BuildMethodDetails(MethodInfo method)
     {
@@ -348,7 +348,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         if (!string.IsNullOrEmpty(options.NameContains))
         {
-            query = query.Where(m => m.Name.IndexOf(options.NameContains!, comparison) >= 0);
+            query = query.Where(m => m.Name.Contains(options.NameContains!, comparison));
         }
         if (!string.IsNullOrEmpty(options.HasAttributeContains))
         {
@@ -377,7 +377,7 @@ public class MemberAnalysisService : IMemberAnalysisService
 
         if (!string.IsNullOrEmpty(options.NameContains))
         {
-            query = query.Where(x => nameSelector(x).IndexOf(options.NameContains!, comparison) >= 0);
+            query = query.Where(x => nameSelector(x).Contains(options.NameContains!, comparison));
         }
         if (!string.IsNullOrEmpty(options.HasAttributeContains))
         {
@@ -394,7 +394,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         try
         {
             return member.GetCustomAttributesData()
-                .Any(a => (a.AttributeType.FullName ?? a.AttributeType.Name).IndexOf(filter, comparison) >= 0);
+                .Any(a => (a.AttributeType.FullName ?? a.AttributeType.Name).Contains(filter, comparison));
         }
         catch
         {
@@ -433,7 +433,7 @@ public class MemberAnalysisService : IMemberAnalysisService
     private static bool IsOperatorMethod(MethodInfo method)
     {
         return method.IsSpecialName && method.IsStatic &&
-               (method.Name.StartsWith("op_") || method.Name == "True" || method.Name == "False");
+               (method.Name.StartsWith("op_", StringComparison.Ordinal) || method.Name == "True" || method.Name == "False");
     }
     private static bool IsExtensionMethod(MethodInfo method)
     {

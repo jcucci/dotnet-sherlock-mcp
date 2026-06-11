@@ -84,7 +84,7 @@ public static class AttributeUtils
                 }
                 else if (value is byte or sbyte or short or ushort or int or uint or long or ulong)
                 {
-                    validOn = (AttributeTargets)System.Convert.ToInt64(value);
+                    validOn = (AttributeTargets)System.Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
                 }
             }
 
