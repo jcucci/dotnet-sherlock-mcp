@@ -97,6 +97,8 @@ public class ReverseLookupService : IReverseLookupService
         {
             foreach (var candidate in GetScannableTypes(ctx, options))
             {
+                if (!IsStaticClass(candidate)) continue;
+
                 foreach (var method in GetMethodsSafe(candidate, flags))
                 {
                     if (!IsExtensionMethod(method)) continue;
@@ -415,6 +417,8 @@ public class ReverseLookupService : IReverseLookupService
     }
 
     private static string FriendlyTypeName(Type t) => TypeNameFormatter.FriendlyName(t);
+
+    private static bool IsStaticClass(Type t) => t.IsAbstract && t.IsSealed && !t.IsGenericType;
 
     private static bool IsExtensionMethod(MethodInfo method)
     {
