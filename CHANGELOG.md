@@ -67,3 +67,16 @@ Versions prior to 2.7.0 were not tracked with conventional commits. This changel
 [2.7.2]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.2
 [2.7.1]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.1
 [2.7.0]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.0
+
+
+<a name="2.9.2"></a>
+## [2.9.2](https://www.github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.9.2) (2026-06-11)
+
+### Bug Fixes
+
+* **ci:** remove invalid commitParser key from .versionize config ([b298257](https://www.github.com/jcucci/dotnet-sherlock-mcp/commit/b298257f73acca9d9a14ebc153de0b485b08cb9b))
+
+### Performance Improvements
+
+* **runtime:** shared assembly contexts, mtime-aware caching, parallel reverse lookup ([6d0b22c](https://www.github.com/jcucci/dotnet-sherlock-mcp/commit/6d0b22c3fcb165feb1cc00e0a19dd3651abaf450))
+
