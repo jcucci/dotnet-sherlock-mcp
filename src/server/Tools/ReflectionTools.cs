@@ -17,6 +17,7 @@ public static class ReflectionTools
     [McpServerTool]
     [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with GetTypeInfo for specific types.")]
     public static string AnalyzeAssembly(
+        IInspectionContextProvider contexts,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
@@ -28,8 +29,8 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var assembly = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var assembly = lease.Assembly;
             Type[] allTypes;
             try
             {
@@ -45,7 +46,7 @@ public static class ReflectionTools
             var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
             var offset = 0;
 
-            var cacheKey = $"analyze_assembly_{assemblyPath}_{pageSize}";
+            var cacheKey = $"analyze_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}";
             var salt = TokenHelper.MakeSalt(cacheKey);
 
             if (!string.IsNullOrWhiteSpace(continuationToken))
@@ -202,6 +203,7 @@ public static class ReflectionTools
     [McpServerTool]
     [Description("Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories. Consider GetTypeMethods etc. for targeted queries.")]
     public static string AnalyzeType(
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Maximum number of members to return per category (default: 25)")] int? maxItems = null,
@@ -217,8 +219,8 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var assembly = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var assembly = lease.Assembly;
             Type[] exportedTypes;
             try
             {
@@ -240,7 +242,7 @@ public static class ReflectionTools
             var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
             var offset = 0;
 
-            var cacheKey = $"analyze_type_{assemblyPath}_{typeName}_{pageSize}";
+            var cacheKey = $"analyze_type_{CacheKeyHelper.FileStamp(assemblyPath)}_{typeName}_{pageSize}";
             var salt = TokenHelper.MakeSalt(cacheKey);
 
             if (!string.IsNullOrWhiteSpace(continuationToken))
@@ -458,6 +460,7 @@ public static class ReflectionTools
     [McpServerTool]
     [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via GetTypeMethods. Lightweight response.")]
     public static string AnalyzeMethod(
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Name of the method to analyze")] string methodName)
@@ -467,8 +470,8 @@ public static class ReflectionTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var assembly = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var assembly = lease.Assembly;
             Type[] exportedTypes;
             try
             {

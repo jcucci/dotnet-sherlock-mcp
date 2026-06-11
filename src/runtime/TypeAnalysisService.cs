@@ -14,25 +14,32 @@ namespace Sherlock.MCP.Runtime;
 
 public class TypeAnalysisService : ITypeAnalysisService, IDisposable
 {
-    private readonly ConcurrentDictionary<string, IAssemblyInspectionContext> _contexts
+    private readonly IInspectionContextProvider _contexts;
+    private readonly ConcurrentDictionary<string, InspectionContextLease> _pinned
         = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+
+    public TypeAnalysisService() : this(new SharedInspectionContextProvider(new RuntimeOptions()))
+    {
+    }
+
+    public TypeAnalysisService(IInspectionContextProvider contexts) => _contexts = contexts;
 
     public Assembly? LoadAssembly(string assemblyPath)
     {
         try
         {
             if (!File.Exists(assemblyPath)) return null;
-            if (_contexts.TryGetValue(assemblyPath, out var existing))
+            if (_pinned.TryGetValue(assemblyPath, out var existing))
             {
                 return existing.Assembly;
             }
 
-            var created = InspectionContextFactory.Create(assemblyPath);
-            var stored = _contexts.GetOrAdd(assemblyPath, created);
-            if (!ReferenceEquals(stored, created))
+            var lease = _contexts.Acquire(assemblyPath);
+            var stored = _pinned.GetOrAdd(assemblyPath, lease);
+            if (!ReferenceEquals(stored, lease))
             {
-                created.Dispose();
+                lease.Dispose();
             }
             return stored.Assembly;
         }
@@ -46,11 +53,11 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        foreach (var ctx in _contexts.Values)
+        foreach (var lease in _pinned.Values)
         {
-            try { ctx.Dispose(); } catch { }
+            try { lease.Dispose(); } catch { }
         }
-        _contexts.Clear();
+        _pinned.Clear();
     }
 
     public TypeAnalysisInfo GetTypeInfo(Type type)
@@ -79,14 +86,57 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     {
         try
         {
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var type = ctx.Assembly.GetType(typeName);
+            using var lease = _contexts.Acquire(assemblyPath);
+            var type = ResolveType(lease.Context, typeName);
             return type != null ? GetTypeInfo(type) : null;
         }
         catch (Exception)
         {
             return null;
         }
+    }
+
+    public TypeAnalysisHierarchy? GetTypeHierarchy(string assemblyPath, string typeName)
+    {
+        using var lease = _contexts.Acquire(assemblyPath);
+        var type = ResolveType(lease.Context, typeName);
+        return type != null ? GetTypeHierarchy(type) : null;
+    }
+
+    public TypeAnalysisGenericTypeInfo? GetGenericTypeInfo(string assemblyPath, string typeName)
+    {
+        using var lease = _contexts.Acquire(assemblyPath);
+        var type = ResolveType(lease.Context, typeName);
+        return type != null ? GetGenericTypeInfo(type) : null;
+    }
+
+    public (string TypeFullName, TypeAnalysisAttributeInfo[] Attributes)? GetTypeAttributes(string assemblyPath, string typeName)
+    {
+        using var lease = _contexts.Acquire(assemblyPath);
+        var type = ResolveType(lease.Context, typeName);
+        return type != null ? (type.FullName ?? type.Name, GetTypeAttributes(type)) : null;
+    }
+
+    public (string TypeFullName, TypeAnalysisInfo[] NestedTypes)? GetNestedTypes(string assemblyPath, string typeName)
+    {
+        using var lease = _contexts.Acquire(assemblyPath);
+        var type = ResolveType(lease.Context, typeName);
+        return type != null ? (type.FullName ?? type.Name, GetNestedTypes(type)) : null;
+    }
+
+    private static Type? ResolveType(IAssemblyInspectionContext ctx, string typeName)
+    {
+        var type = ctx.Assembly.GetType(typeName);
+        if (type != null) return type;
+
+        var allTypes = ctx.GetTypes().ToArray();
+        type = allTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
+                                          || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+        if (type != null || !typeName.Contains('.')) return type;
+
+        var nestedCandidate = typeName.Replace('.', '+');
+        return allTypes.FirstOrDefault(t => string.Equals(t.FullName, nestedCandidate, StringComparison.Ordinal))
+            ?? allTypes.FirstOrDefault(t => string.Equals((t.FullName ?? t.Name).Replace('+', '.'), typeName, StringComparison.Ordinal));
     }
 
     public TypeAnalysisHierarchy GetTypeHierarchy(Type type)
@@ -181,8 +231,8 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     {
         try
         {
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            return ctx.Assembly.GetTypes()
+            using var lease = _contexts.Acquire(assemblyPath);
+            return lease.Context.GetTypes()
                 .Where(t => t.IsPublic || t.IsNestedPublic)
                 .Select(GetTypeInfo)
                 .ToArray();

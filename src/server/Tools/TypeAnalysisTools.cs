@@ -38,7 +38,7 @@ public static class TypeAnalysisTools
             var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
             var offset = 0;
 
-            var cacheKey = $"types_from_assembly_{assemblyPath}_{pageSize}";
+            var cacheKey = $"types_from_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}";
             var salt = TokenHelper.MakeSalt(cacheKey);
 
             if (!string.IsNullOrWhiteSpace(continuationToken))
@@ -92,16 +92,6 @@ public static class TypeAnalysisTools
 
             var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
             if (info == null)
-            {
-                // Fallback to simple-name lookup
-                var asm = typeAnalysis.LoadAssembly(assemblyPath);
-                var type = asm?.GetTypes().FirstOrDefault(t => t.Name == typeName);
-                if (type != null)
-                {
-                    info = typeAnalysis.GetTypeInfo(type);
-                }
-            }
-            if (info == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
             return JsonHelpers.Envelope("type.info", info);
@@ -122,11 +112,9 @@ public static class TypeAnalysisTools
     {
         try
         {
-            var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            var hierarchy = typeAnalysis.GetTypeHierarchy(type);
+            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var hierarchy = typeAnalysis.GetTypeHierarchy(assemblyPath, typeName);
+            if (hierarchy == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             return JsonHelpers.Envelope("type.hierarchy", hierarchy);
         }
         catch (Exception ex)
@@ -145,11 +133,9 @@ public static class TypeAnalysisTools
     {
         try
         {
-            var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            var genericInfo = typeAnalysis.GetGenericTypeInfo(type);
+            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var genericInfo = typeAnalysis.GetGenericTypeInfo(assemblyPath, typeName);
+            if (genericInfo == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             return JsonHelpers.Envelope("type.generic", genericInfo);
         }
         catch (Exception ex)
@@ -168,12 +154,11 @@ public static class TypeAnalysisTools
     {
         try
         {
-            var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            var attributes = typeAnalysis.GetTypeAttributes(type);
-            return JsonHelpers.Envelope("type.attributes", new { typeName = type.FullName, attributeCount = attributes.Length, attributes });
+            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var lookup = typeAnalysis.GetTypeAttributes(assemblyPath, typeName);
+            if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            var (typeFullName, attributes) = lookup.Value;
+            return JsonHelpers.Envelope("type.attributes", new { typeName = typeFullName, attributeCount = attributes.Length, attributes });
         }
         catch (Exception ex)
         {
@@ -191,12 +176,11 @@ public static class TypeAnalysisTools
     {
         try
         {
-            var asm = typeAnalysis.LoadAssembly(assemblyPath);
-            if (asm == null) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            var type = asm.GetType(typeName) ?? asm.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            var nested = typeAnalysis.GetNestedTypes(type);
-            return JsonHelpers.Envelope("type.nested", new { typeName = type.FullName, nestedTypeCount = nested.Length, nested });
+            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var lookup = typeAnalysis.GetNestedTypes(assemblyPath, typeName);
+            if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            var (typeFullName, nested) = lookup.Value;
+            return JsonHelpers.Envelope("type.nested", new { typeName = typeFullName, nestedTypeCount = nested.Length, nested });
         }
         catch (Exception ex)
         {

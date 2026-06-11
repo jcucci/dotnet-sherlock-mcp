@@ -54,14 +54,15 @@ public static class MemberAnalysisTools
             // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
             // params (continuationToken, skip, take, maxItems) and rendering params (projection)
             // so a token minted on page 1 still validates on page 2.
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.methods.salt",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.methods",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take, normalizedProjection);
 
             return middleware.Execute(cacheKey, () =>
@@ -80,19 +81,6 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                // Resolve type
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                // Get full filtered set (no paging yet) to compute total and page safely
-                var all = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
-
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeMethods");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
@@ -109,10 +97,20 @@ public static class MemberAnalysisTools
                     offset = skip.Value;
                 }
 
-                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                Sherlock.MCP.Runtime.Contracts.Common.PagedResult<MethodDetails> page;
+                try
+                {
+                    page = memberAnalysisService.GetMethodsPage(assemblyPath, typeName, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                }
+
+                var pageItems = page.Items;
                 string? nextToken = null;
                 var nextOffset = offset + pageItems.Length;
-                if (nextOffset < all.Length)
+                if (nextOffset < page.Total)
                 {
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
@@ -158,10 +156,10 @@ public static class MemberAnalysisTools
                     typeName,
                     assemblyPath,
                     projection = normalizedProjection,
-                    total = all.Length,
+                    total = page.Total,
                     count = pageItems.Length,
                     nextToken,
-                    pagination = PaginationMetadata.Create(all.Length, pageItems.Length, nextToken, methodsJson.Length),
+                    pagination = PaginationMetadata.Create(page.Total, pageItems.Length, nextToken, methodsJson.Length),
                     methods
                 };
 
@@ -179,6 +177,7 @@ public static class MemberAnalysisTools
     [McpServerTool]
     [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via GetTypeMethods or similar tools.")]
     public static string GetMemberAttributes(
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")]
         string typeName,
@@ -190,8 +189,8 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var asm = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
@@ -223,6 +222,7 @@ public static class MemberAnalysisTools
     [McpServerTool]
     [Description("Gets custom attributes for a specific parameter of a method or constructor. Use when you need to inspect parameter-level attributes like [FromBody], [Required], etc.")]
     public static string GetParameterAttributes(
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Method or constructor name")] string methodName,
@@ -233,8 +233,8 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var asm = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = asm.GetType(typeName)
                        ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
@@ -290,14 +290,15 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.properties.salt",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.properties",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
 
             return middleware.Execute(cacheKey, () =>
@@ -316,19 +317,6 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                // Resolve type
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                // Get full filtered set (no paging yet) to compute total and page safely
-                var all = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
-
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeProperties");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
@@ -345,10 +333,20 @@ public static class MemberAnalysisTools
                     offset = skip.Value;
                 }
 
-                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                Sherlock.MCP.Runtime.Contracts.Common.PagedResult<PropertyDetails> page;
+                try
+                {
+                    page = memberAnalysisService.GetPropertiesPage(assemblyPath, typeName, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                }
+
+                var pageItems = page.Items;
                 string? nextToken = null;
                 var nextOffset = offset + pageItems.Length;
-                if (nextOffset < all.Length)
+                if (nextOffset < page.Total)
                 {
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
@@ -357,7 +355,7 @@ public static class MemberAnalysisTools
                 {
                     typeName,
                     assemblyPath,
-                    total = all.Length,
+                    total = page.Total,
                     count = pageItems.Length,
                     nextToken,
                     properties = pageItems.Select(p => new
@@ -425,14 +423,15 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.fields.salt",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.fields",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
 
             return middleware.Execute(cacheKey, () =>
@@ -451,19 +450,6 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                // Resolve type
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                // Get full filtered set (no paging yet) to compute total and page safely
-                var all = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
-
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeFields");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
@@ -480,10 +466,20 @@ public static class MemberAnalysisTools
                     offset = skip.Value;
                 }
 
-                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                Sherlock.MCP.Runtime.Contracts.Common.PagedResult<FieldDetails> page;
+                try
+                {
+                    page = memberAnalysisService.GetFieldsPage(assemblyPath, typeName, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                }
+
+                var pageItems = page.Items;
                 string? nextToken = null;
                 var nextOffset = offset + pageItems.Length;
-                if (nextOffset < all.Length)
+                if (nextOffset < page.Total)
                 {
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
@@ -492,7 +488,7 @@ public static class MemberAnalysisTools
                 {
                     typeName,
                     assemblyPath,
-                    total = all.Length,
+                    total = page.Total,
                     count = pageItems.Length,
                     nextToken,
                     fields = pageItems.Select(f => new
@@ -547,14 +543,15 @@ public static class MemberAnalysisTools
         {
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.events.salt",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.events",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
 
             return middleware.Execute(cacheKey, () =>
@@ -572,17 +569,6 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                var all = memberAnalysisService.GetEvents(assemblyPath, type.FullName, options);
-
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeEvents");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
@@ -599,10 +585,20 @@ public static class MemberAnalysisTools
                     offset = skip.Value;
                 }
 
-                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                Sherlock.MCP.Runtime.Contracts.Common.PagedResult<EventDetails> page;
+                try
+                {
+                    page = memberAnalysisService.GetEventsPage(assemblyPath, typeName, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                }
+
+                var pageItems = page.Items;
                 string? nextToken = null;
                 var nextOffset = offset + pageItems.Length;
-                if (nextOffset < all.Length)
+                if (nextOffset < page.Total)
                 {
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
@@ -611,7 +607,7 @@ public static class MemberAnalysisTools
                 {
                     typeName,
                     assemblyPath,
-                    total = all.Length,
+                    total = page.Total,
                     count = pageItems.Length,
                     nextToken,
                     events = pageItems.Select(e => new
@@ -668,14 +664,15 @@ public static class MemberAnalysisTools
             if (!File.Exists(assemblyPath))
                 return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
 
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.constructors.salt",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.constructors",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
+                assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take);
 
             return middleware.Execute(cacheKey, () =>
@@ -693,17 +690,6 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                var all = memberAnalysisService.GetConstructors(assemblyPath, type.FullName, options);
-
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeConstructors");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
@@ -720,10 +706,20 @@ public static class MemberAnalysisTools
                     offset = skip.Value;
                 }
 
-                var pageItems = all.Skip(offset).Take(pageSize).ToArray();
+                Sherlock.MCP.Runtime.Contracts.Common.PagedResult<ConstructorDetails> page;
+                try
+                {
+                    page = memberAnalysisService.GetConstructorsPage(assemblyPath, typeName, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                }
+
+                var pageItems = page.Items;
                 string? nextToken = null;
                 var nextOffset = offset + pageItems.Length;
-                if (nextOffset < all.Length)
+                if (nextOffset < page.Total)
                 {
                     nextToken = TokenHelper.Make(nextOffset, salt);
                 }
@@ -732,7 +728,7 @@ public static class MemberAnalysisTools
                 {
                     typeName,
                     assemblyPath,
-                    total = all.Length,
+                    total = page.Total,
                     count = pageItems.Length,
                     nextToken,
                     constructors = pageItems.Select(c => new
@@ -783,7 +779,7 @@ public static class MemberAnalysisTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.all",
-                assemblyPath, typeName, includePublic, includeNonPublic, includeStatic, includeInstance);
+                CacheKeyHelper.FileStamp(assemblyPath), typeName, includePublic, includeNonPublic, includeStatic, includeInstance);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -795,20 +791,23 @@ public static class MemberAnalysisTools
                     IncludeInstance = includeInstance
                 };
 
-                using var ctx = InspectionContextFactory.Create(assemblyPath);
-                var assembly = ctx.Assembly;
-                var type = assembly.GetType(typeName)
-                    ?? assembly.GetExportedTypes()
-                        .FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                           || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-                if (type?.FullName == null)
+                MethodDetails[] methods;
+                PropertyDetails[] properties;
+                FieldDetails[] fields;
+                EventDetails[] events;
+                ConstructorDetails[] constructors;
+                try
+                {
+                    methods = memberAnalysisService.GetMethods(assemblyPath, typeName, options);
+                    properties = memberAnalysisService.GetProperties(assemblyPath, typeName, options);
+                    fields = memberAnalysisService.GetFields(assemblyPath, typeName, options);
+                    events = memberAnalysisService.GetEvents(assemblyPath, typeName, options);
+                    constructors = memberAnalysisService.GetConstructors(assemblyPath, typeName, options);
+                }
+                catch (ArgumentException)
+                {
                     return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-
-                var methods = memberAnalysisService.GetMethods(assemblyPath, type.FullName, options);
-                var properties = memberAnalysisService.GetProperties(assemblyPath, type.FullName, options);
-                var fields = memberAnalysisService.GetFields(assemblyPath, type.FullName, options);
-                var events = memberAnalysisService.GetEvents(assemblyPath, type.FullName, options);
-                var constructors = memberAnalysisService.GetConstructors(assemblyPath, type.FullName, options);
+                }
 
                 var result = new
                 {

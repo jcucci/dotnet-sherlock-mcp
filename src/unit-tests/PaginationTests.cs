@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Tools;
 using Sherlock.MCP.Server.Middleware;
@@ -13,6 +14,7 @@ public class PaginationTests
     private readonly ITypeAnalysisService _typeAnalysisService = new TypeAnalysisService();
     private readonly IMemberAnalysisService _memberAnalysisService = new MemberAnalysisService();
     private readonly RuntimeOptions _runtimeOptions = new RuntimeOptions();
+    private readonly IInspectionContextProvider _contexts;
     private readonly ToolMiddleware _middleware;
     private readonly string _testAssemblyPath;
 
@@ -21,6 +23,7 @@ public class PaginationTests
         var cache = new InMemoryToolResponseCache();
         var telemetry = new NoopTelemetry();
         _middleware = new ToolMiddleware(cache, telemetry, _runtimeOptions);
+        _contexts = new SharedInspectionContextProvider(_runtimeOptions);
         _testAssemblyPath = Assembly.GetExecutingAssembly().Location;
     }
 
@@ -28,7 +31,7 @@ public class PaginationTests
     public void AnalyzeAssembly_WithPagination_ReturnsCorrectPageSize()
     {
         // Act
-        var result = ReflectionTools.AnalyzeAssembly(_runtimeOptions, _testAssemblyPath, maxItems: 5);
+        var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, _testAssemblyPath, maxItems: 5);
 
         // Assert
         Assert.NotNull(result);
@@ -108,7 +111,7 @@ public class PaginationTests
     public void ContinuationToken_WithInvalidToken_ReturnsError()
     {
         // Act
-        var result = ReflectionTools.AnalyzeAssembly(_runtimeOptions, _testAssemblyPath, maxItems: 5, continuationToken: "invalid-token");
+        var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, _testAssemblyPath, maxItems: 5, continuationToken: "invalid-token");
 
         // Assert
         Assert.NotNull(result);
@@ -294,7 +297,7 @@ public class PaginationTests
         try
         {
             // Act - don't specify maxItems to test default
-            var result = ReflectionTools.AnalyzeAssembly(_runtimeOptions, _testAssemblyPath);
+            var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, _testAssemblyPath);
 
             // Assert
             Assert.NotNull(result);

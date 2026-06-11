@@ -39,7 +39,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
-            var scopeKey = string.Join(";", scope.Paths);
+            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.implementations.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);
@@ -131,7 +131,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
-            var scopeKey = string.Join(";", scope.Paths);
+            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.returning.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);
@@ -229,7 +229,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
 
-            var scopeKey = string.Join(";", scope.Paths);
+            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.references.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);

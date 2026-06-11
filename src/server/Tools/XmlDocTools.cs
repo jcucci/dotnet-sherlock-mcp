@@ -14,6 +14,7 @@ public static class XmlDocTools
     [Description("Gets XML documentation (summary, remarks, examples) for a type from adjacent .xml file. Requires XML docs to be generated during build. Lightweight response.")]
     public static string GetXmlDocsForType(
         IXmlDocService xmlDocs,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false)
@@ -21,8 +22,8 @@ public static class XmlDocTools
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var asm = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = asm.GetType(typeName)
                     ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
@@ -42,6 +43,7 @@ public static class XmlDocTools
     [Description("Gets XML documentation (summary, params, returns, exceptions) for a member from adjacent .xml file. Requires XML docs to be generated during build. Lightweight response.")]
     public static string GetXmlDocsForMember(
         IXmlDocService xmlDocs,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Member name (simple; if overloaded, first match used)")] string memberName,
@@ -50,8 +52,8 @@ public static class XmlDocTools
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
-            using var ctx = InspectionContextFactory.Create(assemblyPath);
-            var asm = ctx.Assembly;
+            using var lease = contexts.Acquire(assemblyPath);
+            var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = asm.GetType(typeName)
                     ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));

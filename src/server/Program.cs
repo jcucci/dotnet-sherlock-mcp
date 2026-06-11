@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Indexing;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Middleware;
 using System.Reflection;
@@ -28,6 +29,7 @@ builder.Logging.AddConsole(consoleLogOptions =>
 
 builder.Services
     .AddSingleton<RuntimeOptions>()
+    .AddSingleton<IInspectionContextProvider, SharedInspectionContextProvider>()
     .AddSingleton<IToolResponseCache, InMemoryToolResponseCache>()
     .AddSingleton<IAssemblyIndexService, NoopAssemblyIndexService>()
     .AddSingleton<ITelemetry, NoopTelemetry>()

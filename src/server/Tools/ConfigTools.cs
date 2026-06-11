@@ -18,7 +18,9 @@ public static class ConfigTools
             defaultMaxItems = options.DefaultMaxItems,
             cacheTtlSeconds = options.CacheTtlSeconds,
             enableStreaming = options.EnableStreaming,
-            includeNonPublicByDefault = options.IncludeNonPublicByDefault
+            includeNonPublicByDefault = options.IncludeNonPublicByDefault,
+            maxLoadedAssemblies = options.MaxLoadedAssemblies,
+            maxCachedResponses = options.MaxCachedResponses
         };
 
         return JsonHelpers.Envelope("runtime.options", result);
@@ -33,10 +35,14 @@ public static class ConfigTools
         [Description("Enable server-side streaming")] bool? enableStreaming = null,
         [Description("Include non-public members by default")] bool? includeNonPublicByDefault = null,
         [Description("Add search roots (absolute paths)")] string[]? addSearchRoots = null,
-        [Description("Remove search roots (absolute paths)")] string[]? removeSearchRoots = null)
+        [Description("Remove search roots (absolute paths)")] string[]? removeSearchRoots = null,
+        [Description("Maximum assemblies kept loaded in the inspection cache")] int? maxLoadedAssemblies = null,
+        [Description("Maximum cached tool responses kept in memory")] int? maxCachedResponses = null)
     {
         if (defaultMaxItems is > 0) options.DefaultMaxItems = defaultMaxItems.Value;
         if (cacheTtlSeconds is > 0) options.CacheTtlSeconds = cacheTtlSeconds.Value;
+        if (maxLoadedAssemblies is > 0) options.MaxLoadedAssemblies = maxLoadedAssemblies.Value;
+        if (maxCachedResponses is > 0) options.MaxCachedResponses = maxCachedResponses.Value;
         if (enableStreaming.HasValue) options.EnableStreaming = enableStreaming.Value;
         if (includeNonPublicByDefault.HasValue) options.IncludeNonPublicByDefault = includeNonPublicByDefault.Value;
 
