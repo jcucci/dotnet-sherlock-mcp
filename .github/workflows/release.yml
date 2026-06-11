@@ -82,6 +82,21 @@ jobs:
       - name: Publish to NuGet
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
+      - name: Wait for NuGet indexing
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          URL="https://api.nuget.org/v3-flatcontainer/sherlock.mcp.server/index.json"
+          for i in $(seq 1 40); do
+            if curl -fsSL "$URL" | grep -q "\"$VERSION\""; then
+              echo "NuGet has indexed version $VERSION."
+              exit 0
+            fi
+            echo "Version $VERSION not indexed yet (attempt $i/40); waiting 30s..."
+            sleep 30
+          done
+          echo "::error::NuGet did not index version $VERSION within 20 minutes."
+          exit 1
+
       - name: Install mcp-publisher
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
