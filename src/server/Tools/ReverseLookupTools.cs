@@ -204,6 +204,103 @@ public static class ReverseLookupTools
     }
 
     [McpServerTool]
+    [Description("Finds extension methods that extend the given type, across one or more assemblies. Scans static classes for methods whose first ('this') parameter matches the target type. Returns a lean summary ({ declaringType, methodName, signature }) by default. Pass projection='full' for assemblyPath and extendedType. Open-generic match supported (e.g., 'IEnumerable<>' matches extensions on 'IEnumerable<T>').")]
+    public static string FindExtensionMethodsFor(
+        IReverseLookupService reverseLookup,
+        ToolMiddleware middleware,
+        RuntimeOptions runtimeOptions,
+        [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
+        [Description("Type to find extension methods for. Simple name, full name, or open-generic form accepted (e.g., 'IEnumerable<>').")] string typeName,
+        [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
+        [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
+        [Description("Include non-public methods and types (default: false)")] bool includeNonPublic = false,
+        [Description("Maximum items to return (default: 50)")] int? maxItems = null,
+        [Description("Items to skip (paging)")] int? skip = null,
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Response shape. 'summary' (default, token-lean): { declaringType, methodName, signature }. 'full': adds assemblyPath, extendedType.")] string projection = "summary",
+        [Description("Bypass cache for this request")] bool noCache = false)
+    {
+        try
+        {
+            var scope = BuildAndValidateScope(assemblyPath, additionalAssemblies);
+            if (scope.Error != null) return scope.Error;
+
+            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
+            if (normalizedProjection != "summary" && normalizedProjection != "full")
+                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+
+            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
+            var saltSeed = CacheKeyHelper.Build(
+                "reverselookup.extensions.salt",
+                scopeKey, typeName, caseSensitive, includeNonPublic);
+
+            var cacheKey = CacheKeyHelper.Build(
+                "reverselookup.extensions",
+                scopeKey, typeName, caseSensitive, includeNonPublic, maxItems, continuationToken, skip, normalizedProjection);
+
+            return middleware.Execute(cacheKey, () =>
+            {
+                var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
+                var allHits = reverseLookup.FindExtensionMethodsFor(scope.Paths, typeName, options);
+
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindExtensionMethodsFor");
+                var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
+                var offset = 0;
+                var salt = TokenHelper.MakeSalt(saltSeed);
+
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                }
+                else if (skip.HasValue && skip.Value > 0)
+                {
+                    offset = skip.Value;
+                }
+
+                var page = allHits.Skip(offset).Take(pageSize).ToArray();
+                string? nextToken = null;
+                var nextOffset = offset + page.Length;
+                if (nextOffset < allHits.Length) nextToken = TokenHelper.Make(nextOffset, salt);
+
+                object results = normalizedProjection == "summary"
+                    ? page.Select(h => new
+                    {
+                        declaringType = h.DeclaringTypeFullName,
+                        methodName = h.MethodName,
+                        signature = h.Signature
+                    }).ToArray()
+                    : page.Select(h => new
+                    {
+                        declaringType = h.DeclaringTypeFullName,
+                        methodName = h.MethodName,
+                        signature = h.Signature,
+                        assemblyPath = h.AssemblyPath,
+                        extendedType = h.ExtendedTypeFriendlyName
+                    }).ToArray();
+
+                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var result = new
+                {
+                    typeName,
+                    scope = scope.Paths,
+                    projection = normalizedProjection,
+                    total = allHits.Length,
+                    count = page.Length,
+                    nextToken,
+                    pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
+                    results
+                };
+                return JsonHelpers.Envelope("reverselookup.extensions", result);
+            }, noCache);
+        }
+        catch (Exception ex)
+        {
+            return JsonHelpers.Error("InternalError", $"Failed to find extension methods: {ex.Message}");
+        }
+    }
+
+    [McpServerTool]
     [Description("Finds all references to a type across one or more assemblies: base types, implemented interfaces, method returns/parameters, field/property/event types (recurses into generic arguments). Bounded sweep with hardCap to protect against runaway scans; check truncated=true. Returns lean summary by default; projection='full' adds assemblyPath, signature, dedupeKey.")]
     public static string FindReferencesTo(
         IReverseLookupService reverseLookup,

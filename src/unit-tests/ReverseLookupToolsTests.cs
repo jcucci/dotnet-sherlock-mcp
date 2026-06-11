@@ -155,6 +155,79 @@ public class ReverseLookupToolsTests
     }
 
     [Fact]
+    public void FindExtensionMethodsFor_Envelope_Summary()
+    {
+        var result = ReverseLookupTools.FindExtensionMethodsFor(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "string", noCache: true);
+
+        Assert.DoesNotContain("\"error\"", result);
+        var doc = JsonDocument.Parse(result);
+        Assert.Equal("reverselookup.extensions", doc.RootElement.GetProperty("kind").GetString());
+
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal("summary", data.GetProperty("projection").GetString());
+        Assert.True(data.GetProperty("total").GetInt32() > 0);
+        var first = data.GetProperty("results")[0];
+        Assert.True(first.TryGetProperty("declaringType", out _));
+        Assert.True(first.TryGetProperty("methodName", out _));
+        Assert.True(first.TryGetProperty("signature", out _));
+        Assert.False(first.TryGetProperty("extendedType", out _));
+        Assert.False(first.TryGetProperty("assemblyPath", out _));
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_FullIncludesExtraFields()
+    {
+        var result = ReverseLookupTools.FindExtensionMethodsFor(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "string", projection: "full", noCache: true);
+
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        Assert.Equal("full", data.GetProperty("projection").GetString());
+        var first = data.GetProperty("results")[0];
+        Assert.True(first.TryGetProperty("extendedType", out _));
+        Assert.True(first.TryGetProperty("assemblyPath", out _));
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_OpenGeneric_MatchesExtension()
+    {
+        var result = ReverseLookupTools.FindExtensionMethodsFor(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "IEnumerable<>", noCache: true);
+
+        Assert.DoesNotContain("\"error\"", result);
+        Assert.Contains("CountAll", result);
+    }
+
+    [Fact]
+    public void FindExtensionMethodsFor_ContinuationToken_RoundTrips()
+    {
+        var page1 = ReverseLookupTools.FindExtensionMethodsFor(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "string", maxItems: 1, noCache: true);
+
+        var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
+        if (page1Data.GetProperty("total").GetInt32() < 2) return;
+
+        var firstMethod = page1Data.GetProperty("results")[0].GetProperty("methodName").GetString();
+        var nextToken = page1Data.GetProperty("nextToken").GetString();
+        Assert.False(string.IsNullOrEmpty(nextToken));
+
+        var page2 = ReverseLookupTools.FindExtensionMethodsFor(
+            _svc, _middleware, _runtimeOptions,
+            _testAssemblyPath, "string",
+            maxItems: 1, continuationToken: nextToken, noCache: true);
+
+        Assert.DoesNotContain("InvalidContinuationToken", page2);
+        var page2Data = JsonDocument.Parse(page2).RootElement.GetProperty("data");
+        Assert.Equal(1, page2Data.GetProperty("count").GetInt32());
+        var secondMethod = page2Data.GetProperty("results")[0].GetProperty("methodName").GetString();
+        Assert.NotEqual(firstMethod, secondMethod);
+    }
+
+    [Fact]
     public void FindReferencesTo_Envelope_IncludesTruncatedFlag()
     {
         var result = ReverseLookupTools.FindReferencesTo(
