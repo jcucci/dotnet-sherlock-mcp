@@ -139,6 +139,7 @@ Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name,
 
 ### Assembly Discovery & Analysis
 - **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
+- **`GetAssemblyInfo`**: Assembly-level metadata — identity/version, target framework, and referenced assemblies (`projection=full` adds all assembly attributes)
 - **`FindAssemblyByClassName`**: Locate assemblies containing specific class names
 - **`FindAssemblyByFileName`**: Find assemblies by file name in common build paths
 

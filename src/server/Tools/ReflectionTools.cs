@@ -102,6 +102,74 @@ public static class ReflectionTools
         }
     }
 
+    [McpServerTool]
+    [Description("Gets assembly-level metadata: identity/version, target framework, and referenced assemblies. Lightweight orientation tool — call before deep type analysis. Use projection='full' for all assembly-level attributes structurally.")]
+    public static string GetAssemblyInfo(
+        IInspectionContextProvider contexts,
+        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        [Description("Detail level: 'summary' (default, lean) or 'full' (adds all assembly attributes)")] string projection = "summary")
+    {
+        try
+        {
+            if (!File.Exists(assemblyPath))
+                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+
+            using var lease = contexts.Acquire(assemblyPath);
+            var assembly = lease.Assembly;
+            var name = assembly.GetName();
+
+            var referencedAssemblies = assembly.GetReferencedAssemblies()
+                .Select(r => $"{r.Name}@{r.Version}")
+                .OrderBy(r => r, StringComparer.Ordinal)
+                .ToArray();
+
+            var isFull = string.Equals(projection, "full", StringComparison.OrdinalIgnoreCase);
+
+            object result = isFull
+                ? new
+                {
+                    projection = "full",
+                    name = name.Name,
+                    version = name.Version?.ToString(),
+                    fullName = assembly.FullName,
+                    location = assembly.Location,
+                    targetFramework = ReadTargetFramework(assembly),
+                    referencedAssemblies,
+                    attributes = assembly.GetCustomAttributesData().Select(AttributeUtils.Convert).ToArray()
+                }
+                : new
+                {
+                    projection = "summary",
+                    name = name.Name,
+                    version = name.Version?.ToString(),
+                    fullName = assembly.FullName,
+                    location = assembly.Location,
+                    targetFramework = ReadTargetFramework(assembly),
+                    referencedAssemblies
+                };
+
+            return JsonHelpers.Envelope("reflection.assemblyInfo", result);
+        }
+        catch (Exception ex)
+        {
+            return JsonHelpers.Error("InternalError", $"Failed to get assembly info: {ex.Message}");
+        }
+    }
+
+    private static string? ReadTargetFramework(Assembly assembly)
+    {
+        try
+        {
+            var attr = assembly.GetCustomAttributesData()
+                .FirstOrDefault(a => a.AttributeType.FullName == "System.Runtime.Versioning.TargetFrameworkAttribute");
+            return attr?.ConstructorArguments.Count > 0 ? attr.ConstructorArguments[0].Value as string : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static object? SafeRawDefault(ParameterInfo p)
     {
         try { return p.RawDefaultValue; }

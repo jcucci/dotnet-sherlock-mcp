@@ -32,14 +32,14 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 This MCP server provides LLMs with comprehensive .NET reflection capabilities through several key architectural principles:
 
 ### Assembly-First Discovery
-Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 33 specialized tools for clients to:
+Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 34 specialized tools for clients to:
 1. **Discover assemblies** using multiple strategies (project analysis, class name search, file system scanning)
 2. **Load and analyze** specific assemblies by path with efficient caching
 3. **Deep introspection** of types, members, attributes, and XML documentation
 4. **Performance optimization** through pagination, streaming, and response size validation
 
-### Tool Categories (33 Available)
-- **Assembly Discovery & Analysis** (3 tools): `AnalyzeAssembly`, `FindAssemblyByClassName`, `FindAssemblyByFileName`
+### Tool Categories (34 Available)
+- **Assembly Discovery & Analysis** (4 tools): `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`
 - **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, etc.
 - **Member Analysis** (8 tools): `GetTypeMethods`, `GetTypeProperties`, `GetAllTypeMembers`, etc.
 - **Reverse Lookup** (4 tools): `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo`
