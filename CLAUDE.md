@@ -39,9 +39,9 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 4. **Performance optimization** through pagination, streaming, and response size validation
 
 ### Tool Categories (36 Available)
-- **Assembly Discovery & Analysis** (4 tools): `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`
-- **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, etc.
-- **Member Analysis** (8 tools): `GetTypeMethods`, `GetTypeProperties`, `GetAllTypeMembers`, etc.
+- **Assembly Discovery & Analysis** (5 tools): `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`, `FindAssemblyByNugetPackage`
+- **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, `AnalyzeType`, etc.
+- **Member Analysis** (7 tools): `GetTypeMethods`, `GetTypeProperties`, `GetAllTypeMembers`, `AnalyzeMethod`, etc.
 - **Member Search** (1 tool): `SearchMembers`
 - **Reverse Lookup & IL Analysis** (5 tools): `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo` (supports `analysisDepth='il'` for inbound callers), `GetMethodCalls` (outbound IL call/field analysis)
 - **Attributes & Metadata** (2 tools): `GetMemberAttributes`, `GetParameterAttributes`
@@ -55,38 +55,41 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 - **Caching Layer**: Configurable TTL-based caching for expensive operations
 - **Memory Efficiency**: Streaming and chunked processing for large assemblies
 
-The server uses `Microsoft.Extensions.Hosting` with dependency injection and the latest `ModelContextProtocol.Server` package.
+The server uses `Microsoft.Extensions.Hosting` with dependency injection and the `ModelContextProtocol` 1.4.0 (GA) package.
 
 ## .NET Type Analysis (Sherlock MCP)
 
 This project uses Sherlock MCP for comprehensive .NET assembly analysis. When working with .NET code:
 
+> **Tool names:** the MCP client exposes these tools in `snake_case`, so the names you call are `get_type_methods`, `search_members`, `find_references_to`, etc. The PascalCase names below (`GetTypeMethods`, `SearchMembers`, …) match the C# methods and the tool descriptions — map them to snake_case when invoking.
+
+### Token-efficient by default
+The enumerating tools return a lean **`summary`** payload by default (e.g. `GetTypeMethods` returns `{ name, signature }` — the C# signature already carries the return type, parameters, and modifiers). Only pass `projection='full'` when you need structured access to parameters, attributes, or modifier flags, and ideally only for the specific items you've already narrowed to. Prefer filtered, paginated `GetType*` calls over `GetAllTypeMembers`/`AnalyzeType` on large types — those return everything at once and can blow the token budget. Tools carrying `projection`: `GetTypesFromAssembly`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo`.
+
 ### Discovery & Initial Analysis
-1. **Find assemblies**: Use `FindAssemblyByClassName` or `FindAssemblyByFileName` when you need to locate DLLs
-2. **Assembly overview**: Start with `AnalyzeAssembly` to get all types and metadata
-3. **Project structure**: Use `AnalyzeProject` and `AnalyzeSolution` for build configuration analysis
+1. **Find the DLL**: `FindAssemblyByClassName` / `FindAssemblyByFileName` when you know a name but not the path; `FindAssemblyByNugetPackage` to resolve a package from the NuGet cache; `GetProjectOutputPaths` from a project file. Don't hardcode `./bin/Debug/net9.0/...` — the target framework varies.
+2. **Orient cheaply**: `GetAssemblyInfo` for identity/target-framework/references (lightweight); `AnalyzeAssembly` when you want the type list with counts.
+3. **Find a member without knowing its type**: `SearchMembers` searches a whole assembly by name fragment (filter with `memberKinds`).
+4. **Project structure**: `AnalyzeProject` and `AnalyzeSolution` for build configuration.
 
 ### Type Analysis Workflow
-1. **List types**: `GetTypesFromAssembly` (paginated) to discover available types
-2. **Type details**: `GetTypeInfo` for basic metadata, inheritance, and accessibility
-3. **Deep analysis**: `AnalyzeType` for comprehensive member overview
+1. **List types**: `GetTypesFromAssembly` (paginated, summary) to discover available types.
+2. **Type details**: `GetTypeInfo` for metadata, inheritance, accessibility, and member counts (lightweight).
+3. **Members**: filtered `GetTypeMethods` / `GetTypeProperties` / `GetTypeFields` / `GetTypeEvents` / `GetTypeConstructors` (use `nameContains` / `hasAttributeContains`); re-call with `projection='full'` for the specific members you need.
 4. **Specialized queries**:
-   - `GetTypeHierarchy` for inheritance chains
-   - `GetGenericTypeInfo` for generic type parameters
-   - `GetNestedTypes` for inner type declarations
+   - `GetTypeHierarchy` for inheritance chains and interfaces — pass `additionalAssemblies` to populate `derivedTypes` (otherwise it returns `null` with a note).
+   - `GetGenericTypeInfo` for generic type parameters and constraints.
+   - `GetNestedTypes` for inner type declarations.
+   - `AnalyzeMethod` for a single method's overloads, parameters, and attributes.
+   - `GetXmlDocsForType` / `GetXmlDocsForMember` for extracted XML documentation.
 
-### Member Analysis (Use appropriate tool for your needs)
-- **All members**: `GetAllTypeMembers` for comprehensive view
-- **Specific categories**: `GetTypeMethods`, `GetTypeProperties`, `GetTypeFields`, `GetTypeEvents`, `GetTypeConstructors`
-- **Method details**: `AnalyzeMethod` for overload analysis with parameters and attributes
-- **Documentation**: `GetXmlDocsForMember` for extracted XML documentation
-
-### Best Practices
-- **Assembly paths**: Typically `./bin/Debug/net9.0/ProjectName.dll` or use discovery tools
-- **Type names**: Prefer full names (`Namespace.Type`) for accuracy
-- **Pagination**: Use `maxItems=50` and `continuationToken` for large results
-- **Filtering**: Leverage `nameContains`, `hasAttributeContains` for targeted queries
-- **Performance**: Check response sizes and use appropriate pagination for large types
+### Relationships & Call Analysis
+- **Who implements / derives**: `FindImplementationsOf` (open-generic match supported).
+- **What returns a type**: `FindMethodsReturning`.
+- **Extension methods for a type**: `FindExtensionMethodsFor`.
+- **Where a type is used**: `FindReferencesTo`; add `analysisDepth='il'` to also resolve inbound callers from method bodies.
+- **What a method calls**: `GetMethodCalls` reads the IL body to list calls and field accesses (use `.ctor`/`.cctor` for constructors).
+- Reverse-lookup tools accept `additionalAssemblies` to widen the search scope across multiple DLLs.
 
 ### Automatic Type Analysis
 
@@ -96,40 +99,40 @@ This project uses Sherlock MCP for comprehensive .NET assembly analysis. When wo
 
 **Discovering unknown types:**
 ```
-1. GetTypesFromAssembly → Find types by name pattern
-2. GetTypeInfo → Get basic metadata and structure
-3. GetTypeMethods/Properties → Analyze specific members
+1. GetTypesFromAssembly → Browse types (summary)
+2. GetTypeInfo → Basic metadata and member counts
+3. GetTypeMethods/Properties (filtered) → Narrow, then projection='full' for detail
 ```
 
-**Understanding inheritance:**
+**Find a member when you don't know the type:**
 ```
-1. GetTypeInfo → Basic type information
-2. GetTypeHierarchy → Full inheritance chain and interfaces
-3. GetGenericTypeInfo → Generic constraints and parameters (if applicable)
+1. SearchMembers nameContains="Parse" memberKinds="method" → Locate the declaring type
+2. GetTypeInfo → Confirm the type
+3. AnalyzeMethod → Inspect overloads and parameters
 ```
 
-**Finding specific functionality:**
+**Understanding inheritance & usage:**
 ```
-1. GetTypeMethods with nameContains="Parse" → Find parsing methods
-2. GetMemberAttributes → Check for specific attributes like [Obsolete]
-3. GetXmlDocsForMember → Get documentation for found methods
+1. GetTypeHierarchy (+ additionalAssemblies) → Inheritance chain, interfaces, derived types
+2. FindImplementationsOf → Concrete implementers
+3. FindReferencesTo analysisDepth='il' → Inbound callers
 ```
 
 **Project exploration:**
 ```
-1. AnalyzeProject → Understand build configuration and dependencies
+1. AnalyzeProject → Build configuration and dependencies
 2. GetProjectOutputPaths → Find compiled assemblies
-3. AnalyzeAssembly → Get overview of available types
+3. GetAssemblyInfo / AnalyzeAssembly → Orient on the assembly
 ```
 
-### Error Handling & Troubleshooting
-- If `TypeNotFound`: Try simple name instead of full name, or use `GetTypesFromAssembly` first
-- If response too large: Use pagination (`maxItems=25`, `skip`, `continuationToken`)
-- For nested types: Use format `OuterType+InnerType` or search via `GetNestedTypes`
-- Missing assembly: Use `FindAssemblyByClassName` or check build output paths
+### Best Practices
+- **Type names**: Prefer full names (`Namespace.Type`) for accuracy.
+- **Start lean**: small `maxItems` + summary projection first; widen `maxItems` or switch to `projection='full'` only when needed. Use `continuationToken` to page large result sets.
+- **Filtering beats fetching**: `nameContains` / `hasAttributeContains` / `memberKinds` rather than retrieving all members.
+- **Stale results**: pass `noCache=true` to bypass the response cache for a single call.
 
-### Performance Tips
-- Cache expensive calls when possible using the built-in caching layer
-- Use targeted filtering rather than retrieving all members
-- Leverage continuation tokens for exploring large result sets
-- Check `totalCount` fields to understand data size before requesting all results
+### Error Handling & Troubleshooting
+- If `TypeNotFound`: try the simple name instead of the full name, or `GetTypesFromAssembly` / `SearchMembers` to find it first.
+- If response too large: reduce `maxItems`, keep `projection='summary'`, and page with `continuationToken`.
+- For nested types: use format `OuterType+InnerType` or `GetNestedTypes`.
+- Missing assembly: use `FindAssemblyByClassName` / `FindAssemblyByNugetPackage` or check build output paths via `GetProjectOutputPaths`.

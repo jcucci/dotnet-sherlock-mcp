@@ -21,6 +21,15 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **Stable JSON API**: Consistent envelopes with versioning and structured error codes
 *   **.NET 9.0 Native**: Built on the latest .NET platform with modern C# features
 *   **Project Integration**: Solution and project file analysis with dependency resolution
+*   **Current MCP SDK**: Built on `ModelContextProtocol` 1.4.0 (GA)
+
+## What's New in 2.10.0
+
+- **New tools**: `SearchMembers` (assembly-wide member search), `FindExtensionMethodsFor`, `GetMethodCalls` (IL-level "what does this method call?"), and `FindAssemblyByNugetPackage`.
+- **Token-efficient projections**: enumerating tools now default to a lean `summary` and accept `projection='full'` for structured detail — see [Response Shape](#response-shape-token-efficiency).
+- **IL analysis**: `FindReferencesTo` accepts `analysisDepth='il'` to resolve inbound callers from method bodies.
+- **Wider scope**: `GetTypeHierarchy` and reverse-lookup tools accept `additionalAssemblies` (derived types are computed only when provided).
+- **SDK upgrade**: `ModelContextProtocol` `0.3.0-preview.2` → `1.4.0` (GA). See `CHANGELOG.md` for full details.
 
 ## Installation
 
@@ -57,46 +66,52 @@ No arguments are required. The server self-registers all tools when launched.
 
 ## Auto-Configure for .NET Projects
 
-To automatically use Sherlock when working with .NET code, add these configurations:
+**You usually don't need to paste anything.** Sherlock ships its usage guidance in the MCP `instructions` field returned at initialize, and most MCP clients (including Claude Code) surface that to the agent automatically — so the guidance stays correct and versioned with the package, with no copy-paste to maintain.
+
+The snippets below are **optional reinforcement**. Keep them short and principle-based rather than enumerating tool names and workflows: a static list pasted into your repo will drift as Sherlock's tools evolve, whereas the tools' own descriptions (and the server `instructions`) always match the version you're running.
+
+> Tool names are exposed in `snake_case` (`get_type_methods`, `search_members`, …); argument names stay camelCase (`projection`, `nameContains`).
 
 ### Claude Code (CLAUDE.md)
 
-Add this to your project's `CLAUDE.md` file:
+Optional — a short pointer in your project's `CLAUDE.md`:
 
 ```markdown
 ## .NET Assembly Analysis
 
-This project uses Sherlock MCP for .NET assembly analysis. When analyzing .NET types, methods, or assemblies:
-
-1. Use sherlock-mcp tools instead of guessing about .NET APIs
-2. For type analysis: `GetTypeInfo`, `GetTypeMethods`, `GetTypeProperties`
-3. For assembly overview: `AnalyzeAssembly` or `GetTypesFromAssembly`
-4. For project structure: `AnalyzeProject`, `AnalyzeSolution`
-5. Assembly paths are typically: `./bin/Debug/net9.0/ProjectName.dll`
-
-Always include assembly path, prefer full type names, and use pagination for large results.
+Use the Sherlock MCP tools (`get_type_methods`, `search_members`, …) for .NET type/assembly
+questions instead of guessing. Locate DLLs with the `find_assembly_by_*` / `get_project_output_paths`
+tools rather than hardcoding bin paths. Start lean — `search_members` or `get_types_from_assembly`,
+then drill in — and pass `projection='full'` only when you need parameters/attributes/modifiers.
+The tools' own descriptions cover the specifics.
 ```
 
-### Cursor (.cursorrules)
+### Cursor (.cursor/rules)
 
-Add this to your project's `.cursorrules` file:
+The single-file `.cursorrules` format is **deprecated** (and silently ignored in Cursor's Agent mode).
+Add a Project Rule at `.cursor/rules/sherlock.mdc` instead:
 
+```mdc
+---
+description: Use Sherlock MCP for .NET assembly/type analysis
+alwaysApply: true
+---
+
+- Prefer the Sherlock MCP tools (snake_case, e.g. `get_type_methods`, `search_members`) over guessing about .NET APIs.
+- Find DLLs with `find_assembly_by_*` / `get_project_output_paths`; don't hardcode `bin/Debug/<tfm>/*.dll`.
+- Start lean (`search_members` / `get_types_from_assembly`); request `projection='full'` only when you need parameters/attributes/modifiers.
 ```
-# .NET Analysis Rules
-When working with .NET code, assemblies, or types:
-- Use sherlock-mcp tools for accurate type/member information
-- Assembly paths: ./bin/Debug/net9.0/*.dll or ./bin/Release/net9.0/*.dll
-- For unknown types: GetTypesFromAssembly -> GetTypeInfo -> GetTypeMethods/Properties
-- For code analysis: AnalyzeAssembly for overview, GetTypeInfo for details
-- Use pagination (maxItems=50) for large results to avoid token limits
-```
 
-### Global Configuration
+### Other agents (AGENTS.md)
 
-For system-wide usage, add to your global Claude Code settings or Cursor configuration:
+For tools that follow the cross-editor `AGENTS.md` convention, the same short pointer works — drop the Claude Code snippet above into your `AGENTS.md`.
+
+### Global configuration
+
+For system-wide usage, add to your global agent settings:
 
 ```text
-For .NET development: Use sherlock-mcp tools when analyzing assemblies, types, methods, or project structure. Prefer these over guessing .NET API details.
+For .NET work, use the Sherlock MCP tools (snake_case) to analyze assemblies, types, and members instead of guessing. Start lean and opt into projection='full' only when you need detail.
 ```
 
 ## How To Prompt It
@@ -135,13 +150,28 @@ Tune paging and filters
 Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name, sortOrder asc, skip 0, take 25, hasAttributeContains Obsolete.
 ```
 
+Browse lean, then get detail (projection)
+
+```text
+On /abs/path/MyLib.dll, run GetTypeMethods for MyNamespace.MyType with the default summary projection to see signatures. Then re-call GetTypeMethods with projection='full' only for the methods I name to get their parameters and attributes.
+```
+
+Trace relationships and call sites
+
+```text
+On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindReferencesTo that interface with analysisDepth='il' to find callers, and GetMethodCalls on the most relevant method to see what it invokes.
+```
+
 ## Tools Overview
+
+> **Tool names:** MCP clients call these tools in `snake_case` — `GetTypeMethods` → `get_type_methods`, `SearchMembers` → `search_members`, and so on. The PascalCase names used throughout this README match the underlying C# methods and the tool descriptions your client displays.
 
 ### Assembly Discovery & Analysis
 - **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
 - **`GetAssemblyInfo`**: Assembly-level metadata — identity/version, target framework, and referenced assemblies (`projection=full` adds all assembly attributes)
 - **`FindAssemblyByClassName`**: Locate assemblies containing specific class names
 - **`FindAssemblyByFileName`**: Find assemblies by file name in common build paths
+- **`FindAssemblyByNugetPackage`**: Resolve a DLL from the local NuGet cache by package id (optional `version`/`tfm`)
 
 ### Type Introspection
 - **`GetTypesFromAssembly`**: List all public types with metadata (paginated)
@@ -161,10 +191,17 @@ Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name,
 - **`GetTypeConstructors`**: Constructor signatures and parameters
 - **`AnalyzeMethod`**: Deep method analysis with overloads and attributes
 
+### Member Search
+- **`SearchMembers`**: Search a whole assembly for members whose name contains a fragment — the entry point when you know a member name but not its declaring type. Filter by `memberKinds` (`method|property|field|event|type`).
+
 ### Reverse Lookup
-- **`FindImplementationsOf`**: Types implementing an interface or deriving from a base class
+- **`FindImplementationsOf`**: Types implementing an interface or deriving from a base class (open-generic match supported)
 - **`FindMethodsReturning`**: Methods whose return type matches a given type (open-generic match supported)
-- **`FindReferencesTo`**: Broader sweep across parameters, fields, properties, events, and generic arguments
+- **`FindExtensionMethodsFor`**: Extension methods that extend a given type (scans static classes by `this`-parameter)
+- **`FindReferencesTo`**: Broader sweep across parameters, fields, properties, events, and generic arguments; pass `analysisDepth='il'` to also resolve inbound callers from method bodies
+
+### IL Analysis
+- **`GetMethodCalls`**: Read a method's IL body to list what it calls and which fields it touches — the "what does this method do?" question signature-level tools can't answer (aggregates across overloads; use `.ctor`/`.cctor` for constructors)
 
 ### Attributes & Metadata
 - **`GetMemberAttributes`**: Attributes for specific members
@@ -198,9 +235,18 @@ All member analysis tools support comprehensive filtering and pagination:
 
 **Pagination:**
 * `skip` / `take` (int): Standard offset pagination
-* `maxItems` (int): Maximum results per request
+* `maxItems` (int): Maximum results per request (default 50; `FindReferencesTo` defaults to 25)
 * `continuationToken` (string): Token-based pagination for large datasets
 * `sortBy` / `sortOrder` (string): Sort by name/access in asc/desc order
+
+#### Response Shape (token efficiency)
+
+Most enumerating tools default to a lean **`summary`** projection and let you opt into the heavier **`full`** payload only when you need it. Reach for `full` deliberately — `summary` is usually enough to decide your next call.
+
+* `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, and `FindReferencesTo`. `summary` returns just enough to browse (e.g. `{ name, signature }` for methods); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
+* `analysisDepth` (`signatures` | `il`): `FindReferencesTo` only. `signatures` (default) scans member declarations; `il` additionally scans method bodies for inbound callers (slower).
+* `additionalAssemblies` (string[]): widen the search scope for `GetTypeHierarchy` and the reverse-lookup tools. `GetTypeHierarchy.derivedTypes` stays `null` until you pass this.
+* `noCache` (bool): bypass the response cache for a single call when you suspect stale results.
 
 **Type Resolution:**
 * Supports full names (`Namespace.Type`), simple names (`Type`), and nested types (`Outer+Inner`)

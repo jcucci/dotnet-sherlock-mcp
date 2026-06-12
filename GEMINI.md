@@ -21,7 +21,7 @@ The project is organized into the following components:
 - **C#**: The primary programming language used.
 - **xUnit**: The framework used for unit tests.
 - **Microsoft.Extensions.Hosting**: Used for hosting the server.
-- **ModelContextProtocol**: The library used for MCP communication.
+- **ModelContextProtocol 1.4.0 (GA)**: The library used for MCP communication.
 - **System.Reflection / AssemblyLoadContext**: Used for assembly inspection and controlled loading.
 
 ## Development Workflow
@@ -49,6 +49,21 @@ To run the unit tests, use the following command:
 ```bash
 dotnet test src/unit-tests/Sherlock.MCP.Tests.csproj
 ```
+
+## Using the Sherlock Tools
+
+When analyzing .NET code, prefer the Sherlock MCP tools over guessing about APIs. The server exposes **36 tools** across nine categories: Assembly Discovery, Type Introspection, Member Analysis, Member Search, Reverse Lookup, IL Analysis, Attributes & Metadata, XML Documentation, and Project Analysis.
+
+> **Tool names:** MCP clients call these tools in `snake_case` — the PascalCase names below (`GetTypeMethods`, `SearchMembers`, …) match the C# methods, but you invoke them as `get_type_methods`, `search_members`, and so on.
+
+Work **narrow → wide** to stay within the token budget:
+
+1. **Locate the DLL** with `FindAssemblyByClassName`, `FindAssemblyByFileName`, `FindAssemblyByNugetPackage`, or `GetProjectOutputPaths` — don't hardcode `bin/Debug/<tfm>/*.dll`.
+2. **Find the type**: `SearchMembers` when you know a member name but not its type; otherwise `GetTypesFromAssembly`, then `GetTypeInfo`.
+3. **Inspect members**: filtered `GetTypeMethods` / `GetTypeProperties` (use `nameContains`, `hasAttributeContains`). These default to a lean **`summary`** projection — pass `projection='full'` only when you need parameters, attributes, or modifier flags, and avoid `GetAllTypeMembers` / `AnalyzeType` on large types.
+4. **Trace relationships**: `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo` (add `analysisDepth='il'` for inbound callers), and `GetMethodCalls` (what a method body calls).
+
+Always pass the assembly path and prefer full type names (`Namespace.Type`). See the project README's "Tools Overview" for the full catalog and parameter reference.
 
 ## How to Contribute
 

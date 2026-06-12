@@ -25,6 +25,19 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
+    public async Task Initialize_exposes_server_usage_instructions()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(client.ServerInstructions),
+            "Server should return MCP instructions so clients can surface usage guidance automatically.");
+        Assert.Contains("search_members", client.ServerInstructions);
+        Assert.Contains("projection", client.ServerInstructions);
+    }
+
+    [Fact]
     public async Task Tools_list_returns_expected_count_and_snake_case_names()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
