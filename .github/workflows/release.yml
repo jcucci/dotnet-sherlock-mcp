@@ -63,10 +63,11 @@ jobs:
           if [ -z "$CHANGELOG" ]; then
             CHANGELOG="Release v$VERSION"
           fi
+          DELIMITER="NOTES_EOF_$(openssl rand -hex 16)"
           {
-            echo "NOTES<<EOF"
-            echo "$CHANGELOG"
-            echo "EOF"
+            echo "NOTES<<$DELIMITER"
+            printf '%s\n' "$CHANGELOG"
+            echo "$DELIMITER"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
