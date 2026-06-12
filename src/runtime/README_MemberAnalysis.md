@@ -138,6 +138,8 @@ The service is integrated with MCP (Model Context Protocol) tools:
 5. **GetTypeConstructors**: Analyze all constructors in a type
 6. **GetAllTypeMembers**: Comprehensive analysis of all member types
 
+> These six are the member-analysis tools backed by this service. They are part of a larger surface of **36 MCP tools** — see the project README's "Tools Overview" for the full catalog (type introspection, member search, reverse lookup, IL analysis, XML docs, and project analysis).
+
 ### Tool Parameters
 
 All tools support filtering options:
@@ -145,6 +147,8 @@ All tools support filtering options:
 - `includeNonPublic`: Include non-public members (default: false)
 - `includeStatic`: Include static members (default: true)
 - `includeInstance`: Include instance members (default: true)
+
+`GetTypeMethods` additionally supports `projection`: it returns a lean `summary` (`{ name, signature }`) by default and accepts `projection='full'` to add `parameters[]`, `attributes`, `returnType`, and modifier flags. Most member tools also support `nameContains` / `hasAttributeContains` filtering, `maxItems` / `continuationToken` pagination, and `noCache`.
 
 ## Usage Examples
 
@@ -174,7 +178,7 @@ The tools are automatically registered and available through the MCP server. The
 
 ## Assembly Loading
 
-The service uses `Assembly.LoadFrom()` and maintains a cache of loaded assemblies to avoid repeated loading. It supports:
+The service loads assemblies into a dedicated `AssemblyLoadContext` (via `LoadFromAssemblyPath`, with a `MetadataLoadContext` for metadata-only inspection) and maintains an mtime-aware cache of loaded assemblies to avoid repeated loading. It supports:
 - Full assembly paths
 - Type name resolution by both full name and simple name
 - Error handling for missing assemblies or types
