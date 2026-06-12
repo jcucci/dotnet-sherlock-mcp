@@ -26,7 +26,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 ## What's New in 2.10.0
 
 - **New tools**: `SearchMembers` (assembly-wide member search), `FindExtensionMethodsFor`, `GetMethodCalls` (IL-level "what does this method call?"), and `FindAssemblyByNugetPackage`.
-- **Token-efficient projections**: enumerating tools now default to a lean `summary` and accept `projection='full'` for structured detail — see [Response Shape](#tools-overview).
+- **Token-efficient projections**: enumerating tools now default to a lean `summary` and accept `projection='full'` for structured detail — see [Response Shape](#response-shape-token-efficiency).
 - **IL analysis**: `FindReferencesTo` accepts `analysisDepth='il'` to resolve inbound callers from method bodies.
 - **Wider scope**: `GetTypeHierarchy` and reverse-lookup tools accept `additionalAssemblies` (derived types are computed only when provided).
 - **SDK upgrade**: `ModelContextProtocol` `0.3.0-preview.2` → `1.4.0` (GA). See `CHANGELOG.md` for full details.
@@ -239,7 +239,7 @@ All member analysis tools support comprehensive filtering and pagination:
 * `continuationToken` (string): Token-based pagination for large datasets
 * `sortBy` / `sortOrder` (string): Sort by name/access in asc/desc order
 
-**Response Shape (token efficiency):**
+#### Response Shape (token efficiency)
 
 Most enumerating tools default to a lean **`summary`** projection and let you opt into the heavier **`full`** payload only when you need it. Reach for `full` deliberately — `summary` is usually enough to decide your next call.
 

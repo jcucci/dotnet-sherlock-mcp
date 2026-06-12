@@ -33,7 +33,7 @@ const string serverInstructions =
 
     Locate the assembly first with find_assembly_by_class_name, find_assembly_by_file_name, find_assembly_by_nuget_package, or get_project_output_paths rather than hardcoding bin/Debug/<tfm> paths (the target framework varies).
 
-    Work narrow-to-wide and stay token-lean: use search_members when you know a member name but not its declaring type, or get_types_from_assembly to browse; then get_type_info; then filtered get_type_methods / get_type_properties (nameContains, hasAttributeContains). Enumerating tools return a lean 'summary' by default - pass projection='full' only when you need parameters, attributes, or modifiers, and avoid get_all_type_members / analyze_type on large types.
+    Work narrow-to-wide and stay token-lean: use search_members when you know a member name but not its declaring type, or get_types_from_assembly to browse; then get_type_info; then filtered get_type_methods / get_type_properties (nameContains, hasAttributeContains). get_type_methods returns a lean 'summary' by default - pass projection='full' only when you need parameters, attributes, or modifiers (get_type_properties / get_type_fields / get_type_events / get_type_constructors have a single fixed shape and take no projection). Avoid get_all_type_members / analyze_type on large types.
 
     For relationships use find_implementations_of, find_methods_returning, find_extension_methods_for, and find_references_to (set analysisDepth='il' to resolve inbound callers); use get_method_calls to see what a method body invokes.
 
