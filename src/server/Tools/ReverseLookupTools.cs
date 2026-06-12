@@ -32,7 +32,7 @@ public static class ReverseLookupTools
     {
         try
         {
-            var scope = BuildAndValidateScope(assemblyPath, additionalAssemblies);
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
@@ -124,7 +124,7 @@ public static class ReverseLookupTools
     {
         try
         {
-            var scope = BuildAndValidateScope(assemblyPath, additionalAssemblies);
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
@@ -222,7 +222,7 @@ public static class ReverseLookupTools
     {
         try
         {
-            var scope = BuildAndValidateScope(assemblyPath, additionalAssemblies);
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
@@ -321,7 +321,7 @@ public static class ReverseLookupTools
     {
         try
         {
-            var scope = BuildAndValidateScope(assemblyPath, additionalAssemblies);
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
@@ -443,41 +443,5 @@ public static class ReverseLookupTools
         {
             return JsonHelpers.Error("InternalError", $"Failed to find references: {ex.Message}");
         }
-    }
-
-    private readonly struct ScopeResult
-    {
-        public string[] Paths { get; init; }
-        public string? Error { get; init; }
-    }
-
-    private static ScopeResult BuildAndValidateScope(string assemblyPath, string[]? additionalAssemblies)
-    {
-        if (string.IsNullOrWhiteSpace(assemblyPath))
-            return new ScopeResult { Error = JsonHelpers.Error("InvalidArgument", "assemblyPath is required") };
-        if (!File.Exists(assemblyPath))
-            return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}") };
-
-        var pathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
-        var seen = new HashSet<string>(pathComparer);
-        var paths = new List<string>();
-
-        var normalizedPrimary = Path.GetFullPath(assemblyPath);
-        if (seen.Add(normalizedPrimary)) paths.Add(normalizedPrimary);
-
-        if (additionalAssemblies != null)
-        {
-            foreach (var extra in additionalAssemblies)
-            {
-                if (string.IsNullOrWhiteSpace(extra)) continue;
-                if (!File.Exists(extra))
-                    return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {extra}") };
-                var normalizedExtra = Path.GetFullPath(extra);
-                if (seen.Add(normalizedExtra)) paths.Add(normalizedExtra);
-            }
-        }
-        return new ScopeResult { Paths = paths.ToArray() };
     }
 }

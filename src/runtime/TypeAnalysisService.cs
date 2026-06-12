@@ -157,15 +157,13 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
             .Select(TypeNameFormatter.FriendlyFullName)
             .ToArray();
 
-        // Note: Getting derived types requires scanning all loaded assemblies
-        // This is expensive and might not be practical in all scenarios
-        var derivedTypes = Array.Empty<TypeAnalysisInfo>();
         return new TypeAnalysisHierarchy(
             TypeName: TypeNameFormatter.FriendlyFullName(type),
             InheritanceChain: inheritanceChain.ToArray(),
             AllInterfaces: allInterfaces,
             BaseTypes: baseTypes.ToArray(),
-            DerivedTypes: derivedTypes
+            DerivedTypes: null,
+            Note: null
         );
     }
 
