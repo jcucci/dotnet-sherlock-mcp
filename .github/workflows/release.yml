@@ -63,13 +63,12 @@ jobs:
           if [ -z "$CHANGELOG" ]; then
             CHANGELOG="Release v$VERSION"
           fi
-          # Escape for GitHub Actions
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          DELIMITER="NOTES_EOF_$(openssl rand -hex 16)"
+          {
+            echo "NOTES<<$DELIMITER"
+            printf '%s\n' "$CHANGELOG"
+            echo "$DELIMITER"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
