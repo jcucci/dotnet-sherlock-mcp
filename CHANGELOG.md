@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-06-12
+
+### Added
+
+- `SearchMembers` — a single assembly-wide member search tool that scans every type in an assembly and returns methods, properties, fields, events, and constructors matching a name query, following the existing pagination, projection, and caching conventions. This avoids having to enumerate types first and then probe each one individually. (#33)
+- `FindExtensionMethodsFor` — a reverse-lookup tool that discovers extension methods applicable to a given type across one or more assemblies. Scans are pre-filtered to static, non-generic classes (the only place extension methods can be declared) to keep large-assembly lookups fast. (#34)
+- `GetAssemblyInfo` — an assembly-level metadata tool reporting identity, target framework, referenced assemblies, and module information. Output is projection-validated and guarded against oversized responses so large dependency graphs don't blow the token budget. (#36)
+- `GetMethodCalls` plus a new `analysisDepth='il'` mode — IL-level call analysis. `GetMethodCalls` reports a method's *outbound* call and field-access targets, while `FindReferencesTo` with `analysisDepth='il'` resolves *inbound* callers from IL rather than signature matching alone. Static constructors are included and duplicate inbound hits are de-duplicated. (#35)
+- `GetTypeHierarchy` now populates `DerivedTypes` when given an optional `additionalAssemblies` search scope, so subclasses defined in other assemblies are discovered instead of silently omitted. Derived-type scanning keys off the resolved `hierarchy.TypeName`. (#38)
+- End-to-end MCP integration tests that launch the server over stdio and exercise the full client/server protocol round-trip, complementing the existing unit suite. (#40)
+
+### Changed
+
+- The build is now centralized through a root `Directory.Build.props` with warnings-as-errors and the .NET analyzers enabled across all projects, raising the code-quality baseline for every build. (#42)
+- Upgraded the `ModelContextProtocol` SDK to 1.4.0 across the server and integration-test projects. (#41)
+
+### Fixed
+
+- `AnalyzeSolution` now parses `.slnx` (XML-format) solution files; it previously returned zero projects for the newer solution format. (#37)
+- Package-version resolution now applies a deterministic tie-break when only prerelease versions are available, so repeated runs resolve to the same version. (#37)
+- The release pipeline now waits for NuGet to finish indexing a freshly pushed package before attempting the MCP Registry publish, eliminating a race that could fail the publish step.
+
 ## [2.9.1] - 2026-05-05
 
 ### Fixed
@@ -62,6 +84,7 @@ This is the baseline release for conventional commits adoption. Prior versions w
 
 Versions prior to 2.7.0 were not tracked with conventional commits. This changelog begins with 2.7.0 as the baseline.
 
+[2.10.0]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.10.0
 [2.9.1]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.9.1
 [2.9.0]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.9.0
 [2.7.2]: https://github.com/jcucci/dotnet-sherlock-mcp/releases/tag/v2.7.2
