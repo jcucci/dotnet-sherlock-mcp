@@ -82,7 +82,7 @@ public class McpStdioProtocolTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await using var client = await ConnectAsync(cts.Token);
 
-        var firstData = Envelope(await CallGetTypeMethods(client, maxItems: 10, continuationToken: null, cts.Token))
+        var firstData = Envelope(await CallGetTypeMethods(client, maxItems: 10, continuationToken: null, cancellationToken: cts.Token))
             .GetProperty("data");
 
         var totalPage1 = firstData.GetProperty("total").GetInt32();
@@ -94,7 +94,7 @@ public class McpStdioProtocolTests
         var firstSignatures = Signatures(firstData);
         Assert.Equal(10, firstSignatures.Count);
 
-        var secondData = Envelope(await CallGetTypeMethods(client, maxItems: 10, continuationToken: nextToken, cts.Token))
+        var secondData = Envelope(await CallGetTypeMethods(client, maxItems: 10, continuationToken: nextToken, cancellationToken: cts.Token))
             .GetProperty("data");
 
         Assert.Equal(totalPage1, secondData.GetProperty("total").GetInt32());

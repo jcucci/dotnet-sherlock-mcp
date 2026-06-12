@@ -42,6 +42,7 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 - **Assembly Discovery & Analysis** (4 tools): `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`
 - **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, etc.
 - **Member Analysis** (8 tools): `GetTypeMethods`, `GetTypeProperties`, `GetAllTypeMembers`, etc.
+- **Member Search** (1 tool): `SearchMembers`
 - **Reverse Lookup & IL Analysis** (5 tools): `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo` (supports `analysisDepth='il'` for inbound callers), `GetMethodCalls` (outbound IL call/field analysis)
 - **Attributes & Metadata** (2 tools): `GetMemberAttributes`, `GetParameterAttributes`
 - **XML Documentation** (2 tools): `GetXmlDocsForType`, `GetXmlDocsForMember`
