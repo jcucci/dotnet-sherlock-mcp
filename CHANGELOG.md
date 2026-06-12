@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-06-12
+
+### Added
+
+- The server now emits MCP usage instructions to connecting clients, giving agents built-in guidance on how to drive the introspection tools — token-efficient `summary`/`full` projections and the discovery → type → member workflow — without relying on external documentation. (#54)
+
+### Changed
+
+- Refreshed the agent-facing guidance in `CLAUDE.md`, `GEMINI.md`, `README.md`, and the runtime member-analysis docs to document the snake_case tool names exposed on the wire, the lean `projection` defaults, and the recommended analysis workflow. (#54)
+
 ## [2.10.0] - 2026-06-12
 
 ### Added

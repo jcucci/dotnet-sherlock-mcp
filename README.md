@@ -23,13 +23,10 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **Project Integration**: Solution and project file analysis with dependency resolution
 *   **Current MCP SDK**: Built on `ModelContextProtocol` 1.4.0 (GA)
 
-## What's New in 2.10.0
+## What's New in 2.11.0
 
-- **New tools**: `SearchMembers` (assembly-wide member search), `FindExtensionMethodsFor`, `GetMethodCalls` (IL-level "what does this method call?"), and `FindAssemblyByNugetPackage`.
-- **Token-efficient projections**: enumerating tools now default to a lean `summary` and accept `projection='full'` for structured detail — see [Response Shape](#response-shape-token-efficiency).
-- **IL analysis**: `FindReferencesTo` accepts `analysisDepth='il'` to resolve inbound callers from method bodies.
-- **Wider scope**: `GetTypeHierarchy` and reverse-lookup tools accept `additionalAssemblies` (derived types are computed only when provided).
-- **SDK upgrade**: `ModelContextProtocol` `0.3.0-preview.2` → `1.4.0` (GA). See `CHANGELOG.md` for full details.
+- **Built-in usage guidance**: the server now emits MCP usage instructions to connecting clients, so agents learn the token-efficient projections and discovery → type → member workflow without external docs.
+- **Refreshed agent guidance**: `CLAUDE.md`, `GEMINI.md`, the README, and the runtime member-analysis docs now document the snake_case tool names, lean `projection` defaults, and recommended analysis workflow. See `CHANGELOG.md` for full details.
 
 ## Installation
 
