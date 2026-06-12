@@ -1,5 +1,7 @@
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
+using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -103,19 +105,31 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool]
-    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response.")]
+    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as FindImplementationsOf.")]
     public static string GetTypeHierarchy(
         ITypeAnalysisService typeAnalysis,
+        IReverseLookupService reverseLookup,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
-        string typeName)
+        string typeName,
+        [Description("Optional additional assembly paths to include in the search scope")]
+        string[]? additionalAssemblies = null)
     {
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var hierarchy = typeAnalysis.GetTypeHierarchy(assemblyPath, typeName);
             if (hierarchy == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
-            return JsonHelpers.Envelope("type.hierarchy", hierarchy);
+
+            if (additionalAssemblies == null || additionalAssemblies.Length == 0)
+                return JsonHelpers.Envelope("type.hierarchy", hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use FindImplementationsOf" });
+
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
+            if (scope.Error != null) return scope.Error;
+
+            var hits = reverseLookup.FindImplementations(scope.Paths, typeName, new ReverseLookupOptions());
+            var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
+            return JsonHelpers.Envelope("type.hierarchy", hierarchy with { DerivedTypes = derived, Note = null });
         }
         catch (Exception ex)
         {

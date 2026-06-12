@@ -42,6 +42,8 @@ public class TypeAnalysisServiceTests
         Assert.Equal(type.FullName, hierarchy.TypeName);
         Assert.Contains(typeof(BaseSample).FullName, hierarchy.InheritanceChain);
         Assert.Contains(typeof(IDisposable).FullName, hierarchy.AllInterfaces);
+        Assert.Null(hierarchy.DerivedTypes);
+        Assert.Null(hierarchy.Note);
     }
 
     [Fact]
