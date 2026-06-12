@@ -127,7 +127,7 @@ public class McpStdioProtocolTests
         Assert.False(string.IsNullOrWhiteSpace(envelope.GetProperty("message").GetString()));
     }
 
-    private static async Task<IMcpClient> ConnectAsync(CancellationToken cancellationToken)
+    private static async Task<McpClient> ConnectAsync(CancellationToken cancellationToken)
     {
         Assert.True(File.Exists(ServerDll), $"Expected server DLL at {ServerDll}");
 
@@ -145,11 +145,11 @@ public class McpStdioProtocolTests
             ClientInfo = new Implementation { Name = "sherlock-e2e-tests", Version = "1.0.0" }
         };
 
-        return await McpClientFactory.CreateAsync(transport, options, NullLoggerFactory.Instance, cancellationToken);
+        return await McpClient.CreateAsync(transport, options, NullLoggerFactory.Instance, cancellationToken);
     }
 
     private static async Task<CallToolResult> CallGetTypeMethods(
-        IMcpClient client, int maxItems, string? continuationToken, CancellationToken cancellationToken)
+        McpClient client, int maxItems, string? continuationToken, CancellationToken cancellationToken)
     {
         var arguments = new Dictionary<string, object?>
         {
