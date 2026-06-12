@@ -127,7 +127,7 @@ public static class TypeAnalysisTools
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
-            var hits = reverseLookup.FindImplementations(scope.Paths, typeName, new ReverseLookupOptions());
+            var hits = reverseLookup.FindImplementations(scope.Paths, hierarchy.TypeName, new ReverseLookupOptions());
             var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
             return JsonHelpers.Envelope("type.hierarchy", hierarchy with { DerivedTypes = derived, Note = null });
         }
