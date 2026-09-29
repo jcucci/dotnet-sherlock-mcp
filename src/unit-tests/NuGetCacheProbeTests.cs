@@ -79,6 +79,84 @@ public class NuGetCacheProbeTests
         Assert.DoesNotContain(candidates, c => c.Contains($"{Path.DirectorySeparatorChar}net6.0{Path.DirectorySeparatorChar}"));
     }
 
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_ReusesSnapshot_WhenCacheUnchanged()
+    {
+        using var cache = new TempCache();
+        cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        var dependency = cache.AddPackageDll("depb", "2.0.0", "net8.0", "DepB.dll");
+        var rootWriteTime = Directory.GetLastWriteTimeUtc(cache.Root);
+
+        NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        File.Delete(dependency);
+        Directory.SetLastWriteTimeUtc(cache.Root, rootWriteTime);
+        var candidates = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+
+        Assert.Contains(dependency, candidates);
+    }
+
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_Rebuilds_WhenRootMtimeChanges()
+    {
+        using var cache = new TempCache();
+        cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        var rootWriteTime = Directory.GetLastWriteTimeUtc(cache.Root);
+
+        NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        var added = cache.AddPackageDll("depc", "1.0.0", "net8.0", "DepC.dll");
+        Directory.SetLastWriteTimeUtc(cache.Root, rootWriteTime.AddSeconds(5));
+        var candidates = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+
+        Assert.Contains(added, candidates);
+    }
+
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_Rebuilds_AfterTtl()
+    {
+        using var cache = new TempCache();
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        NuGetCacheProbe.Clock = clock;
+        cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        cache.AddPackageDll("depb", "1.0.0", "net8.0", "DepB.dll");
+        var rootWriteTime = Directory.GetLastWriteTimeUtc(cache.Root);
+
+        NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        var newer = cache.AddPackageDll("depb", "2.0.0", "net8.0", "DepB.dll");
+        Directory.SetLastWriteTimeUtc(cache.Root, rootWriteTime);
+
+        Assert.DoesNotContain(newer, NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga"));
+
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        Assert.Contains(newer, NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga"));
+    }
+
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_SeparatesResultsByTfmAndExclude()
+    {
+        using var cache = new TempCache();
+        var pkgA = cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        var depB = cache.AddPackageDll("depb", "1.0.0", "net8.0", "DepB.dll");
+        var depBStandard = cache.AddPackageDll("depb", "1.0.0", "netstandard2.0", "DepB.dll");
+
+        var forNet8 = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        var forStandard = NuGetCacheProbe.EnumerateCandidateDependencyDlls("netstandard2.0", "depb");
+
+        Assert.Equal([depB], forNet8);
+        Assert.DoesNotContain(pkgA, forStandard);
+        Assert.DoesNotContain(depBStandard, forStandard);
+        Assert.DoesNotContain(depB, forStandard);
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
+    {
+        private DateTimeOffset _now = start;
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public void Advance(TimeSpan delta) => _now += delta;
+    }
+
     private sealed class TempCache : IDisposable
     {
         private static readonly object EnvLock = new();
@@ -93,6 +171,7 @@ public class NuGetCacheProbeTests
                 Directory.CreateDirectory(Root);
                 _previous = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
                 Environment.SetEnvironmentVariable("NUGET_PACKAGES", Root);
+                NuGetCacheProbe.ResetCache();
             }
             catch
             {
@@ -117,6 +196,8 @@ public class NuGetCacheProbeTests
             try
             {
                 Environment.SetEnvironmentVariable("NUGET_PACKAGES", _previous);
+                NuGetCacheProbe.Clock = TimeProvider.System;
+                NuGetCacheProbe.ResetCache();
                 try { Directory.Delete(Root, recursive: true); } catch { }
             }
             finally
