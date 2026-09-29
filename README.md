@@ -260,13 +260,28 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-Errors use a consistent shape:
+Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 
 ```jsonc
-{ "kind": "error", "version": "1.0.0", "code": "AssemblyNotFound|TypeNotFound|InvalidArgument|InternalError", "message": "...", "details": { } }
-
-Common error codes include `AssemblyNotFound`, `TypeNotFound`, `MemberNotFound`, `InvalidArgument`, and `InternalError`.
+{
+  "kind": "error",
+  "version": "1.0.0",
+  "code": "MethodNotFound",
+  "message": "No method named 'Parse' was found on type 'MyApp.Config' in MyApp.dll.",
+  "suggestion": "Verify the type and method names. Use GetTypeMethods to list available methods, or set includeNonPublic=true for private methods.",
+  "alternativeTools": ["GetTypeMethods", "AnalyzeType"]
+}
 ```
+
+Error codes:
+
+* **Not found:** `AssemblyNotFound`, `TypeNotFound`, `MemberNotFound`, `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`
+* **Bad input:** `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidContinuationToken`
+* **Limits, resolution & internal:** `ResponseTooLarge`, `DependencyResolutionFailed`, `InternalError`
+
+## Roadmap
+
+Shipped features and planned work are summarized in [`src/docs/roadmap.md`](src/docs/roadmap.md); the live checklist is tracked in [#87](https://github.com/jcucci/dotnet-sherlock-mcp/issues/87).
 
 ## Contributing
 
