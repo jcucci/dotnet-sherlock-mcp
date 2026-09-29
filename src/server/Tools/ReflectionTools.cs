@@ -409,54 +409,63 @@ public static class ReflectionTools
     }
 
     [McpServerTool(Title = "Find Assembly by Class Name", ReadOnly = true, Destructive = false)]
-    [Description("Finds assembly path by searching for a class name in bin/Debug, bin/Release folders. Use when you know the class but not the assembly path. Returns path for use with other tools.")]
+    [Description("Recursively searches workingDirectory for .dll/.exe files that declare a public type matching className, skipping obj/, ref/, refint/, node_modules/, packages/, TestResults/ and dot-directories. Matches are ranked bin/ first, then newest, then shortest path; returns the best match as foundAssembly plus other candidates. Use when you know the class but not the assembly path.")]
     public static string FindAssemblyByClassName(
-        [Description("The class name to search for (e.g., 'MyClass').")] string className,
-        [Description("The root directory to start the search from.")] string workingDirectory)
-    {
-        try
-        {
-            var assemblyPath = AssemblyLocator.FindAssemblyByClassName(className, workingDirectory);
-
-            if (assemblyPath == null)
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly '{className}' not found in common binary folders.");
-
-            var result = new
-            {
-                searchTerm = className,
-                workingDirectory,
-                foundAssembly = assemblyPath,
-            };
-
-            return JsonHelpers.Envelope("reflection.findByClassName", result);
-        }
-        catch (Exception ex)
-        {
-            return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
-        }
-    }
+        [Description("The class name to search for: simple (e.g., 'MyClass'), full ('My.Namespace.MyClass') or nested ('Outer+Inner').")] string className,
+        [Description("The root directory to start the search from.")] string workingDirectory) =>
+        FindAssembly(
+            kind: "reflection.findByClassName",
+            searchTerm: className,
+            workingDirectory: workingDirectory,
+            notFoundMessage: $"No assembly declaring a public type '{className}' was found under '{workingDirectory}'.",
+            locate: () => AssemblyLocator.FindByClassName(workingDirectory, className));
 
     [McpServerTool(Title = "Find Assembly by File Name", ReadOnly = true, Destructive = false)]
-    [Description("Finds assembly path by DLL filename search. Use when you know the assembly name but not full path. Returns path for use with other tools.")]
+    [Description("Recursively searches workingDirectory for an assembly file name, skipping obj/, ref/, refint/, node_modules/, packages/, TestResults/ and dot-directories. Matches are ranked bin/ first, then newest, then shortest path; returns the best match as foundAssembly plus other candidates. Use when you know the assembly name but not its full path.")]
     public static string FindAssemblyByFileName(
-        [Description("The file name of the assembly to search for (e.g., 'MyProject.dll').")] string assemblyFileName,
-        [Description("The root directory to start the search from.")] string workingDirectory)
+        [Description("The file name of the assembly to search for (e.g., 'MyProject.dll'). Wildcards (*, ?) are allowed.")] string assemblyFileName,
+        [Description("The root directory to start the search from.")] string workingDirectory) =>
+        FindAssembly(
+            kind: "reflection.findByFileName",
+            searchTerm: assemblyFileName,
+            workingDirectory: workingDirectory,
+            notFoundMessage: $"No assembly named '{assemblyFileName}' was found under '{workingDirectory}'.",
+            locate: () => AssemblyLocator.FindByFileName(workingDirectory, assemblyFileName));
+
+    private const int MaxCandidates = 10;
+
+    private static string FindAssembly(string kind, string searchTerm, string workingDirectory, string notFoundMessage, Func<IReadOnlyList<string>> locate)
     {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return JsonHelpers.ErrorWithGuidance("InvalidArgument", "A search term must be provided.");
+
+        if (string.IsNullOrWhiteSpace(workingDirectory) || !Directory.Exists(workingDirectory))
+            return JsonHelpers.ErrorWithGuidance(
+                "InvalidArgument",
+                $"workingDirectory '{workingDirectory}' does not exist.",
+                suggestion: "Pass an existing directory, typically the solution or project root.");
+
         try
         {
-            var assemblyPath = Directory.GetFiles(workingDirectory, assemblyFileName, SearchOption.AllDirectories).FirstOrDefault();
+            var candidates = locate();
 
-            if (assemblyPath == null)
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly '{assemblyFileName}' not found in common binary folders.");
+            if (candidates.Count == 0)
+                return JsonHelpers.ErrorWithGuidance(
+                    "AssemblyNotFound",
+                    $"{notFoundMessage} Skipped directories: {string.Join(", ", AssemblyLocator.ExcludedDirectoryNames)} and dot-directories.",
+                    suggestion: "Build the project first, or resolve its output path or NuGet package directly.",
+                    alternativeTools: ["get_project_output_paths", "find_assembly_by_nuget_package"]);
 
             var result = new
             {
-                searchTerm = assemblyFileName,
+                searchTerm,
                 workingDirectory,
-                foundAssembly = assemblyPath,
+                foundAssembly = candidates[0],
+                candidateCount = candidates.Count,
+                candidates = candidates.Count > 1 ? candidates.Take(MaxCandidates).ToArray() : null
             };
 
-            return JsonHelpers.Envelope("reflection.findByFileName", result);
+            return JsonHelpers.Envelope(kind, result);
         }
         catch (Exception ex)
         {

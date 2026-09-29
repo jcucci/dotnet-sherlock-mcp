@@ -168,8 +168,8 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 ### Assembly Discovery & Analysis
 - **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
 - **`GetAssemblyInfo`**: Assembly-level metadata — identity/version, target framework, and referenced assemblies (`projection=full` adds all assembly attributes)
-- **`FindAssemblyByClassName`**: Locate assemblies containing specific class names
-- **`FindAssemblyByFileName`**: Find assemblies by file name in common build paths
+- **`FindAssemblyByClassName`**: Locate assemblies declaring a public type by simple, full or nested name; skips `obj/`, `ref/`, `refint/`, `node_modules/`, `packages/`, `TestResults/` and dot-directories, and ranks `bin/` matches first
+- **`FindAssemblyByFileName`**: Find assemblies by file name under a root directory, with the same exclusions and ranking
 - **`FindAssemblyByNugetPackage`**: Resolve a DLL from the local NuGet cache by package id (optional `version`/`tfm`)
 
 ### Type Introspection
