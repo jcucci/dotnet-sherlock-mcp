@@ -86,6 +86,19 @@ public class AssemblyLocatorTests : IDisposable
     }
 
     [Fact]
+    public void FindByClassName_InspectsEachSameNamedFileIndependently()
+    {
+        var matching = Place("a/bin/Debug/net10.0");
+        var unrelated = Path.Combine(_root, "b/bin/Debug/net10.0", AssemblyFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(unrelated)!);
+        File.Copy(typeof(AssemblyLocator).Assembly.Location, unrelated);
+        File.SetLastWriteTimeUtc(unrelated, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal([matching], AssemblyLocator.FindByClassName(_root, "TestSampleClass"));
+        Assert.Equal([unrelated], AssemblyLocator.FindByClassName(_root, "Sherlock.MCP.Runtime.Inspection.AssemblyLocator"));
+    }
+
+    [Fact]
     public void FindByClassName_ReturnsEmpty_ForUnknownType()
     {
         Place("proj/bin/Debug/net10.0");

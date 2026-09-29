@@ -26,18 +26,14 @@ public static class AssemblyLocator
 
     public static IReadOnlyList<string> FindByClassName(string root, string className)
     {
-        var groups = EnumerateAssemblyFiles(root, "*.dll")
+        var files = EnumerateAssemblyFiles(root, "*.dll")
             .Concat(EnumerateAssemblyFiles(root, "*.exe"))
-            .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-            .Select(group => Rank(group))
             .ToList();
 
         var matches = new ConcurrentBag<string>();
-        Parallel.ForEach(groups, ranked =>
+        Parallel.ForEach(files, path =>
         {
-            if (!DeclaresVisibleType(ranked[0], className))
-                return;
-            foreach (var path in ranked)
+            if (DeclaresVisibleType(path, className))
                 matches.Add(path);
         });
 
