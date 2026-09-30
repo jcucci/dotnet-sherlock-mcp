@@ -120,10 +120,11 @@ public static class SearchTools
                     results
                 };
 
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "SearchMembers");
+                var links = ResourceUris.TypeLinks(page.Select(h => (assemblyPath, h.TypeMetadataName)));
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "SearchMembers");
                 if (sizeError != null) return sizeError;
 
-                return new ToolResponse(JsonHelpers.Envelope("search.members", result), ResourceUris.TypeLinks(page.Select(h => (assemblyPath, h.TypeMetadataName))));
+                return new ToolResponse(JsonHelpers.Envelope("search.members", result), links);
             }, noCache);
         }
         catch (Exception ex)

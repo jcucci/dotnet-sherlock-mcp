@@ -435,10 +435,11 @@ public static class ReverseLookupTools
                     results
                 };
 
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "FindReferencesTo");
+                var links = ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName)));
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "FindReferencesTo");
                 if (sizeError != null) return sizeError;
 
-                return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), links);
             }, noCache);
         }
         catch (Exception ex)

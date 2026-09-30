@@ -174,6 +174,17 @@ public class AssemblyResourcesTests
     }
 
     [Fact]
+    public void GetTypesFromAssembly_GenericTypeLink_UsesMetadataNameWithoutExposingIt()
+    {
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, _testAssemblyPath, maxItems: 1000, projection: "full");
+
+        var metadataName = typeof(GenericOuter<>).FullName!;
+        var link = Assert.Single(result.Links(), l => l.Name == metadataName);
+        AssertLinkResolves(link);
+        Assert.DoesNotContain("MetadataName", result.Text());
+    }
+
+    [Fact]
     public void GetTypesFromAssembly_WithAdditionalAssemblies_OmitsLinks()
     {
         var dependency = typeof(TypeAnalysisService).Assembly.Location;

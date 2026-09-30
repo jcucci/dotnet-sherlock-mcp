@@ -93,7 +93,7 @@ public static class TypeAnalysisTools
             };
             var links = searchDirectories is { Length: > 0 }
                 ? []
-                : ResourceUris.TypeLinks(pageTypes.Select(t => (assemblyPath, t.FullName)));
+                : ResourceUris.TypeLinks(pageTypes.Select(t => (assemblyPath, t.MetadataName ?? t.FullName)));
             return new ToolResponse(JsonHelpers.Envelope("type.list", result), links).ToCallToolResult();
         }
         catch (DependencyResolutionException ex)

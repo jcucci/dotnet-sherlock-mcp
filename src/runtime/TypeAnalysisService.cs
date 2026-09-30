@@ -65,6 +65,7 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
     {
         return new TypeAnalysisInfo(
             FullName: TypeNameFormatter.FriendlyFullName(type),
+            MetadataName: type.FullName,
             Name: type.Name,
             Namespace: type.Namespace,
             Kind: GetTypeKind(type),
