@@ -12,7 +12,7 @@ public static class ProjectAnalysisTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool(Title = "Analyze Solution", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Parses a .sln file and lists all contained projects with paths. Use as entry point to discover project structure before AnalyzeProject. Lightweight response.")]
+    [Description("Parses a .sln file and lists all contained projects with paths. Use as entry point to discover project structure before analyze_project. Lightweight response.")]
     public static async Task<string> AnalyzeSolution(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the .sln file")] string solutionFilePath,
@@ -30,7 +30,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool(Title = "Analyze Project", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Parses a project file (.csproj/.vbproj/.fsproj) returning target framework, package refs, project refs, and output paths. Use GetProjectOutputPaths to find compiled assemblies.")]
+    [Description("Parses a project file (.csproj/.vbproj/.fsproj) returning target framework, package refs, project refs, and output paths. Use get_project_output_paths to find compiled assemblies.")]
     public static async Task<string> AnalyzeProject(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,

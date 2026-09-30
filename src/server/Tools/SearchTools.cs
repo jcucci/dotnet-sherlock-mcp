@@ -20,7 +20,7 @@ public static class SearchTools
     private static readonly char[] KindSeparators = { ',', '|' };
 
     [McpServerTool(Title = "Search Members", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of GetTypeMethods/Properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
+    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of get_type_methods / get_type_properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
     public static CallToolResult SearchMembers(
         ISearchService searchService,
         ToolMiddleware middleware,
@@ -74,7 +74,7 @@ public static class SearchTools
 
             return middleware.Execute(cacheKey, () =>
             {
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("SearchMembers");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("search_members");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
                 var offset = 0;
                 var salt = TokenHelper.MakeSalt(saltSeed);
@@ -122,7 +122,7 @@ public static class SearchTools
                 };
 
                 var links = ResourceUris.TypeLinks(page.Select(h => (assemblyPath, h.TypeMetadataName)));
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "SearchMembers");
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "search_members");
                 if (sizeError != null) return sizeError;
 
                 return new ToolResponse(JsonHelpers.Envelope("search.members", result), links);

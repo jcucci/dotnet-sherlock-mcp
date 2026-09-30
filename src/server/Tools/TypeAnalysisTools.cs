@@ -17,7 +17,7 @@ public static class TypeAnalysisTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool(Title = "Get Types from Assembly", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer GetTypeInfo for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
+    [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer get_type_info for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
     public static CallToolResult GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -111,7 +111,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Info", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with GetTypeMethods etc.")]
+    [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with get_type_methods etc.")]
     public static string GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -142,7 +142,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Hierarchy", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as FindImplementationsOf.")]
+    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as find_implementations_of.")]
     public static string GetTypeHierarchy(
         ITypeAnalysisService typeAnalysis,
         IReverseLookupService reverseLookup,
@@ -164,7 +164,7 @@ public static class TypeAnalysisTools
             if (hierarchy == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
             if (additionalAssemblies == null || additionalAssemblies.Length == 0)
-                return JsonHelpers.Envelope("type.hierarchy", hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use FindImplementationsOf" });
+                return JsonHelpers.Envelope("type.hierarchy", hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use find_implementations_of" });
 
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;

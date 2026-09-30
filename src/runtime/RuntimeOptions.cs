@@ -14,19 +14,19 @@ public class RuntimeOptions
 
         ToolSpecificMaxItems = new Dictionary<string, int>
         {
-            ["GetTypeMethods"] = 25,       // Methods have parameters, large payloads
-            ["GetTypeProperties"] = 40,    // Properties moderately sized
-            ["GetTypeFields"] = 75,        // Fields are compact
-            ["GetTypeEvents"] = 50,        // Events moderately sized
-            ["GetTypeConstructors"] = 30,  // Constructors have parameters
-            ["GetAllTypeMembers"] = 20,    // Combined view, keep small
-            ["AnalyzeAssembly"] = 50,      // Type summaries
-            ["AnalyzeType"] = 25,          // Combined members
-            ["GetTypesFromAssembly"] = 50, // Type summaries
-            ["FindImplementationsOf"] = 50,
-            ["FindMethodsReturning"] = 50,
-            ["FindReferencesTo"] = 25,     // Broader sweep, keep smaller
-            ["SearchMembers"] = 50
+            ["get_type_methods"] = 25,       // Methods have parameters, large payloads
+            ["get_type_properties"] = 40,    // Properties moderately sized
+            ["get_type_fields"] = 75,        // Fields are compact
+            ["get_type_events"] = 50,        // Events moderately sized
+            ["get_type_constructors"] = 30,  // Constructors have parameters
+            ["get_all_type_members"] = 20,    // Combined view, keep small
+            ["analyze_assembly"] = 50,      // Type summaries
+            ["analyze_type"] = 25,          // Combined members
+            ["get_types_from_assembly"] = 50, // Type summaries
+            ["find_implementations_of"] = 50,
+            ["find_methods_returning"] = 50,
+            ["find_references_to"] = 25,     // Broader sweep, keep smaller
+            ["search_members"] = 50
         };
     }
 

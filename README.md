@@ -318,8 +318,8 @@ Errors use a consistent shape. Every error carries `kind`, `version`, `code`, an
   "version": "1.0.0",
   "code": "MethodNotFound",
   "message": "No method named 'Parse' was found on type 'MyApp.Config' in MyApp.dll.",
-  "suggestion": "Verify the type and method names. Use GetTypeMethods to list available methods, or set includeNonPublic=true for private methods.",
-  "alternativeTools": ["GetTypeMethods", "AnalyzeType"]
+  "suggestion": "Verify the type and method names. Use get_type_methods to list available methods, or set includeNonPublic=true for private methods.",
+  "alternativeTools": ["get_type_methods", "analyze_type"]
 }
 ```
 

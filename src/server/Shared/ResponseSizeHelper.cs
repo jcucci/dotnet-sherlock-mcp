@@ -102,32 +102,32 @@ public static class ResponseSizeHelper
     private static (string suggestion, string[] alternatives, object recommended) GetGuidanceForTool(string toolName) =>
         toolName switch
         {
-            "GetAllTypeMembers" => (
+            "get_all_type_members" => (
                 "Use specific member tools with filtering instead of retrieving all members at once.",
-                new[] { "GetTypeMethods", "GetTypeProperties", "GetTypeFields", "GetTypeConstructors" },
+                new[] { "get_type_methods", "get_type_properties", "get_type_fields", "get_type_constructors" },
                 new { maxItems = 20, nameContains = "<filter_pattern>" }
             ),
-            "GetTypeMethods" => (
+            "get_type_methods" => (
                 "Filter by method name or reduce page size for types with many methods.",
                 Array.Empty<string>(),
                 new { maxItems = 15, nameContains = "<method_name_pattern>" }
             ),
-            "GetTypeProperties" => (
+            "get_type_properties" => (
                 "Filter by property name or reduce page size.",
                 Array.Empty<string>(),
                 new { maxItems = 25, nameContains = "<property_name_pattern>" }
             ),
-            "AnalyzeAssembly" => (
+            "analyze_assembly" => (
                 "Use smaller page size for assemblies with many types.",
-                new[] { "GetTypesFromAssembly" },
+                new[] { "get_types_from_assembly" },
                 new { maxItems = 25 }
             ),
-            "AnalyzeType" => (
+            "analyze_type" => (
                 "Use specific member tools for targeted queries.",
-                new[] { "GetTypeMethods", "GetTypeProperties", "GetTypeFields" },
+                new[] { "get_type_methods", "get_type_properties", "get_type_fields" },
                 new { maxItems = 15 }
             ),
-            "GetAssemblyInfo" => (
+            "get_assembly_info" => (
                 "Use the lean projection to avoid returning every assembly attribute.",
                 Array.Empty<string>(),
                 new { projection = "summary" }
