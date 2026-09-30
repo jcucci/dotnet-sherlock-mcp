@@ -9,8 +9,6 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class ProjectAnalysisTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
     [McpServerTool(Title = "Analyze Solution", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Parses a .sln file and lists all contained projects with paths. Use as entry point to discover project structure before analyze_project. Lightweight response.")]
     public static async Task<string> AnalyzeSolution(

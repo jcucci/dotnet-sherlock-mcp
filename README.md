@@ -310,6 +310,8 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 
 ```jsonc

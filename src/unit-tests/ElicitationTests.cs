@@ -73,7 +73,7 @@ public class ElicitationTests
     [Fact]
     public void GetTypeInfo_AmbiguousName_WithoutContext_ReturnsAmbiguousTypeName()
     {
-        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, "DuplicateWidget");
+        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, "DuplicateWidget").Text();
 
         AssertAmbiguousError(json);
     }
@@ -85,10 +85,10 @@ public class ElicitationTests
         var middleware = new ToolMiddleware(cache, new NoopTelemetry(), new RuntimeOptions());
         var memberAnalysis = new MemberAnalysisService();
 
-        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
-        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget").Text());
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget").Text());
 
-        var resolved = JsonDocument.Parse(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, Candidates[0]));
+        var resolved = JsonDocument.Parse(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, Candidates[0]).Text());
         Assert.NotEqual("error", resolved.RootElement.GetProperty("kind").GetString());
     }
 
@@ -97,7 +97,7 @@ public class ElicitationTests
     {
         var middleware = new ToolMiddleware(new InMemoryToolResponseCache(), new NoopTelemetry(), new RuntimeOptions());
 
-        var json = IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), middleware, TestAssemblyPath, "DuplicateWidget", "Spin");
+        var json = IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), middleware, TestAssemblyPath, "DuplicateWidget", "Spin").Text();
 
         AssertAmbiguousError(json);
     }

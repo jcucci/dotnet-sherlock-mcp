@@ -3,6 +3,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Search;
 using Sherlock.MCP.Server.Middleware;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Text.Json;
@@ -12,14 +13,12 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class SearchTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
     private static readonly HashSet<string> ValidKinds =
         new(StringComparer.OrdinalIgnoreCase) { "method", "property", "field", "event", "type" };
 
     private static readonly char[] KindSeparators = { ',', '|' };
 
-    [McpServerTool(Title = "Search Members", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Search Members", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<SearchMembersData>))]
     [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of get_type_methods / get_type_properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
     public static CallToolResult SearchMembers(
         ISearchService searchService,
@@ -109,7 +108,7 @@ public static class SearchTools
                     signature = h.Signature
                 }).ToArray();
 
-                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var resultsJson = JsonSerializer.Serialize(results, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     assemblyPath,

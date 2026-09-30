@@ -5,6 +5,7 @@ using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
 using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -15,9 +16,7 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class TypeAnalysisTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
-    [McpServerTool(Title = "Get Types from Assembly", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Get Types from Assembly", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeListData>))]
     [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer get_type_info for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
     public static CallToolResult GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
@@ -104,9 +103,9 @@ public static class TypeAnalysisTools
         }
     }
 
-    [McpServerTool(Title = "Get Type Info", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Get Type Info", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeInfoData>))]
     [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with get_type_methods etc.")]
-    public static string GetTypeInfo(
+    public static CallToolResult GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -118,21 +117,21 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
 
             var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
             if (info == null)
-                return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
+                return ToolResponse.Result(ToolErrors.TypeNotFound(contexts, assemblyPath, typeName));
 
-            return JsonHelpers.Envelope("type.info", info);
+            return ToolResponse.Result(JsonHelpers.Envelope("type.info", info));
         }
         catch (AmbiguousTypeNameException ex)
         {
-            return Elicitation.AmbiguousType(elicitation, ex);
+            return ToolResponse.Result(Elicitation.AmbiguousType(elicitation, ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolErrors.FromException(ex, "analyze type");
+            return ToolResponse.Result(ToolErrors.FromException(ex, "analyze type"));
         }
     }
 

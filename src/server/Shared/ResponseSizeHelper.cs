@@ -4,7 +4,7 @@ namespace Sherlock.MCP.Server.Shared;
 
 public static class ResponseSizeHelper
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = false };
+    private static readonly JsonSerializerOptions _jsonOptions = JsonHelpers.DefaultOptions;
 
     /// <summary>
     /// Maximum response size in characters before we consider it too large for MCP

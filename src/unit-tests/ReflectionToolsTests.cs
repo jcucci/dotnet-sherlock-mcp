@@ -16,7 +16,7 @@ public class ReflectionToolsTests : IDisposable
     [Fact]
     public void GetAssemblyInfo_Summary_EnvelopeAndShape()
     {
-        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath);
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -34,7 +34,7 @@ public class ReflectionToolsTests : IDisposable
     [Fact]
     public void GetAssemblyInfo_Full_IncludesAttributes()
     {
-        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "full");
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "full").Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -45,7 +45,7 @@ public class ReflectionToolsTests : IDisposable
     [Fact]
     public void GetAssemblyInfo_InvalidProjection_ReturnsInvalidProjection()
     {
-        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "verbose");
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "verbose").Text();
 
         var doc = JsonDocument.Parse(result);
         Assert.Equal("error", doc.RootElement.GetProperty("kind").GetString());
@@ -55,7 +55,7 @@ public class ReflectionToolsTests : IDisposable
     [Fact]
     public void GetAssemblyInfo_ProjectionIsNormalized()
     {
-        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "  FULL  ");
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, _testAssemblyPath, projection: "  FULL  ").Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -66,7 +66,7 @@ public class ReflectionToolsTests : IDisposable
     [Fact]
     public void GetAssemblyInfo_MissingFile_ReturnsAssemblyNotFound()
     {
-        var result = ReflectionTools.GetAssemblyInfo(_contexts, "/no/such/assembly.dll");
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, "/no/such/assembly.dll").Text();
 
         var doc = JsonDocument.Parse(result);
         Assert.Equal("error", doc.RootElement.GetProperty("kind").GetString());

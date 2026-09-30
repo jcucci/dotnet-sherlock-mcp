@@ -3,6 +3,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Il;
 using Sherlock.MCP.Server.Middleware;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 
@@ -13,9 +14,9 @@ public static class IlAnalysisTools
 {
     private static readonly string[] MethodNotFoundAlternatives = { "get_type_methods", "analyze_type" };
 
-    [McpServerTool(Title = "Get Method Calls", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Get Method Calls", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<MethodCallsData>))]
     [Description("Analyzes a method's IL body to list what it calls and which fields it touches (the 'what does this method call?' question that signature-level tools can't answer). Aggregates across all overloads of the method name. Returns a lean summary by default (distinct target names); projection='full' adds per-call kind (call/callvirt/newobj/ldftn) and the source overload signature.")]
-    public static string GetMethodCalls(
+    public static CallToolResult GetMethodCalls(
         IIlAnalysisService ilAnalysis,
         ToolMiddleware middleware,
         [Description("Path to the .NET assembly file (.dll or .exe) that declares the method")] string assemblyPath,
@@ -33,23 +34,23 @@ public static class IlAnalysisTools
         try
         {
             if (string.IsNullOrWhiteSpace(assemblyPath))
-                return JsonHelpers.Error("InvalidArgument", "assemblyPath is required");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "assemblyPath is required"));
             if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
             if (string.IsNullOrWhiteSpace(typeName))
-                return JsonHelpers.Error("InvalidArgument", "typeName is required");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "typeName is required"));
             if (string.IsNullOrWhiteSpace(methodName))
-                return JsonHelpers.Error("InvalidArgument", "methodName is required");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "methodName is required"));
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             var cacheKey = CacheKeyHelper.Build(
                 "il.methodCalls",
                 CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName, caseSensitive, includeNonPublic, normalizedProjection);
 
-            return middleware.Execute(cacheKey, () =>
+            return ToolResponse.Result(middleware.Execute(cacheKey, () =>
             {
                 var options = new IlAnalysisOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
                 var analysis = ilAnalysis.GetMethodCalls(assemblyPath, typeName, methodName, options, cancellationToken);
@@ -87,15 +88,15 @@ public static class IlAnalysisTools
                 if (sizeError != null) return sizeError;
 
                 return JsonHelpers.Envelope("il.methodCalls", result);
-            }, noCache);
+            }, noCache));
         }
         catch (AmbiguousTypeNameException ex)
         {
-            return Elicitation.AmbiguousType(elicitation, ex);
+            return ToolResponse.Result(Elicitation.AmbiguousType(elicitation, ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolErrors.FromException(ex, "analyze method calls");
+            return ToolResponse.Result(ToolErrors.FromException(ex, "analyze method calls"));
         }
     }
 }

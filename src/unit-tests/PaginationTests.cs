@@ -178,7 +178,7 @@ public class PaginationTests
 
         var result = MemberAnalysisTools.GetTypeMethods(
             _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
-            _testAssemblyPath, typeName, maxItems: 3);
+            _testAssemblyPath, typeName, maxItems: 3).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var jsonDoc = JsonDocument.Parse(result);
@@ -205,7 +205,7 @@ public class PaginationTests
 
         var result = MemberAnalysisTools.GetTypeMethods(
             _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
-            _testAssemblyPath, typeName, maxItems: 3, projection: "full");
+            _testAssemblyPath, typeName, maxItems: 3, projection: "full").Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var jsonDoc = JsonDocument.Parse(result);
@@ -229,7 +229,7 @@ public class PaginationTests
 
         var page1 = MemberAnalysisTools.GetTypeMethods(
             _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
-            _testAssemblyPath, typeName, maxItems: 1, noCache: true);
+            _testAssemblyPath, typeName, maxItems: 1, noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", page1);
         var page1Doc = JsonDocument.Parse(page1);
@@ -241,7 +241,7 @@ public class PaginationTests
 
         var page2 = MemberAnalysisTools.GetTypeMethods(
             _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
-            _testAssemblyPath, typeName, maxItems: 1, continuationToken: nextToken, noCache: true);
+            _testAssemblyPath, typeName, maxItems: 1, continuationToken: nextToken, noCache: true).Text();
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
         Assert.DoesNotContain("\"error\"", page2);
@@ -282,7 +282,7 @@ public class PaginationTests
 
         var result = MemberAnalysisTools.GetTypeMethods(
             _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
-            _testAssemblyPath, typeName, projection: "partial");
+            _testAssemblyPath, typeName, projection: "partial").Text();
 
         Assert.Contains("InvalidProjection", result);
     }
