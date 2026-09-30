@@ -6,5 +6,6 @@ namespace Sherlock.MCP.Runtime;
 public interface ISearchService
 {
     PagedResult<MemberSearchHit> SearchMembers(
-        string assemblyPath, string nameContains, SearchOptions options, int offset, int pageSize);
+        string assemblyPath, string nameContains, SearchOptions options, int offset, int pageSize,
+        CancellationToken cancellationToken = default);
 }

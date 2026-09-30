@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Reflection;
@@ -96,7 +97,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope("reflection.assembly", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze assembly: {ex.Message}");
         }
@@ -158,7 +159,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope("reflection.assemblyInfo", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get assembly info: {ex.Message}");
         }
@@ -402,7 +403,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope("reflection.type", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
         }
@@ -412,25 +413,28 @@ public static class ReflectionTools
     [Description("Recursively searches workingDirectory for .dll/.exe files that declare a public type matching className, skipping obj/, ref/, refint/, node_modules/, packages/, TestResults/ and dot-directories. Matches are ranked bin/ first, then newest, then shortest path; returns the best match as foundAssembly plus other candidates. Use when you know the class but not the assembly path.")]
     public static string FindAssemblyByClassName(
         [Description("The class name to search for: simple (e.g., 'MyClass'), full ('My.Namespace.MyClass') or nested ('Outer+Inner').")] string className,
-        [Description("The root directory to start the search from.")] string workingDirectory) =>
+        [Description("The root directory to start the search from.")] string workingDirectory,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default) =>
         FindAssembly(
             kind: "reflection.findByClassName",
             searchTerm: className,
             workingDirectory: workingDirectory,
             notFoundMessage: $"No assembly declaring a public type '{className}' was found under '{workingDirectory}'.",
-            locate: () => AssemblyLocator.FindByClassName(workingDirectory, className));
+            locate: () => AssemblyLocator.FindByClassName(workingDirectory, className, ProgressAdapter.ForPhase(progress), cancellationToken));
 
     [McpServerTool(Title = "Find Assembly by File Name", ReadOnly = true, Destructive = false)]
     [Description("Recursively searches workingDirectory for an assembly file name, skipping obj/, ref/, refint/, node_modules/, packages/, TestResults/ and dot-directories. Matches are ranked bin/ first, then newest, then shortest path; returns the best match as foundAssembly plus other candidates. Use when you know the assembly name but not its full path.")]
     public static string FindAssemblyByFileName(
         [Description("The file name of the assembly to search for (e.g., 'MyProject.dll'). Wildcards (*, ?) are allowed.")] string assemblyFileName,
-        [Description("The root directory to start the search from.")] string workingDirectory) =>
+        [Description("The root directory to start the search from.")] string workingDirectory,
+        CancellationToken cancellationToken = default) =>
         FindAssembly(
             kind: "reflection.findByFileName",
             searchTerm: assemblyFileName,
             workingDirectory: workingDirectory,
             notFoundMessage: $"No assembly named '{assemblyFileName}' was found under '{workingDirectory}'.",
-            locate: () => AssemblyLocator.FindByFileName(workingDirectory, assemblyFileName));
+            locate: () => AssemblyLocator.FindByFileName(workingDirectory, assemblyFileName, cancellationToken));
 
     private const int MaxCandidates = 10;
 
@@ -467,7 +471,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope(kind, result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
         }
@@ -504,7 +508,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope(NuGetLookupResponse.Kind, NuGetLookupResponse.Success(lookup));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to resolve NuGet package: {ex.Message}");
         }
@@ -581,7 +585,7 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope("reflection.method", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze method: {ex.Message}");
         }

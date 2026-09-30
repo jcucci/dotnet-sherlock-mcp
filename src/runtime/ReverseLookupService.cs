@@ -15,13 +15,15 @@ public class ReverseLookupService : IReverseLookupService
 
     public ReverseLookupService(IInspectionContextProvider contexts) => _contexts = contexts;
 
-    public ImplementationHit[] FindImplementations(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    public ImplementationHit[] FindImplementations(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<ImplementationHit>();
 
         ScanInParallel(assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
             {
                 var matchedInterfaces = GetInterfacesSafe(candidate)
                     .Where(i => TypeNameMatcher.Matches(i, typeName, options.CaseSensitive))
@@ -45,7 +47,7 @@ public class ReverseLookupService : IReverseLookupService
                     BaseTypeChain: baseTypeChain.Select(TypeNameFormatter.FriendlyFullName).ToArray(),
                     TypeMetadataName: candidate.FullName));
             }
-        });
+        }, progress, cancellationToken);
 
         return hits
             .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
@@ -53,14 +55,16 @@ public class ReverseLookupService : IReverseLookupService
             .ToArray();
     }
 
-    public MethodReturnHit[] FindMethodsReturning(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    public MethodReturnHit[] FindMethodsReturning(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<MethodReturnHit>();
         var flags = BuildMemberFlags(options);
 
         ScanInParallel(assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
             {
                 foreach (var method in GetMethodsSafe(candidate, flags))
                 {
@@ -80,7 +84,7 @@ public class ReverseLookupService : IReverseLookupService
                         TypeMetadataName: candidate.FullName));
                 }
             }
-        });
+        }, progress, cancellationToken);
 
         return hits
             .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
@@ -90,14 +94,16 @@ public class ReverseLookupService : IReverseLookupService
             .ToArray();
     }
 
-    public ExtensionMethodHit[] FindExtensionMethodsFor(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    public ExtensionMethodHit[] FindExtensionMethodsFor(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<ExtensionMethodHit>();
         var flags = BuildMemberFlags(options);
 
         ScanInParallel(assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
             {
                 if (!IsStaticClass(candidate)) continue;
 
@@ -125,7 +131,7 @@ public class ReverseLookupService : IReverseLookupService
                         TypeMetadataName: candidate.FullName));
                 }
             }
-        });
+        }, progress, cancellationToken);
 
         return hits
             .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
@@ -135,7 +141,9 @@ public class ReverseLookupService : IReverseLookupService
             .ToArray();
     }
 
-    public ReferencesResult FindReferences(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    public ReferencesResult FindReferences(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<ReferenceHit>();
         var flags = BuildMemberFlags(options);
@@ -156,7 +164,7 @@ public class ReverseLookupService : IReverseLookupService
 
         ScanInParallel(assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options))
+            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
             {
                 if (Volatile.Read(ref truncated) == 1) return;
 
@@ -250,7 +258,7 @@ public class ReverseLookupService : IReverseLookupService
                         disambiguator: TypeNameFormatter.FriendlyFullName(eventMatch)))) return;
                 }
             }
-        });
+        }, progress, cancellationToken);
 
         var sorted = hits
             .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
@@ -264,13 +272,20 @@ public class ReverseLookupService : IReverseLookupService
         return new ReferencesResult(sorted, truncated == 1);
     }
 
-    private void ScanInParallel(string[] assemblyPaths, Action<string, IAssemblyInspectionContext> scan)
+    private void ScanInParallel(
+        string[] assemblyPaths, Action<string, IAssemblyInspectionContext> scan,
+        IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
     {
         var paths = assemblyPaths.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var counter = new ProgressCounter(progress, paths.Length);
         Parallel.ForEach(
             paths,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-            path => TryScanAssembly(path, scan));
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            path =>
+            {
+                TryScanAssembly(path, scan);
+                counter.Increment(Path.GetFileName(path));
+            });
     }
 
     private static ReferenceHit MakeRefHit(
@@ -338,7 +353,8 @@ public class ReverseLookupService : IReverseLookupService
         return flags;
     }
 
-    private static IEnumerable<Type> GetScannableTypes(IAssemblyInspectionContext ctx, ReverseLookupOptions options)
+    private static IEnumerable<Type> GetScannableTypes(
+        IAssemblyInspectionContext ctx, ReverseLookupOptions options, CancellationToken cancellationToken)
     {
         IEnumerable<Type> types;
         try { types = ctx.GetTypes(); }
@@ -346,6 +362,7 @@ public class ReverseLookupService : IReverseLookupService
 
         foreach (var t in types)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (t == null) continue;
             if (t.IsGenericParameter) continue;
             if (!options.IncludeNonPublic && !t.IsPublic && !t.IsNestedPublic) continue;

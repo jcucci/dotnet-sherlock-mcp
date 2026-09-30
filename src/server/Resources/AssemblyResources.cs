@@ -36,7 +36,7 @@ public static class AssemblyResources
         {
             return typeAnalysis.GetTypeInfo(path, fullName);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new McpProtocolException(
                 $"Failed to load type '{fullName}' from '{path}': {ex.Message} If the assembly's dependencies are not next to it or in the NuGet cache, use get_type_info with an assembly path from a build-output folder.",

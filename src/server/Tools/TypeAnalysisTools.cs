@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
@@ -103,7 +104,7 @@ public static class TypeAnalysisTools
                 ex.Message,
                 suggestion: $"The dependencies ({string.Join(", ", ex.UnresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. Re-run with assemblyPath pointing at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies, or pass the dependency DLL file paths via additionalAssemblies."));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to get types: {ex.Message}"));
         }
@@ -127,7 +128,7 @@ public static class TypeAnalysisTools
 
             return JsonHelpers.Envelope("type.info", info);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
         }
@@ -142,7 +143,9 @@ public static class TypeAnalysisTools
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
         [Description("Optional additional assembly paths to include in the search scope")]
-        string[]? additionalAssemblies = null)
+        string[]? additionalAssemblies = null,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -156,11 +159,12 @@ public static class TypeAnalysisTools
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return scope.Error;
 
-            var hits = reverseLookup.FindImplementations(scope.Paths, hierarchy.TypeName, new ReverseLookupOptions());
+            var hits = reverseLookup.FindImplementations(
+                scope.Paths, hierarchy.TypeName, new ReverseLookupOptions(), ProgressAdapter.ForPhase(progress), cancellationToken);
             var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
             return JsonHelpers.Envelope("type.hierarchy", hierarchy with { DerivedTypes = derived, Note = null });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get type hierarchy: {ex.Message}");
         }
@@ -181,7 +185,7 @@ public static class TypeAnalysisTools
             if (genericInfo == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             return JsonHelpers.Envelope("type.generic", genericInfo);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get generic type info: {ex.Message}");
         }
@@ -203,7 +207,7 @@ public static class TypeAnalysisTools
             var (typeFullName, attributes) = lookup.Value;
             return JsonHelpers.Envelope("type.attributes", new { typeName = typeFullName, attributeCount = attributes.Length, attributes });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get attributes: {ex.Message}");
         }
@@ -225,7 +229,7 @@ public static class TypeAnalysisTools
             var (typeFullName, nested) = lookup.Value;
             return JsonHelpers.Envelope("type.nested", new { typeName = typeFullName, nestedTypeCount = nested.Length, nested });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get nested types: {ex.Message}");
         }

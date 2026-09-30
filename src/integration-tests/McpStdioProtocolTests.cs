@@ -306,6 +306,55 @@ public class McpStdioProtocolTests
         Assert.False(string.IsNullOrWhiteSpace(envelope.GetProperty("message").GetString()));
     }
 
+    [Fact]
+    public async Task Long_scan_streams_progress_notifications_when_client_sends_progress_token()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+        var progress = new CollectingProgress();
+
+        var result = await client.CallToolAsync(
+            "find_assembly_by_class_name",
+            new Dictionary<string, object?>
+            {
+                ["className"] = nameof(McpStdioProtocolTests),
+                ["workingDirectory"] = AppContext.BaseDirectory
+            },
+            progress,
+            cancellationToken: cts.Token);
+
+        Assert.Equal("reflection.findByClassName", Envelope(result).GetProperty("kind").GetString());
+
+        while (progress.Count == 0 && !cts.IsCancellationRequested)
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cts.Token);
+
+        var last = progress.Last;
+        Assert.NotNull(last.Total);
+        Assert.True(last.Progress > 0);
+        Assert.True(last.Progress <= last.Total);
+    }
+
+    private sealed class CollectingProgress : IProgress<ModelContextProtocol.ProgressNotificationValue>
+    {
+        private readonly object _gate = new();
+        private readonly List<ModelContextProtocol.ProgressNotificationValue> _reports = [];
+
+        public int Count
+        {
+            get { lock (_gate) return _reports.Count; }
+        }
+
+        public ModelContextProtocol.ProgressNotificationValue Last
+        {
+            get { lock (_gate) return _reports[^1]; }
+        }
+
+        public void Report(ModelContextProtocol.ProgressNotificationValue value)
+        {
+            lock (_gate) _reports.Add(value);
+        }
+    }
+
     private static async Task<McpClient> ConnectAsync(CancellationToken cancellationToken)
     {
         Assert.True(File.Exists(ServerDll), $"Expected server DLL at {ServerDll}");

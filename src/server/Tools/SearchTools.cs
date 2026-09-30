@@ -33,7 +33,8 @@ public static class SearchTools
         [Description("Maximum items to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -93,7 +94,7 @@ public static class SearchTools
                     IncludeNonPublic: includeNonPublic,
                     MemberKinds: kinds);
 
-                var pageResult = searchService.SearchMembers(assemblyPath, nameContains, options, offset, pageSize);
+                var pageResult = searchService.SearchMembers(assemblyPath, nameContains, options, offset, pageSize, cancellationToken);
                 var page = pageResult.Items;
 
                 string? nextToken = null;
@@ -127,7 +128,7 @@ public static class SearchTools
                 return new ToolResponse(JsonHelpers.Envelope("search.members", result), links);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to search members: {ex.Message}"));
         }

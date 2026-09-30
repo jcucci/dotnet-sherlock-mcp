@@ -16,7 +16,8 @@ public class SearchService : ISearchService
     public SearchService(IInspectionContextProvider contexts) => _contexts = contexts;
 
     public PagedResult<MemberSearchHit> SearchMembers(
-        string assemblyPath, string nameContains, SearchOptions options, int offset, int pageSize)
+        string assemblyPath, string nameContains, SearchOptions options, int offset, int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var comparison = options.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         var flags = BuildMemberFlags(options);
@@ -33,6 +34,7 @@ public class SearchService : ISearchService
 
             foreach (var type in GetScannableTypes(ctx, options))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var declaringName = TypeNameFormatter.FriendlyFullName(type);
                 var metadataName = type.FullName ?? declaringName;
 

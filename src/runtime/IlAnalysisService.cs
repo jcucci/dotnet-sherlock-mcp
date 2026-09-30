@@ -20,7 +20,9 @@ public class IlAnalysisService : IIlAnalysisService
 
     public IlAnalysisService(IInspectionContextProvider contexts) => _contexts = contexts;
 
-    public MethodCallsResult? GetMethodCalls(string assemblyPath, string typeName, string methodName, IlAnalysisOptions options)
+    public MethodCallsResult? GetMethodCalls(
+        string assemblyPath, string typeName, string methodName, IlAnalysisOptions options,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(assemblyPath)) return null;
 
@@ -32,6 +34,7 @@ public class IlAnalysisService : IIlAnalysisService
         {
             foreach (var candidate in SafeGetTypes(lease.Context))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!TypeNameMatcher.Matches(candidate, typeName, options.CaseSensitive)) continue;
 
                 targetType = candidate;
@@ -69,6 +72,7 @@ public class IlAnalysisService : IIlAnalysisService
 
             foreach (var method in targets)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var il = TryGetMethodBody(pe, md, method.MetadataToken, out var hadBody);
                 if (!hadBody)
                 {
@@ -109,7 +113,9 @@ public class IlAnalysisService : IIlAnalysisService
         return new MethodCallsResult(declaringFullName, methodName, targets.Count, anyBodyless, distinctCalls, distinctFields);
     }
 
-    public InboundCallHit[] FindInboundCallers(string[] assemblyPaths, string typeName, ReverseLookupOptions options)
+    public InboundCallHit[] FindInboundCallers(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<InboundCallHit>();
         var cap = Math.Max(1, options.HardCap);
@@ -128,13 +134,15 @@ public class IlAnalysisService : IIlAnalysisService
         }
 
         var paths = assemblyPaths.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var counter = new ProgressCounter(progress, paths.Length);
         Parallel.ForEach(
             paths,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
             path =>
             {
-                if (Volatile.Read(ref truncated) == 1) return;
-                ScanAssemblyForCallers(path, typeName, options, TryAdd, () => Volatile.Read(ref truncated) == 1);
+                if (Volatile.Read(ref truncated) != 1)
+                    ScanAssemblyForCallers(path, typeName, options, TryAdd, () => Volatile.Read(ref truncated) == 1, cancellationToken);
+                counter.Increment(Path.GetFileName(path));
             });
 
         return hits
@@ -148,7 +156,7 @@ public class IlAnalysisService : IIlAnalysisService
 
     private static void ScanAssemblyForCallers(
         string path, string typeName, ReverseLookupOptions options,
-        Func<InboundCallHit, bool> tryAdd, Func<bool> isTruncated)
+        Func<InboundCallHit, bool> tryAdd, Func<bool> isTruncated, CancellationToken cancellationToken)
     {
         try
         {
@@ -161,6 +169,7 @@ public class IlAnalysisService : IIlAnalysisService
 
             foreach (var typeHandle in md.TypeDefinitions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (isTruncated()) return;
                 var typeDef = md.GetTypeDefinition(typeHandle);
                 if (!options.IncludeNonPublic && !IsTypeVisible(typeDef.Attributes)) continue;
@@ -169,6 +178,7 @@ public class IlAnalysisService : IIlAnalysisService
 
                 foreach (var methodHandle in typeDef.GetMethods())
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var methodDef = md.GetMethodDefinition(methodHandle);
                     if (!options.IncludeNonPublic && !IsMethodPublic(methodDef.Attributes)) continue;
                     if (methodDef.RelativeVirtualAddress == 0) continue;

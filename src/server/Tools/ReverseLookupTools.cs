@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
@@ -29,7 +30,9 @@ public static class ReverseLookupTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
         [Description("Response shape. 'summary' (default, token-lean): { typeFullName, kind }. 'full': adds assemblyPath, matchedInterfaces[], baseTypeChain[].")] string projection = "summary",
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,7 +55,7 @@ public static class ReverseLookupTools
             return middleware.Execute(cacheKey, () =>
             {
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
-                var allHits = reverseLookup.FindImplementations(scope.Paths, typeName, options);
+                var allHits = reverseLookup.FindImplementations(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindImplementationsOf");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
@@ -100,7 +103,7 @@ public static class ReverseLookupTools
                 return new ToolResponse(JsonHelpers.Envelope("reverselookup.implementations", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.TypeFullName))));
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find implementations: {ex.Message}"));
         }
@@ -121,7 +124,9 @@ public static class ReverseLookupTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
         [Description("Response shape. 'summary' (default, token-lean): { declaringType, methodName, signature }. 'full': adds assemblyPath, returnType, isStatic.")] string projection = "summary",
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -144,7 +149,7 @@ public static class ReverseLookupTools
             return middleware.Execute(cacheKey, () =>
             {
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
-                var allHits = reverseLookup.FindMethodsReturning(scope.Paths, typeName, options);
+                var allHits = reverseLookup.FindMethodsReturning(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindMethodsReturning");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
@@ -198,7 +203,7 @@ public static class ReverseLookupTools
                 return new ToolResponse(JsonHelpers.Envelope("reverselookup.returning", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find methods by return type: {ex.Message}"));
         }
@@ -219,7 +224,9 @@ public static class ReverseLookupTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
         [Description("Response shape. 'summary' (default, token-lean): { declaringType, methodName, signature }. 'full': adds assemblyPath, extendedType.")] string projection = "summary",
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -242,7 +249,7 @@ public static class ReverseLookupTools
             return middleware.Execute(cacheKey, () =>
             {
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
-                var allHits = reverseLookup.FindExtensionMethodsFor(scope.Paths, typeName, options);
+                var allHits = reverseLookup.FindExtensionMethodsFor(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
                 var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindExtensionMethodsFor");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
@@ -295,7 +302,7 @@ public static class ReverseLookupTools
                 return new ToolResponse(JsonHelpers.Envelope("reverselookup.extensions", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find extension methods: {ex.Message}"));
         }
@@ -318,7 +325,9 @@ public static class ReverseLookupTools
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
         [Description("Response shape. 'summary' (default, token-lean): { declaringType, memberKind, memberName, referenceKind }. 'full': adds assemblyPath, signature, dedupeKey.")] string projection = "summary",
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        IProgress<ProgressNotificationValue>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -352,13 +361,16 @@ public static class ReverseLookupTools
                     IncludeNonPublic: includeNonPublic,
                     HardCap: hardCap);
 
-                var scanResult = reverseLookup.FindReferences(scope.Paths, typeName, options);
+                var phaseCount = normalizedDepth == "il" ? 2 : 1;
+                var scanResult = reverseLookup.FindReferences(
+                    scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress, phase: 0, phaseCount), cancellationToken);
                 var allHits = scanResult.Hits;
                 var truncated = scanResult.Truncated;
 
                 if (normalizedDepth == "il")
                 {
-                    var inbound = ilAnalysis.FindInboundCallers(scope.Paths, typeName, options);
+                    var inbound = ilAnalysis.FindInboundCallers(
+                        scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress, phase: 1, phaseCount), cancellationToken);
                     if (inbound.Length > 0)
                     {
                         var inboundHits = inbound.Select(h => new ReferenceHit(
@@ -442,7 +454,7 @@ public static class ReverseLookupTools
                 return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), links);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find references: {ex.Message}"));
         }
