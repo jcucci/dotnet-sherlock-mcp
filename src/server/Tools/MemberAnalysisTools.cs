@@ -206,7 +206,7 @@ public static class MemberAnalysisTools
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return ToolErrors.TypeNotFound(asm, typeName);
+                return ToolErrors.TypeNotFound(lease.Context, typeName);
             MemberInfo? member = memberKind.ToLowerInvariant() switch
             {
                 "method" => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
@@ -256,7 +256,7 @@ public static class MemberAnalysisTools
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return ToolErrors.TypeNotFound(asm, typeName);
+                return ToolErrors.TypeNotFound(lease.Context, typeName);
             var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                              .FirstOrDefault(m => string.Equals(m.Name, methodName, comparison))
                         ?? (MethodBase?)type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)

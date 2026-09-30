@@ -16,7 +16,8 @@ public static class ToolErrors
 
     private static readonly string[] TypeDiscoveryTools = ["search_members", "get_types_from_assembly"];
 
-    private static readonly string[] MemberDiscoveryTools = ["get_type_methods", "search_members"];
+    private const string AdditionalAssembliesHint =
+        "Point assemblyPath at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies; tools that accept additionalAssemblies can instead be given the dependency DLL paths there.";
 
     private static readonly string[] AssemblyExtensions = [".dll", ".exe"];
 
@@ -38,19 +39,20 @@ public static class ToolErrors
         try
         {
             using var lease = contexts.Acquire(assemblyPath);
-            return TypeNotFound(lease.Assembly, typeName);
+            return TypeNotFound(lease.Context, typeName);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return TypeNotFound(typeName, candidates: []);
+            return TypeNotFound(typeName, candidates: [], unresolvedDependencies: []);
         }
     }
 
-    public static string TypeNotFound(Assembly assembly, string typeName) =>
-        TypeNotFound(typeName, SafeSuggest(() => NameSuggestions.ForTypes(assembly, typeName)));
-
-    public static string TypeNotFound(IEnumerable<Type> searchedTypes, string typeName) =>
-        TypeNotFound(typeName, SafeSuggest(() => NameSuggestions.ForTypes(searchedTypes, typeName)));
+    public static string TypeNotFound(IAssemblyInspectionContext context, string typeName, IEnumerable<Type>? searchedTypes = null)
+    {
+        var loadableTypes = LoadableTypes(context);
+        var candidates = SafeSuggest(() => NameSuggestions.ForTypes(searchedTypes ?? loadableTypes, typeName));
+        return TypeNotFound(typeName, candidates, context.UnresolvedDependencies);
+    }
 
     public static string MemberNotFound(
         Type type,
@@ -66,7 +68,7 @@ public static class ToolErrors
             suggestion: candidates.Count > 0
                 ? $"Did you mean {FormatChoices(candidates)}?"
                 : "List the type's members to find the exact name.",
-            alternativeTools: MemberDiscoveryTools,
+            alternativeTools: MemberDiscoveryTools(memberKind),
             recommendedParams: candidates.Count > 0 ? new { candidates } : null);
     }
 
@@ -75,7 +77,7 @@ public static class ToolErrors
         DependencyResolutionException dependency => JsonHelpers.ErrorWithGuidance(
             "DependencyResolutionFailed",
             dependency.Message,
-            suggestion: $"The dependencies ({string.Join(", ", dependency.UnresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. Re-run with assemblyPath pointing at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies, or pass the dependency DLL file paths via additionalAssemblies."),
+            suggestion: DependencyResolutionHint(dependency.UnresolvedDependencies)),
         BadImageFormatException => JsonHelpers.ErrorWithGuidance(
             "InvalidAssembly",
             $"Failed to {operation}: {ex.Message}",
@@ -98,18 +100,46 @@ public static class ToolErrors
         JsonHelpers.ErrorWithGuidance(
             "DependencyNotFound",
             $"Failed to {operation}: {ex.Message}",
-            suggestion: $"A referenced assembly{FileNameClause(ex)} could not be loaded. Use a copy of the assembly in its build-output folder so its dependencies sit beside it, or pass the dependency DLLs via additionalAssemblies where supported.",
+            suggestion: $"A referenced assembly{FileNameClause(ex)} could not be loaded. {AdditionalAssembliesHint}",
             alternativeTools: AssemblyDiscoveryTools);
 
-    private static string TypeNotFound(string typeName, IReadOnlyList<string> candidates) =>
-        JsonHelpers.ErrorWithGuidance(
+    private static string TypeNotFound(string typeName, IReadOnlyList<string> candidates, IReadOnlyList<string> unresolvedDependencies)
+    {
+        var message = $"Type '{typeName}' not found in assembly";
+        if (unresolvedDependencies.Count > 0 && candidates.Count == 0)
+            return JsonHelpers.ErrorWithGuidance(
+                "DependencyResolutionFailed",
+                $"{message}; some of its types could not be loaded because dependencies are missing: {string.Join(", ", unresolvedDependencies)}.",
+                suggestion: DependencyResolutionHint(unresolvedDependencies),
+                details: new { unresolvedDependencies });
+
+        var suggestion = candidates.Count > 0
+            ? $"Did you mean {FormatChoices(candidates)}? Retry with one of recommendedParams.candidates as typeName."
+            : "Browse the assembly's types or search by member name to find the declaring type.";
+        if (unresolvedDependencies.Count > 0)
+            suggestion += $" If none of these is the type you meant, it may have been skipped because dependencies are missing: {DependencyResolutionHint(unresolvedDependencies)}";
+
+        return JsonHelpers.ErrorWithGuidance(
             "TypeNotFound",
-            $"Type '{typeName}' not found in assembly",
-            suggestion: candidates.Count > 0
-                ? $"Did you mean {FormatChoices(candidates)}? Retry with one of recommendedParams.candidates as typeName."
-                : "Browse the assembly's types or search by member name to find the declaring type.",
+            message,
+            suggestion: suggestion,
             alternativeTools: TypeDiscoveryTools,
-            recommendedParams: candidates.Count > 0 ? new { candidates } : null);
+            recommendedParams: candidates.Count > 0 ? new { candidates } : null,
+            details: unresolvedDependencies.Count > 0 ? new { unresolvedDependencies } : null);
+    }
+
+    private static string DependencyResolutionHint(IReadOnlyList<string> unresolvedDependencies) =>
+        $"The dependencies ({string.Join(", ", unresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. {AdditionalAssembliesHint}";
+
+    private static string[] MemberDiscoveryTools(string? memberKind) => memberKind?.ToLowerInvariant() switch
+    {
+        "method" => ["get_type_methods", "search_members"],
+        "property" => ["get_type_properties", "search_members"],
+        "field" => ["get_type_fields", "search_members"],
+        "event" => ["get_type_events", "search_members"],
+        "constructor" => ["get_type_constructors"],
+        _ => ["search_members"]
+    };
 
     private static string[] SimilarFiles(string assemblyPath)
     {
@@ -137,6 +167,18 @@ public static class ToolErrors
 
     private static bool IsDll(string file) =>
         string.Equals(Path.GetExtension(file), ".dll", StringComparison.OrdinalIgnoreCase);
+
+    private static Type[] LoadableTypes(IAssemblyInspectionContext context)
+    {
+        try
+        {
+            return context.GetTypes().ToArray();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return [];
+        }
+    }
 
     private static IReadOnlyList<string> SafeSuggest(Func<IReadOnlyList<string>> suggest)
     {

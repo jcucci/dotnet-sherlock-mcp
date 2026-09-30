@@ -315,7 +315,7 @@ public static class ReflectionTools
             var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
 
             if (type == null)
-                return ToolErrors.TypeNotFound(exportedTypes, typeName);
+                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
 
             // Pagination logic
             var defaultPageSize = 25;
@@ -567,7 +567,7 @@ public static class ReflectionTools
 
             var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return ToolErrors.TypeNotFound(exportedTypes, typeName);
+                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
 
             const BindingFlags searchedMethods = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
             var methods = type.GetMethods(searchedMethods)

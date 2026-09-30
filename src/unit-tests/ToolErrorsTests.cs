@@ -8,10 +8,20 @@ using Sherlock.MCP.Server.Tools;
 
 namespace Sherlock.MCP.Tests;
 
-public class ToolErrorsTests
+public sealed class ToolErrorsTests : IDisposable
 {
     private static readonly string TestAssemblyPath = Assembly.GetExecutingAssembly().Location;
     private static readonly IInspectionContextProvider Contexts = new SharedInspectionContextProvider(new RuntimeOptions());
+
+    private readonly List<string> _tempDirectories = [];
+
+    public void Dispose()
+    {
+        foreach (var directory in _tempDirectories)
+        {
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+        }
+    }
 
     [Fact]
     public void IsErrorPayload_ErrorEnvelope_ReturnsTrue() =>
@@ -107,6 +117,57 @@ public class ToolErrorsTests
         Assert.DoesNotContain(Path.Combine(directory, "System.Abstractions.dll"), SimilarFiles(error));
     }
 
+    [Fact]
+    public void TypeNotFound_NoCandidatesAndUnresolvedDependencies_ReportsDependencyResolutionFailed()
+    {
+        var error = Parse(ToolErrors.TypeNotFound(new StubContext([], ["Azure.Core"]), "Azure.Widget"));
+
+        Assert.Equal("DependencyResolutionFailed", error.GetProperty("code").GetString());
+        Assert.Contains("Azure.Core", Strings(error.GetProperty("details").GetProperty("unresolvedDependencies")));
+    }
+
+    [Fact]
+    public void TypeNotFound_CandidatesAndUnresolvedDependencies_KeepsCandidatesAndMentionsDependencies()
+    {
+        var error = Parse(ToolErrors.TypeNotFound(new StubContext([typeof(TestSampleClass)], ["Azure.Core"]), "TestSampleClas"));
+
+        Assert.Equal("TypeNotFound", error.GetProperty("code").GetString());
+        Assert.Contains(typeof(TestSampleClass).FullName, Candidates(error));
+        Assert.Contains("Azure.Core", error.GetProperty("suggestion").GetString());
+        Assert.Contains("Azure.Core", Strings(error.GetProperty("details").GetProperty("unresolvedDependencies")));
+    }
+
+    [Fact]
+    public void TypeNotFound_NoUnresolvedDependencies_OmitsDetails()
+    {
+        var error = Parse(ToolErrors.TypeNotFound(new StubContext([typeof(TestSampleClass)], []), "TestSampleClas"));
+
+        Assert.False(error.TryGetProperty("details", out _));
+    }
+
+    [Theory]
+    [InlineData("method", "get_type_methods")]
+    [InlineData("property", "get_type_properties")]
+    [InlineData("field", "get_type_fields")]
+    [InlineData("event", "get_type_events")]
+    [InlineData("constructor", "get_type_constructors")]
+    public void MemberNotFound_SuggestsToolForMemberKind(string memberKind, string expectedTool)
+    {
+        var error = Parse(ToolErrors.MemberNotFound(typeof(TestSampleClass), "Missing", memberKind));
+
+        var tools = Strings(error.GetProperty("alternativeTools"));
+        Assert.Contains(expectedTool, tools);
+        Assert.DoesNotContain(tools, tool => tool!.StartsWith("get_type_", StringComparison.Ordinal) && tool != expectedTool);
+    }
+
+    [Fact]
+    public void DependencyGuidance_QualifiesAdditionalAssemblies()
+    {
+        var error = Parse(ToolErrors.FromException(new DependencyResolutionException("/x/App.dll", ["Azure.Core"]), "get type info"));
+
+        Assert.Contains("tools that accept additionalAssemblies", error.GetProperty("suggestion").GetString());
+    }
+
     [Theory]
     [InlineData(typeof(BadImageFormatException), "InvalidAssembly")]
     [InlineData(typeof(FileNotFoundException), "DependencyNotFound")]
@@ -187,9 +248,10 @@ public class ToolErrorsTests
         Assert.Contains(typeof(TestSampleClass).FullName, Candidates(error));
     }
 
-    private static string CreateTempDirectory(params string[] fileNames)
+    private string CreateTempDirectory(params string[] fileNames)
     {
         var directory = Directory.CreateTempSubdirectory("sherlock-errors-").FullName;
+        _tempDirectories.Add(directory);
         foreach (var fileName in fileNames)
             File.WriteAllBytes(Path.Combine(directory, fileName), []);
         return directory;
@@ -216,4 +278,17 @@ public class SuggestionFixture
     public void ParseCorePublic() { }
 
     private void ParseCore() { }
+}
+
+internal sealed class StubContext(Type[] types, string[] unresolved) : IAssemblyInspectionContext
+{
+    public Assembly Assembly => typeof(StubContext).Assembly;
+
+    public IReadOnlyList<string> UnresolvedDependencies => unresolved;
+
+    public IEnumerable<Type> GetTypes() => types;
+
+    public MemberInfo[] GetMembers(Type type, BindingFlags flags) => [];
+
+    public void Dispose() { }
 }

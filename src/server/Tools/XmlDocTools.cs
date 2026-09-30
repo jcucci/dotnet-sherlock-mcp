@@ -30,7 +30,7 @@ public static class XmlDocTools
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return ToolErrors.TypeNotFound(asm, typeName);
+            if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
             var info = xmlDocs.GetXmlDocsForType(type);
             return info == null
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
@@ -66,7 +66,7 @@ public static class XmlDocTools
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return ToolErrors.TypeNotFound(asm, typeName);
+            if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
             var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
                 .FirstOrDefault(m => string.Equals(m.Name, memberName, comparison));
             if (member == null) return ToolErrors.MemberNotFound(type, memberName, message: $"Member '{memberName}' not found");

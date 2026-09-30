@@ -72,11 +72,13 @@ public static class NameSuggestions
 
     private static int? Score(string candidate, string needle, int threshold)
     {
-        var distance = Distance(candidate, needle);
-        var isSubstring = candidate.Contains(needle, StringComparison.Ordinal) || needle.Contains(candidate, StringComparison.Ordinal);
-        if (!isSubstring) return distance <= threshold ? distance : null;
+        var lengthGap = Math.Abs(candidate.Length - needle.Length);
+        if (candidate.Contains(needle, StringComparison.Ordinal) || needle.Contains(candidate, StringComparison.Ordinal))
+            return lengthGap;
+        if (lengthGap > threshold) return null;
 
-        return Math.Min(distance, Math.Abs(candidate.Length - needle.Length));
+        var distance = Distance(candidate, needle);
+        return distance <= threshold ? distance : null;
     }
 
     private static MemberInfo[] MembersOfKind(Type type, string? memberKind, BindingFlags bindingFlags) =>
