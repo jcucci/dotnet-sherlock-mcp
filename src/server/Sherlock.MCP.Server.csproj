@@ -26,7 +26,7 @@
     <RepositoryType>git</RepositoryType>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sherlock-mcp</ToolCommandName>
-    <PackageId>Sherlock.MCP.Server</PackageId>
+    <PackageType>McpServer</PackageType>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageProjectUrl>https://github.com/jcucci/dotnet-sherlock-mcp</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -48,6 +48,7 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="README.md" />
+    <None Include="../../server.json" Pack="true" PackagePath=".mcp/server.json" />
   </ItemGroup>
 
 </Project>

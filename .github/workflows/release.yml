@@ -30,15 +30,26 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Verify server.json version
+      - name: Verify release versions
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          FILE_VERSION=$(grep -m 1 '"version"' server.json | sed -E 's/.*"version": *"([^"]*)".*/\1/')
+          SERVER_VERSION=$(jq -r '.version' server.json)
+          PACKAGE_VERSION=$(jq -r '.packages[0].version' server.json)
+          PROJECT_VERSION=$(sed -n -E 's|.*<Version>([^<]*)</Version>.*|\1|p' src/server/Sherlock.MCP.Server.csproj)
           echo "Tag version: $VERSION"
-          echo "server.json version: $FILE_VERSION"
-          if [ "$FILE_VERSION" != "$VERSION" ]; then
-            echo "::error::server.json version ($FILE_VERSION) does not match tag version ($VERSION)."
-            echo "Please update server.json before creating the release tag."
+          FAILED=0
+          check() {
+            echo "$1: $2"
+            if [ "$2" != "$VERSION" ]; then
+              echo "::error::$1 ($2) does not match tag version ($VERSION)."
+              FAILED=1
+            fi
+          }
+          check "server.json version" "$SERVER_VERSION"
+          check "server.json packages[0].version" "$PACKAGE_VERSION"
+          check "Sherlock.MCP.Server.csproj <Version>" "$PROJECT_VERSION"
+          if [ "$FAILED" -ne 0 ]; then
+            echo "Please update server.json and the server project version before creating the release tag."
             exit 1
           fi
 
@@ -53,6 +64,23 @@ jobs:
 
       - name: Pack
         run: dotnet pack src/server/Sherlock.MCP.Server.csproj --configuration Release -o ./artifacts
+
+      - name: Verify MCP server package
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          PACKAGE=./artifacts/Sherlock.MCP.Server.$VERSION.nupkg
+          if ! unzip -l "$PACKAGE" | grep -q '\.mcp/server\.json$'; then
+            echo "::error::$PACKAGE does not contain .mcp/server.json."
+            exit 1
+          fi
+          if ! unzip -p "$PACKAGE" '*.nuspec' | grep -q '<packageType name="McpServer"'; then
+            echo "::error::$PACKAGE is not declared with the McpServer package type."
+            exit 1
+          fi
+          if [ "$(unzip -p "$PACKAGE" .mcp/server.json | jq -r '.version')" != "$VERSION" ]; then
+            echo "::error::Packed .mcp/server.json version does not match tag version ($VERSION)."
+            exit 1
+          fi
 
       - name: Extract changelog for version
         id: changelog

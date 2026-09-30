@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The NuGet package is now published with the `McpServer` package type and embeds `server.json` as `.mcp/server.json`, so NuGet.org lists it as an MCP server. The README documents launching it without installing anything via the .NET 10 SDK's `dnx` (`dnx Sherlock.MCP.Server@<version> --yes`), with Claude Code and VS Code config examples. The release workflow now checks that the tag, both `server.json` versions and the project version all match, and that the packed package carries the `McpServer` type and `.mcp/server.json`. (#63)
+
 ### Fixed
 
 - `FindAssemblyByClassName` and `FindAssemblyByFileName` no longer scan every directory under `workingDirectory`. They now walk the tree lazily, skipping `obj/`, `ref/`, `refint/`, `node_modules/`, `packages/`, `TestResults/`, dot-directories and symlinked directories. Matches are ranked deterministically (`bin/` first, then newest, then shortest path), so a stale `obj/` or reference-assembly copy is no longer returned by chance. The response keeps `foundAssembly` and adds `candidateCount` plus up to 10 `candidates` when there are several matches. Class lookup reads type names through `System.Reflection.Metadata` instead of creating a `MetadataLoadContext` per DLL, and also matches full and nested (`Outer+Inner`) names. A missing `workingDirectory` now returns `InvalidArgument` rather than `InternalError`, not-found errors carry guidance, and both tool descriptions no longer claim to search only `bin/Debug` and `bin/Release`. (#78)
