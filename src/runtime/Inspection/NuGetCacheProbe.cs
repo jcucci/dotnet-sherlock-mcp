@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Sherlock.MCP.Runtime.Inspection;
 
 internal static class NuGetCacheProbe
@@ -42,15 +44,42 @@ internal static class NuGetCacheProbe
 
     public static List<string> EnumerateCandidateDependencyDlls(string consumingTfm, string excludePackageId)
     {
-        var candidates = new List<string>();
         var cacheRoot = GetCacheRoot();
-        if (string.IsNullOrWhiteSpace(cacheRoot) || !Directory.Exists(cacheRoot)) return candidates;
+        if (string.IsNullOrWhiteSpace(cacheRoot) || !Directory.Exists(cacheRoot)) return [];
 
-        foreach (var packageDir in SafeEnumerateDirectories(cacheRoot).OrderBy(d => d, StringComparer.Ordinal))
+        var snapshot = GetSnapshot(Path.GetFullPath(cacheRoot));
+        var cached = snapshot.Results.GetOrAdd(
+            (consumingTfm, excludePackageId),
+            key => new Lazy<string[]>(() => ResolveCandidates(snapshot.Packages, key.Tfm, key.Exclude)));
+        return new List<string>(cached.Value);
+    }
+
+    internal static TimeProvider Clock { get; set; } = TimeProvider.System;
+
+    internal static void ResetCache() => Volatile.Write(ref _snapshot, null);
+
+    private static CacheSnapshot GetSnapshot(string root)
+    {
+        var rootWriteTime = SafeGetLastWriteTimeUtc(root);
+        var current = Volatile.Read(ref _snapshot);
+        if (current is not null && current.IsValidFor(root, rootWriteTime)) return current;
+
+        lock (SnapshotLock)
         {
-            var packageName = Path.GetFileName(packageDir);
-            if (packageName.Equals(excludePackageId, StringComparison.OrdinalIgnoreCase)) continue;
+            current = Volatile.Read(ref _snapshot);
+            if (current is not null && current.IsValidFor(root, rootWriteTime)) return current;
 
+            var rebuilt = new CacheSnapshot(root, rootWriteTime, Clock.GetTimestamp(), BuildPackageIndex(root));
+            Volatile.Write(ref _snapshot, rebuilt);
+            return rebuilt;
+        }
+    }
+
+    private static PackageEntry[] BuildPackageIndex(string root)
+    {
+        var packages = new List<PackageEntry>();
+        foreach (var packageDir in SafeEnumerateDirectories(root).OrderBy(d => d, StringComparer.Ordinal))
+        {
             try
             {
                 var version = PickHighestVersion(SafeEnumerateDirectories(packageDir).Select(Path.GetFileName).Where(n => n is not null).Cast<string>().ToArray());
@@ -60,14 +89,73 @@ internal static class NuGetCacheProbe
                 if (!Directory.Exists(libDir)) continue;
 
                 var tfms = SafeEnumerateDirectories(libDir).Select(Path.GetFileName).Where(n => n is not null).Cast<string>().ToArray();
-                var tfm = PickCompatibleTfm(tfms, consumingTfm);
-                if (tfm is null) continue;
-
-                candidates.AddRange(Directory.GetFiles(Path.Combine(libDir, tfm), "*.dll", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal));
+                packages.Add(new PackageEntry(Path.GetFileName(packageDir), libDir, tfms));
             }
             catch { }
         }
-        return candidates;
+        return [.. packages];
+    }
+
+    private static string[] ResolveCandidates(PackageEntry[] packages, string consumingTfm, string excludePackageId)
+    {
+        var candidates = new List<string>();
+        foreach (var package in packages)
+        {
+            if (package.PackageId.Equals(excludePackageId, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var tfm = PickCompatibleTfm(package.Tfms, consumingTfm);
+            if (tfm is null) continue;
+
+            try
+            {
+                candidates.AddRange(Directory.GetFiles(Path.Combine(package.LibDir, tfm), "*.dll", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal));
+            }
+            catch { }
+        }
+        return [.. candidates];
+    }
+
+    private static DateTime SafeGetLastWriteTimeUtc(string directory)
+    {
+        try
+        {
+            return Directory.GetLastWriteTimeUtc(directory);
+        }
+        catch
+        {
+            return DateTime.MinValue;
+        }
+    }
+
+    private static readonly TimeSpan SnapshotTtl = TimeSpan.FromMinutes(5);
+
+    private static readonly object SnapshotLock = new();
+
+    private static CacheSnapshot? _snapshot;
+
+    private sealed record PackageEntry(string PackageId, string LibDir, string[] Tfms);
+
+    private sealed class CacheSnapshot(string root, DateTime rootWriteTimeUtc, long builtAtTimestamp, PackageEntry[] packages)
+    {
+        public PackageEntry[] Packages { get; } = packages;
+
+        public ConcurrentDictionary<(string Tfm, string Exclude), Lazy<string[]>> Results { get; } = new(CandidateKeyComparer.Instance);
+
+        public bool IsValidFor(string candidateRoot, DateTime candidateWriteTimeUtc) =>
+            string.Equals(root, candidateRoot, PathComparison)
+            && rootWriteTimeUtc == candidateWriteTimeUtc
+            && Clock.GetElapsedTime(builtAtTimestamp) < SnapshotTtl;
+    }
+
+    private sealed class CandidateKeyComparer : IEqualityComparer<(string Tfm, string Exclude)>
+    {
+        public static readonly CandidateKeyComparer Instance = new();
+
+        public bool Equals((string Tfm, string Exclude) x, (string Tfm, string Exclude) y) =>
+            StringComparer.OrdinalIgnoreCase.Equals(x.Tfm, y.Tfm) && StringComparer.OrdinalIgnoreCase.Equals(x.Exclude, y.Exclude);
+
+        public int GetHashCode((string Tfm, string Exclude) key) =>
+            HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(key.Tfm), StringComparer.OrdinalIgnoreCase.GetHashCode(key.Exclude));
     }
 
     private static string[] SafeEnumerateDirectories(string directory)
