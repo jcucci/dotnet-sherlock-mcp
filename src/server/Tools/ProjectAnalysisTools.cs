@@ -15,14 +15,15 @@ public static class ProjectAnalysisTools
     [Description("Parses a .sln file and lists all contained projects with paths. Use as entry point to discover project structure before AnalyzeProject. Lightweight response.")]
     public static async Task<string> AnalyzeSolution(
         IProjectAnalysisService projectAnalysis,
-        [Description("Path to the .sln file")] string solutionFilePath)
+        [Description("Path to the .sln file")] string solutionFilePath,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var projects = await projectAnalysis.AnalyzeSolutionFileAsync(solutionFilePath);
+            var projects = await projectAnalysis.AnalyzeSolutionFileAsync(solutionFilePath, cancellationToken);
             return JsonHelpers.Envelope("project.solution", new { solutionFilePath, projectCount = projects.Length, projects });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze solution: {ex.Message}");
         }
@@ -32,14 +33,15 @@ public static class ProjectAnalysisTools
     [Description("Parses a project file (.csproj/.vbproj/.fsproj) returning target framework, package refs, project refs, and output paths. Use GetProjectOutputPaths to find compiled assemblies.")]
     public static async Task<string> AnalyzeProject(
         IProjectAnalysisService projectAnalysis,
-        [Description("Path to the project file")] string projectFilePath)
+        [Description("Path to the project file")] string projectFilePath,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await projectAnalysis.AnalyzeProjectFileAsync(projectFilePath);
+            var result = await projectAnalysis.AnalyzeProjectFileAsync(projectFilePath, cancellationToken);
             return JsonHelpers.Envelope("project.project", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze project: {ex.Message}");
         }
@@ -50,14 +52,15 @@ public static class ProjectAnalysisTools
     public static async Task<string> GetProjectOutputPaths(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
-        [Description("Build configuration (e.g., Debug/Release). Optional")] string? configuration = null)
+        [Description("Build configuration (e.g., Debug/Release). Optional")] string? configuration = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var paths = await projectAnalysis.GetProjectOutputPathsAsync(projectFilePath, configuration);
+            var paths = await projectAnalysis.GetProjectOutputPathsAsync(projectFilePath, configuration, cancellationToken);
             return JsonHelpers.Envelope("project.outputs", new { projectFilePath, configuration, outputPaths = paths });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get output paths: {ex.Message}");
         }
@@ -68,14 +71,15 @@ public static class ProjectAnalysisTools
     public static async Task<string> ResolvePackageReferences(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
-        [Description("Optional package name to filter")] string? packageName = null)
+        [Description("Optional package name to filter")] string? packageName = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var packages = await projectAnalysis.ResolvePackageReferencesAsync(projectFilePath, packageName);
+            var packages = await projectAnalysis.ResolvePackageReferencesAsync(projectFilePath, packageName, cancellationToken);
             return JsonHelpers.Envelope("project.packages", new { projectFilePath, packageName, packages });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to resolve packages: {ex.Message}");
         }
@@ -86,14 +90,15 @@ public static class ProjectAnalysisTools
     public static async Task<string> FindDepsJsonDependencies(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,
-        [Description("Build configuration, default 'Debug'")] string configuration = "Debug")
+        [Description("Build configuration, default 'Debug'")] string configuration = "Debug",
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var deps = await projectAnalysis.FindDepsJsonFilesAsync(projectFilePath, configuration);
+            var deps = await projectAnalysis.FindDepsJsonFilesAsync(projectFilePath, configuration, cancellationToken);
             return JsonHelpers.Envelope("project.deps", new { projectFilePath, configuration, dependencies = deps });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to parse deps.json: {ex.Message}");
         }

@@ -5,7 +5,11 @@ namespace Sherlock.MCP.Runtime;
 
 public interface IIlAnalysisService
 {
-    MethodCallsResult? GetMethodCalls(string assemblyPath, string typeName, string methodName, IlAnalysisOptions options);
+    MethodCallsResult? GetMethodCalls(
+        string assemblyPath, string typeName, string methodName, IlAnalysisOptions options,
+        CancellationToken cancellationToken = default);
 
-    InboundCallHit[] FindInboundCallers(string[] assemblyPaths, string typeName, ReverseLookupOptions options);
+    InboundCallHit[] FindInboundCallers(
+        string[] assemblyPaths, string typeName, ReverseLookupOptions options,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default);
 }

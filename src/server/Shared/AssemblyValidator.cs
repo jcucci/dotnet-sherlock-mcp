@@ -9,7 +9,7 @@ public static class AssemblyValidator
         {
             return await operation();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Operation failed: {ex.Message}");
         }
@@ -22,7 +22,7 @@ public static class AssemblyValidator
         {
             return operation();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Operation failed: {ex.Message}");
         }

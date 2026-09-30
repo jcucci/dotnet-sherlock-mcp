@@ -33,7 +33,7 @@ public static class XmlDocTools
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
                 : JsonHelpers.Envelope("xml.type", new { type = type.FullName, docs = info });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get type XML docs: {ex.Message}");
         }
@@ -66,7 +66,7 @@ public static class XmlDocTools
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for member")
                 : JsonHelpers.Envelope("xml.member", new { type = type.FullName, member = member.Name, docs = info });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get member XML docs: {ex.Message}");
         }

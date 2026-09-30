@@ -23,7 +23,8 @@ public static class IlAnalysisTools
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public methods and the non-public declaring type (default: false)")] bool includeNonPublic = false,
         [Description("Response shape. 'summary' (default, token-lean): distinct target names only. 'full': adds { target, kind, sourceMethod } per call and { target, access, sourceMethod } per field access.")] string projection = "summary",
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -47,7 +48,7 @@ public static class IlAnalysisTools
             return middleware.Execute(cacheKey, () =>
             {
                 var options = new IlAnalysisOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
-                var analysis = ilAnalysis.GetMethodCalls(assemblyPath, typeName, methodName, options);
+                var analysis = ilAnalysis.GetMethodCalls(assemblyPath, typeName, methodName, options, cancellationToken);
 
                 if (analysis == null)
                     return JsonHelpers.ErrorWithGuidance(
@@ -84,7 +85,7 @@ public static class IlAnalysisTools
                 return JsonHelpers.Envelope("il.methodCalls", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze method calls: {ex.Message}");
         }

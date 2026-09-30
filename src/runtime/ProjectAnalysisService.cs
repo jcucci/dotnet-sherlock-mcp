@@ -15,14 +15,14 @@ public class ProjectAnalysisService : IProjectAnalysisService
     );
     private static readonly string[] SupportedProjectExtensions = { ".csproj", ".vbproj", ".fsproj" };
 
-    public async Task<ProjectInfo[]> AnalyzeSolutionFileAsync(string solutionFilePath)
+    public async Task<ProjectInfo[]> AnalyzeSolutionFileAsync(string solutionFilePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(solutionFilePath))
         {
             throw new FileNotFoundException($"Solution file not found: {solutionFilePath}");
         }
         var solutionDirectory = Path.GetDirectoryName(solutionFilePath) ?? string.Empty;
-        var content = await File.ReadAllTextAsync(solutionFilePath);
+        var content = await File.ReadAllTextAsync(solutionFilePath, cancellationToken);
         return Path.GetExtension(solutionFilePath).Equals(".slnx", StringComparison.OrdinalIgnoreCase)
             ? ParseSlnxProjects(content, solutionDirectory)
             : ParseSlnProjects(content, solutionDirectory);
@@ -78,14 +78,14 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return projects.ToArray();
     }
 
-    public async Task<ProjectAnalysisResult> AnalyzeProjectFileAsync(string projectFilePath)
+    public async Task<ProjectAnalysisResult> AnalyzeProjectFileAsync(string projectFilePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(projectFilePath))
         {
             throw new FileNotFoundException($"Project file not found: {projectFilePath}");
         }
         var projectDirectory = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
-        var content = await File.ReadAllTextAsync(projectFilePath);
+        var content = await File.ReadAllTextAsync(projectFilePath, cancellationToken);
         var doc = XDocument.Parse(content);
         var propertyGroups = doc.Descendants("PropertyGroup");
         var targetFramework = GetPropertyValue(propertyGroups, "TargetFramework") ?? "net9.0";
@@ -110,7 +110,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 false
             ))
             .ToArray();
-        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath);
+        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, cancellationToken: cancellationToken);
         return new ProjectAnalysisResult(
             assemblyName,
             targetFramework,
@@ -124,14 +124,14 @@ public class ProjectAnalysisService : IProjectAnalysisService
         );
     }
 
-    public async Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null)
+    public async Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(projectFilePath))
         {
             throw new FileNotFoundException($"Project file not found: {projectFilePath}");
         }
         var projectDirectory = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
-        var content = await File.ReadAllTextAsync(projectFilePath);
+        var content = await File.ReadAllTextAsync(projectFilePath, cancellationToken);
         var doc = XDocument.Parse(content);
         var outputPaths = new List<string>();
         var configurations = configuration != null ? new[] { configuration } : new[] { "Debug", "Release" };
@@ -163,15 +163,16 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return outputPaths.ToArray();
     }
 
-    public async Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null)
+    public async Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null, CancellationToken cancellationToken = default)
     {
-        var analysisResult = await AnalyzeProjectFileAsync(projectFilePath);
+        var analysisResult = await AnalyzeProjectFileAsync(projectFilePath, cancellationToken);
         var resolvedPackages = new List<PackageReference>();
         var packagesToResolve = packageName != null
             ? analysisResult.PackageReferences.Where(p => p.Name.Equals(packageName, StringComparison.OrdinalIgnoreCase))
             : analysisResult.PackageReferences;
         foreach (var package in packagesToResolve)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var assemblyPaths = await ResolvePackageAssemblyPathsAsync(package, analysisResult.TargetFrameworks);
             resolvedPackages.Add(package with
             {
@@ -182,9 +183,9 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return resolvedPackages.ToArray();
     }
 
-    public async Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug")
+    public async Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug", CancellationToken cancellationToken = default)
     {
-        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, configuration);
+        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, configuration, cancellationToken);
         var dependencies = new List<RuntimeDependency>();
         foreach (var outputPath in outputPaths)
         {
@@ -192,7 +193,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
             var depsJsonPath = Path.Combine(outputPath, $"{assemblyName}.deps.json");
             if (File.Exists(depsJsonPath))
             {
-                var deps = await ParseDepsJsonFileAsync(depsJsonPath);
+                var deps = await ParseDepsJsonFileAsync(depsJsonPath, cancellationToken);
                 dependencies.AddRange(deps);
             }
         }
@@ -533,12 +534,12 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return false;
     }
 
-    private static async Task<RuntimeDependency[]> ParseDepsJsonFileAsync(string depsJsonPath)
+    private static async Task<RuntimeDependency[]> ParseDepsJsonFileAsync(string depsJsonPath, CancellationToken cancellationToken)
     {
         var dependencies = new List<RuntimeDependency>();
         try
         {
-            var json = await File.ReadAllTextAsync(depsJsonPath);
+            var json = await File.ReadAllTextAsync(depsJsonPath, cancellationToken);
             using var document = JsonDocument.Parse(json);
             if (document.RootElement.TryGetProperty("libraries", out var libraries))
             {

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The NuGet package is now published with the `McpServer` package type and embeds `server.json` as `.mcp/server.json`, so NuGet.org lists it as an MCP server. The README documents launching it without installing anything via the .NET 10 SDK's `dnx` (`dnx Sherlock.MCP.Server@<version> --yes`), with Claude Code and VS Code config examples. The release workflow now checks that the tag, both `server.json` versions and the project version all match, and that the packed package carries the `McpServer` type and `.mcp/server.json`. (#63)
+- Long-running tools can now be cancelled and report progress. Every scanning tool takes the request's `CancellationToken`, so a client's `notifications/cancelled` stops reverse lookups, IL inbound-caller scans, `search_members`, `get_method_calls`, the assembly locators and project analysis part-way through. A cancelled call is never cached and is no longer reported as an `InternalError` payload. When the client sends a `progressToken`, `find_references_to` (both phases of `analysisDepth='il'` on one scale), `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `get_type_hierarchy` (with `additionalAssemblies`) and `find_assembly_by_class_name` emit `notifications/progress` per assembly or file scanned, throttled to about 100 updates. The `io.modelcontextprotocol/tasks` extension was evaluated but is not available in `ModelContextProtocol` 2.1.0. (#66)
 
 ### Fixed
 

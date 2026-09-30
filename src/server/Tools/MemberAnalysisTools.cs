@@ -166,7 +166,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.methods", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze methods: {ex.Message}");
         }
@@ -213,7 +213,7 @@ public static class MemberAnalysisTools
                 new { assemblyPath, typeName, memberKind, memberName, attributeCount = attrs.Length, attributes = attrs }
             );
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get member attributes: {ex.Message}");
         }
@@ -256,7 +256,7 @@ public static class MemberAnalysisTools
                 new { assemblyPath, typeName, methodName, parameterIndex, attributeCount = attrs.Length, attributes = attrs }
             );
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get parameter attributes: {ex.Message}");
         }
@@ -389,7 +389,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.properties", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze properties: {ex.Message}");
         }
@@ -510,7 +510,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.fields", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze fields: {ex.Message}");
         }
@@ -630,7 +630,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.events", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze events: {ex.Message}");
         }
@@ -753,7 +753,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.constructors", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze constructors: {ex.Message}");
         }
@@ -883,7 +883,7 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.all", result);
             }, noCache);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze all members: {ex.Message}");
         }

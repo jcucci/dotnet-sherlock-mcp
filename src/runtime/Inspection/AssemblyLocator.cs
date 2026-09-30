@@ -21,32 +21,42 @@ public static class AssemblyLocator
         AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System
     };
 
-    public static IReadOnlyList<string> FindByFileName(string root, string fileName) =>
-        Rank(EnumerateAssemblyFiles(root, fileName));
+    public static IReadOnlyList<string> FindByFileName(
+        string root, string fileName, CancellationToken cancellationToken = default) =>
+        Rank(EnumerateAssemblyFiles(root, fileName, cancellationToken));
 
-    public static IReadOnlyList<string> FindByClassName(string root, string className)
+    public static IReadOnlyList<string> FindByClassName(
+        string root, string className,
+        IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
-        var files = EnumerateAssemblyFiles(root, "*.dll")
-            .Concat(EnumerateAssemblyFiles(root, "*.exe"))
+        var files = EnumerateAssemblyFiles(root, "*.dll", cancellationToken)
+            .Concat(EnumerateAssemblyFiles(root, "*.exe", cancellationToken))
             .ToList();
 
+        var counter = new ProgressCounter(progress, files.Count);
         var matches = new ConcurrentBag<string>();
-        Parallel.ForEach(files, path =>
-        {
-            if (DeclaresVisibleType(path, className))
-                matches.Add(path);
-        });
+        Parallel.ForEach(
+            files,
+            new ParallelOptions { CancellationToken = cancellationToken },
+            path =>
+            {
+                if (DeclaresVisibleType(path, className))
+                    matches.Add(path);
+                counter.Increment(Path.GetFileName(path));
+            });
 
         return Rank(matches);
     }
 
-    private static IEnumerable<string> EnumerateAssemblyFiles(string root, string pattern)
+    private static IEnumerable<string> EnumerateAssemblyFiles(
+        string root, string pattern, CancellationToken cancellationToken)
     {
         var pending = new Stack<string>();
         pending.Push(root);
 
         while (pending.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var directory = pending.Pop();
 
             foreach (var file in SafeEnumerate(() => Directory.EnumerateFiles(directory, pattern, SingleLevel)))
