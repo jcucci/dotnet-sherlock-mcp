@@ -145,7 +145,7 @@ All tools support filtering options:
 - `includeStatic`: Include static members (default: true)
 - `includeInstance`: Include instance members (default: true)
 
-`GetTypeMembers` and `GetTypeMethods` additionally support `projection`: they return a lean `summary` (`{ kind, name, signature }` / `{ name, signature }`) by default and accepts `projection='full'` to add `parameters[]`, `attributes`, `returnType`, and modifier flags. Most member tools also support `nameContains` / `hasAttributeContains` filtering, `maxItems` / `continuationToken` pagination, and `noCache`.
+`GetTypeMembers` and `GetTypeMethods` additionally support `projection`: they return a lean `summary` (`{ kind, name, signature }` / `{ name, signature }`) by default and accept `projection='full'` to add `parameters[]`, `attributes`, `returnType`, and modifier flags. Most member tools also support `nameContains` / `hasAttributeContains` filtering, `maxItems` / `continuationToken` pagination, and `noCache`.
 
 ## Usage Examples
 

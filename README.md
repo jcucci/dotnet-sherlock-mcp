@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 37 specialized tools for .NET assembly analysis, with an optional 16-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 37 specialized tools for .NET assembly analysis, with an optional 18-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -106,7 +106,7 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 | Profile | Tools | Contents |
 |---|---|---|
 | `full` (default) | 37 | Every tool, including the deprecated per-kind member tools |
-| `core` | 16 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_references_to`, `get_method_calls`) |
+| `core` | 18 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 

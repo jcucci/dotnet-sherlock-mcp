@@ -60,6 +60,15 @@ public class ToolProfileTests
         Assert.DoesNotContain(ToolProfile.CoreToolNames, name => !RegisteredWireNames.Contains(name));
 
     [Fact]
+    public void ServerInstructions_OnlyNameCoreTools()
+    {
+        var named = RegisteredWireNames.Where(name =>
+            System.Text.RegularExpressions.Regex.IsMatch(ServerInstructions.Text, $@"\b{name}\b"));
+
+        Assert.DoesNotContain(named, name => !ToolProfile.Core.Includes(name));
+    }
+
+    [Fact]
     public void Core_ExcludesDeprecatedMemberTools()
     {
         string[] deprecated =

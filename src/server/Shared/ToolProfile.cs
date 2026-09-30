@@ -21,6 +21,8 @@ public sealed class ToolProfile
         "get_xml_docs_for_type",
         "get_xml_docs_for_member",
         "find_implementations_of",
+        "find_methods_returning",
+        "find_extension_methods_for",
         "find_references_to",
         "get_method_calls"
     ];
