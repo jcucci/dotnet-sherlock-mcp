@@ -204,6 +204,31 @@ public class CompletionServiceTests
     }
 
     [Fact]
+    public void RecentAssemblyRegistry_CaseDistinctPaths_FollowFileSystemCasing()
+    {
+        var registry = new RecentAssemblyRegistry();
+        var lower = Path.GetFullPath("case/lib.dll");
+        var upper = Path.GetFullPath("case/Lib.dll");
+
+        registry.Record(lower);
+        registry.Record(upper);
+
+        var expected = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? 1 : 2;
+        Assert.Equal(expected, registry.GetRecent().Count);
+    }
+
+    [Fact]
+    public void CompletePackageVersion_PrereleaseRanksBelowStable()
+    {
+        using var cache = new TempDir();
+        foreach (var version in new[] { "2.0.0-beta.2", "2.0.0", "2.0.0-beta.10" })
+            Directory.CreateDirectory(Path.Combine(cache.Path, "pkg", version));
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        Assert.Equal(["2.0.0", "2.0.0-beta.10", "2.0.0-beta.2"], _completions.CompletePackageVersion("pkg", "2").Values);
+    }
+
+    [Fact]
     public void SharedInspectionContextProvider_Acquire_RecordsRecentAssembly()
     {
         var registry = new RecentAssemblyRegistry();

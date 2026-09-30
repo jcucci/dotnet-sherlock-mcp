@@ -36,7 +36,7 @@ public sealed class RecentAssemblyRegistry : IRecentAssemblyRegistry
     private LinkedListNode<string>? FindNode(string fullPath)
     {
         for (var node = _paths.First; node is not null; node = node.Next)
-            if (string.Equals(node.Value, fullPath, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(node.Value, fullPath, PathComparers.Comparison))
                 return node;
         return null;
     }

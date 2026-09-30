@@ -14,7 +14,7 @@ public sealed class CompletionService : ICompletionService
 
     private sealed record CachedTypeNames(long StampTicks, long Length, string[] Names);
 
-    private readonly ConcurrentDictionary<string, CachedTypeNames> _typeNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, CachedTypeNames> _typeNames = new(PathComparers.Comparer);
     private readonly IInspectionContextProvider _contexts;
     private readonly IXmlDocService _xmlDocs;
     private readonly IRecentAssemblyRegistry _recentAssemblies;
@@ -33,7 +33,7 @@ public sealed class CompletionService : ICompletionService
             .Where(path => path.Contains(expanded, StringComparison.OrdinalIgnoreCase))
             .OrderBy(path => path.StartsWith(expanded, StringComparison.OrdinalIgnoreCase) ? 0 : 1);
         var listed = ListDirectoryCandidates(expanded);
-        return Page(recent.Concat(listed).Distinct(StringComparer.OrdinalIgnoreCase));
+        return Page(recent.Concat(listed).Distinct(PathComparers.Comparer));
     }
 
     public CompletionValues CompleteTypeName(string assemblyPath, string value)
