@@ -99,9 +99,41 @@ public class McpStdioProtocolTests
         var templates = result.ResourceTemplates.Select(t => t.UriTemplate).ToHashSet();
         Assert.Contains("sherlock://assembly/{path}/type/{fullName}", templates);
         Assert.Contains("sherlock://assembly/{path}/docs/{memberId}", templates);
+        Assert.Contains("sherlock://nuget/{packageId}/{version}", templates);
         Assert.All(result.ResourceTemplates, t => Assert.Equal("application/json", t.MimeType));
         Assert.Equal(CacheScope.Public, result.CacheScope);
         Assert.True(result.TimeToLive > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Server_advertises_completions_capability()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        Assert.NotNull(client.ServerCapabilities.Completions);
+    }
+
+    [Fact]
+    public async Task Complete_type_template_full_name_returns_types_from_path_context()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.CompleteAsync(
+            new CompleteRequestParams
+            {
+                Ref = new ResourceTemplateReference { Uri = "sherlock://assembly/{path}/type/{fullName}" },
+                Argument = new Argument { Name = "fullName", Value = "System.Collections.Generic.List" },
+                Context = new CompleteContext
+                {
+                    Arguments = new Dictionary<string, string> { ["path"] = typeof(string).Assembly.Location }
+                }
+            },
+            cts.Token);
+
+        Assert.Contains("System.Collections.Generic.List`1", result.Completion.Values);
+        Assert.All(result.Completion.Values, v => Assert.StartsWith("System.Collections.Generic.List", v, StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

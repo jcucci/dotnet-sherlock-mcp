@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
+using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Runtime;
 
@@ -203,7 +204,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
         ValidatePackageId(packageId);
         ValidateOptionalPathSegment(version, nameof(version));
         ValidateOptionalPathSegment(tfm, nameof(tfm));
-        var cacheRoot = GetNugetCacheRoot();
+        var cacheRoot = NuGetCacheProbe.GetCacheRoot();
         var packageDir = Path.Combine(cacheRoot, packageId.ToLowerInvariant());
         if (!Directory.Exists(packageDir))
         {
@@ -241,7 +242,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                     ResolvedTfm: null,
                     cacheRoot,
                     FoundAssembly: null,
-                    AvailableVersions: SortVersionsDescending(availableVersions),
+                    AvailableVersions: NuGetVersions.SortDescending(availableVersions),
                     AvailableTfms: Array.Empty<string>(),
                     Failure: NugetLookupFailure.VersionNotFound));
             }
@@ -276,7 +277,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 ResolvedTfm: null,
                 cacheRoot,
                 FoundAssembly: null,
-                AvailableVersions: SortVersionsDescending(availableVersions),
+                AvailableVersions: NuGetVersions.SortDescending(availableVersions),
                 AvailableTfms: Array.Empty<string>(),
                 Failure: NugetLookupFailure.AssemblyNotFound));
         }
@@ -301,7 +302,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 ResolvedTfm: null,
                 cacheRoot,
                 FoundAssembly: null,
-                AvailableVersions: SortVersionsDescending(availableVersions),
+                AvailableVersions: NuGetVersions.SortDescending(availableVersions),
                 AvailableTfms: availableTfms,
                 Failure: NugetLookupFailure.AssemblyNotFound));
         }
@@ -318,7 +319,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
             resolvedTfm,
             cacheRoot,
             foundAssembly,
-            AvailableVersions: SortVersionsDescending(availableVersions),
+            AvailableVersions: NuGetVersions.SortDescending(availableVersions),
             AvailableTfms: availableTfms,
             Failure: foundAssembly is null ? NugetLookupFailure.AssemblyNotFound : null));
     }
@@ -359,21 +360,12 @@ public class ProjectAnalysisService : IProjectAnalysisService
     private static bool IsValidNugetIdChar(char ch) =>
         char.IsLetterOrDigit(ch) || ch == '.' || ch == '_' || ch == '-';
 
-    private static string GetNugetCacheRoot()
-    {
-        var overridePath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
-        if (!string.IsNullOrWhiteSpace(overridePath))
-            return overridePath;
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return Path.Combine(userProfile, ".nuget", "packages");
-    }
-
     private static string? PickHighestVersion(string[] versions)
     {
         if (versions.Length == 0)
             return null;
         var parsed = versions
-            .Select(v => (raw: v, parsed: TryParseVersion(v), isStable: !v.Contains('-')))
+            .Select(v => (raw: v, parsed: NuGetVersions.TryParse(v), isStable: !v.Contains('-')))
             .Where(p => p.parsed is not null)
             .ToArray();
         if (parsed.Length > 0)
@@ -383,25 +375,6 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 .ThenByDescending(p => p.raw, StringComparer.OrdinalIgnoreCase)
                 .First().raw;
         return versions.OrderByDescending(v => v, StringComparer.OrdinalIgnoreCase).First();
-    }
-
-    private static Version? TryParseVersion(string raw)
-    {
-        var core = raw.AsSpan();
-        var cut = core.IndexOfAny('-', '+');
-        if (cut >= 0)
-            core = core[..cut];
-        return Version.TryParse(core, out var v) ? v : null;
-    }
-
-    private static string[] SortVersionsDescending(string[] versions)
-    {
-        return versions
-            .Select(v => (raw: v, parsed: TryParseVersion(v)))
-            .OrderByDescending(p => p.parsed ?? new Version(0, 0))
-            .ThenByDescending(p => p.raw, StringComparer.OrdinalIgnoreCase)
-            .Select(p => p.raw)
-            .ToArray();
     }
 
     private static string? PickBestTfm(string[] availableTfms)
@@ -437,12 +410,12 @@ public class ProjectAnalysisService : IProjectAnalysisService
             var rest = lower[3..];
             if (IsFrameworkStyleTfm(rest))
                 return (3, ParseFrameworkStyleVersion(rest));
-            return (0, TryParseVersion(rest) ?? new Version(0, 0));
+            return (0, NuGetVersions.TryParse(rest) ?? new Version(0, 0));
         }
         if (lower.StartsWith("netcoreapp", StringComparison.Ordinal))
-            return (1, TryParseVersion(lower[10..]) ?? new Version(0, 0));
+            return (1, NuGetVersions.TryParse(lower[10..]) ?? new Version(0, 0));
         if (lower.StartsWith("netstandard", StringComparison.Ordinal))
-            return (2, TryParseVersion(lower[11..]) ?? new Version(0, 0));
+            return (2, NuGetVersions.TryParse(lower[11..]) ?? new Version(0, 0));
         return (4, new Version(0, 0));
     }
 
@@ -491,7 +464,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
     private static async Task<string[]> ResolvePackageAssemblyPathsAsync(PackageReference package, string[] targetFrameworks)
     {
         var assemblyPaths = new List<string>();
-        var nugetCachePath = GetNugetCacheRoot();
+        var nugetCachePath = NuGetCacheProbe.GetCacheRoot();
         if (Directory.Exists(nugetCachePath))
         {
             var packagePath = Path.Combine(nugetCachePath, package.Name.ToLowerInvariant(), package.Version);
