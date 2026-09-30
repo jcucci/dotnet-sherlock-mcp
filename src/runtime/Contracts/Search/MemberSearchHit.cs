@@ -4,7 +4,8 @@ public record MemberSearchHit(
     string DeclaringType,
     string MemberKind,
     string Name,
-    string Signature);
+    string Signature,
+    string TypeMetadataName);
 
 public record SearchOptions(
     bool CaseSensitive = false,

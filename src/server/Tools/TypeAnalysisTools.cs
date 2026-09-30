@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
@@ -16,7 +17,7 @@ public static class TypeAnalysisTools
 
     [McpServerTool(Title = "Get Types from Assembly", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer GetTypeInfo for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
-    public static string GetTypesFromAssembly(
+    public static CallToolResult GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
@@ -28,18 +29,18 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolResponse.Result(JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}"));
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             string[]? searchDirectories = null;
             if (additionalAssemblies is { Length: > 0 })
             {
                 var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
                 if (scope.Error != null)
-                    return scope.Error;
+                    return ToolResponse.Result(scope.Error);
                 searchDirectories = scope.Paths
                     .Select(Path.GetDirectoryName)
                     .Where(d => !string.IsNullOrEmpty(d))
@@ -64,7 +65,7 @@ public static class TypeAnalysisTools
             if (!string.IsNullOrWhiteSpace(continuationToken))
             {
                 if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
-                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                    return ToolResponse.Result(JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired."));
             }
             else if (skip.HasValue && skip.Value > 0)
             {
@@ -90,18 +91,21 @@ public static class TypeAnalysisTools
                 nextToken,
                 types
             };
-            return JsonHelpers.Envelope("type.list", result);
+            var links = searchDirectories is { Length: > 0 }
+                ? []
+                : ResourceUris.TypeLinks(pageTypes.Select(t => (assemblyPath, t.MetadataName ?? t.FullName)));
+            return new ToolResponse(JsonHelpers.Envelope("type.list", result), links).ToCallToolResult();
         }
         catch (DependencyResolutionException ex)
         {
-            return JsonHelpers.ErrorWithGuidance(
+            return ToolResponse.Result(JsonHelpers.ErrorWithGuidance(
                 "DependencyResolutionFailed",
                 ex.Message,
-                suggestion: $"The dependencies ({string.Join(", ", ex.UnresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. Re-run with assemblyPath pointing at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies, or pass the dependency DLL file paths via additionalAssemblies.");
+                suggestion: $"The dependencies ({string.Join(", ", ex.UnresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. Re-run with assemblyPath pointing at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies, or pass the dependency DLL file paths via additionalAssemblies."));
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get types: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to get types: {ex.Message}"));
         }
     }
 

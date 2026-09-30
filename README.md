@@ -221,6 +221,13 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 - **`GetRuntimeOptions`**: Current server configuration and defaults
 - **`UpdateRuntimeOptions`**: Modify pagination, caching, and search behavior
 
+### Resources
+Two resource templates let clients fetch a single type or doc entry without another tool call. Path, type name and documentation id are percent-encoded.
+- **`sherlock://assembly/{path}/type/{fullName}`**: Type metadata, the same payload as `get_type_info`
+- **`sherlock://assembly/{path}/docs/{memberId}`**: XML documentation for a documentation id such as `T:Ns.Type` or `M:Ns.Type.Method(System.String)`
+
+`search_members`, `get_types_from_assembly` and the `find_*` reverse-lookup tools return a `resource_link` to the type resource for each distinct type on the page, after the JSON text block. `resources/read` carries private caching hints; a URI whose assembly, type or doc id doesn't exist fails with `-32602`.
+
 ### Advanced Filtering & Pagination
 
 All member analysis tools support comprehensive filtering and pagination:

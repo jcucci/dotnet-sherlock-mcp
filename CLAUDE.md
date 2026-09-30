@@ -55,7 +55,7 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 - **Caching Layer**: Configurable TTL-based caching for expensive operations
 - **Memory Efficiency**: Streaming and chunked processing for large assemblies
 
-The server uses `Microsoft.Extensions.Hosting` with dependency injection and the `ModelContextProtocol` 2.1.0 (GA) package, which implements MCP specification revision `2026-07-28`. The server is stdio-only; it advertises behavioural annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`, `idempotentHint`) on every tool and caching hints (`ttlMs`, `cacheScope`) on `tools/list`.
+The server uses `Microsoft.Extensions.Hosting` with dependency injection and the `ModelContextProtocol` 2.1.0 (GA) package, which implements MCP specification revision `2026-07-28`. The server is stdio-only; it advertises behavioural annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`, `idempotentHint`) on every tool and caching hints (`ttlMs`, `cacheScope`) on `tools/list`, `resources/templates/list` and `resources/read`. Resource templates (`sherlock://assembly/{path}/type/{fullName}`, `sherlock://assembly/{path}/docs/{memberId}`) live in `src/server/Resources`; `search_members`, `get_types_from_assembly` and the `find_*` tools return `resource_link` blocks to the type resource alongside their JSON text.
 
 ## .NET Type Analysis (Sherlock MCP)
 

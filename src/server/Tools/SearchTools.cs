@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Search;
@@ -20,7 +21,7 @@ public static class SearchTools
 
     [McpServerTool(Title = "Search Members", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of GetTypeMethods/Properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
-    public static string SearchMembers(
+    public static CallToolResult SearchMembers(
         ISearchService searchService,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
@@ -37,11 +38,11 @@ public static class SearchTools
         try
         {
             if (string.IsNullOrWhiteSpace(assemblyPath))
-                return JsonHelpers.Error("InvalidArgument", "assemblyPath is required");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "assemblyPath is required"));
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolResponse.Result(JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}"));
             if (string.IsNullOrWhiteSpace(nameContains))
-                return JsonHelpers.Error("InvalidArgument", "nameContains is required");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "nameContains is required"));
 
             IReadOnlySet<string>? kinds = null;
             string normalizedKinds = "all";
@@ -53,7 +54,7 @@ public static class SearchTools
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var invalid = parsed.Where(k => !ValidKinds.Contains(k)).ToArray();
                 if (invalid.Length > 0)
-                    return JsonHelpers.Error("InvalidArgument", $"Unknown memberKinds: {string.Join(", ", invalid)}. Valid: method, property, field, event, type.");
+                    return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", $"Unknown memberKinds: {string.Join(", ", invalid)}. Valid: method, property, field, event, type."));
                 if (parsed.Count > 0)
                 {
                     kinds = parsed;
@@ -119,15 +120,16 @@ public static class SearchTools
                     results
                 };
 
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "SearchMembers");
+                var links = ResourceUris.TypeLinks(page.Select(h => (assemblyPath, h.TypeMetadataName)));
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "SearchMembers");
                 if (sizeError != null) return sizeError;
 
-                return JsonHelpers.Envelope("search.members", result);
+                return new ToolResponse(JsonHelpers.Envelope("search.members", result), links);
             }, noCache);
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to search members: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to search members: {ex.Message}"));
         }
     }
 }

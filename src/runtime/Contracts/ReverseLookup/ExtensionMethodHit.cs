@@ -5,4 +5,5 @@ public record ExtensionMethodHit(
     string DeclaringTypeFullName,
     string MethodName,
     string Signature,
-    string ExtendedTypeFriendlyName);
+    string ExtendedTypeFriendlyName,
+    string? TypeMetadataName = null);

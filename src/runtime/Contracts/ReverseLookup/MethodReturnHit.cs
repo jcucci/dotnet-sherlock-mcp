@@ -6,4 +6,5 @@ public record MethodReturnHit(
     string MethodName,
     string Signature,
     string ReturnTypeFriendlyName,
-    bool IsStatic);
+    bool IsStatic,
+    string? TypeMetadataName = null);

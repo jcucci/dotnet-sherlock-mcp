@@ -43,9 +43,16 @@ public class XmlDocService : IXmlDocService
         return null;
     }
 
-    private CachedDoc? LoadDoc(Assembly assembly)
+    public XmlDocInfo? GetXmlDocsById(string assemblyPath, string memberId)
     {
-        var key = assembly.Location;
+        var doc = LoadDoc(Path.GetFullPath(assemblyPath));
+        return doc != null && doc.MembersById.TryGetValue(memberId, out var el) ? Extract(el) : null;
+    }
+
+    private CachedDoc? LoadDoc(Assembly assembly) => LoadDoc(assembly.Location);
+
+    private CachedDoc? LoadDoc(string key)
+    {
         if (string.IsNullOrEmpty(key)) return null;
 
         var xmlPath = Path.ChangeExtension(key, ".xml");

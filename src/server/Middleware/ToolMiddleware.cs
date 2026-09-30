@@ -1,7 +1,11 @@
 using System.Diagnostics;
+using System.Text.Json;
+using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Telemetry;
+using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Middleware;
 
@@ -38,6 +42,15 @@ public sealed class ToolMiddleware
         }
 
         return result;
+    }
+
+    public CallToolResult Execute(string cacheKey, Func<ToolResponse> action, bool noCache = false)
+    {
+        var payload = Execute(
+            cacheKey,
+            () => JsonSerializer.Serialize(action().ToCallToolResult(), McpJsonUtilities.DefaultOptions),
+            noCache);
+        return JsonSerializer.Deserialize<CallToolResult>(payload, McpJsonUtilities.DefaultOptions)!;
     }
 }
 

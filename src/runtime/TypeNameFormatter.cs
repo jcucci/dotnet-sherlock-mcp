@@ -17,10 +17,17 @@ internal static class TypeNameFormatter
 
         var def = type.GetGenericTypeDefinition();
         var raw = def.FullName ?? def.Name;
-        var tick = raw.IndexOf('`');
-        var stem = tick > 0 ? raw.Substring(0, tick) : raw;
-        var args = type.GetGenericArguments().Select(FriendlyFullName);
-        return $"{stem}<{string.Join(", ", args)}>";
+        var args = type.GetGenericArguments();
+        var consumed = 0;
+        var segments = raw.Split('+').Select(segment =>
+        {
+            var tick = segment.IndexOf('`');
+            if (tick < 0 || !int.TryParse(segment.AsSpan(tick + 1), out var arity)) return segment;
+            var own = args.Skip(consumed).Take(arity).Select(FriendlyFullName);
+            consumed += arity;
+            return $"{segment[..tick]}<{string.Join(", ", own)}>";
+        });
+        return string.Join("+", segments);
     }
 
     public static string FriendlyName(System.Type type)

@@ -7,4 +7,5 @@ public record ReferenceHit(
     string MemberName,
     string ReferenceKind,
     string Signature,
-    string DedupeKey);
+    string DedupeKey,
+    string? TypeMetadataName = null);
