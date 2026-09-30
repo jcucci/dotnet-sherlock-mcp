@@ -9,7 +9,7 @@ namespace Sherlock.MCP.Server.Tools;
 public static class ConfigTools
 {
     [McpServerTool(Title = "Get Runtime Options", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets current runtime configuration (default page sizes, cache TTL, search roots). Use to understand current settings before UpdateRuntimeOptions.")]
+    [Description("Gets current runtime configuration (default page sizes, cache TTL, search roots). Use to understand current settings before update_runtime_options.")]
     public static string GetRuntimeOptions(RuntimeOptions options)
     {
         var result = new

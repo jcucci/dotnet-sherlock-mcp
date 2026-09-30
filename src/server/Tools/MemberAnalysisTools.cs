@@ -20,7 +20,7 @@ public static class MemberAnalysisTools
     };
 
     [McpServerTool(Title = "Get Type Methods", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer AnalyzeMethod for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
+    [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer analyze_method for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
     public static string GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -85,7 +85,7 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeMethods");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("get_type_methods");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(saltSeed);
@@ -183,7 +183,7 @@ public static class MemberAnalysisTools
 
 
     [McpServerTool(Title = "Get Member Attributes", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via GetTypeMethods or similar tools.")]
+    [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via get_type_methods or similar tools.")]
     public static string GetMemberAttributes(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -283,7 +283,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Properties", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers. Prefer over GetAllTypeMembers when only properties needed.")]
+    [Description("Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers. Prefer over get_all_type_members when only properties needed.")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -340,7 +340,7 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeProperties");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("get_type_properties");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(saltSeed);
@@ -480,7 +480,7 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeFields");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("get_type_fields");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(saltSeed);
@@ -606,7 +606,7 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeEvents");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("get_type_events");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(saltSeed);
@@ -734,7 +734,7 @@ public static class MemberAnalysisTools
                     SortOrder = sortOrder
                 };
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("GetTypeConstructors");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("get_type_constructors");
                 var pageSize = Math.Max(1, maxItems ?? take ?? defaultPageSize);
                 var offset = 0;
                 string salt = TokenHelper.MakeSalt(saltSeed);
@@ -808,7 +808,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get All Type Members", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types. Consider using specific member tools (GetTypeMethods, GetTypeProperties) with filtering first for better efficiency.")]
+    [Description("Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types. Consider using specific member tools (get_type_methods, get_type_properties) with filtering first for better efficiency.")]
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
         ToolMiddleware middleware,
@@ -927,7 +927,7 @@ public static class MemberAnalysisTools
                     }).ToArray()
                 };
                 // Check response size before returning
-                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "GetAllTypeMembers");
+                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "get_all_type_members");
                 if (sizeValidationError != null)
                     return sizeValidationError;
 

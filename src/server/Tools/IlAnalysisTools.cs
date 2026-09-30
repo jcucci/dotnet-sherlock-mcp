@@ -11,7 +11,7 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class IlAnalysisTools
 {
-    private static readonly string[] MethodNotFoundAlternatives = { "GetTypeMethods", "AnalyzeType" };
+    private static readonly string[] MethodNotFoundAlternatives = { "get_type_methods", "analyze_type" };
 
     [McpServerTool(Title = "Get Method Calls", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Analyzes a method's IL body to list what it calls and which fields it touches (the 'what does this method call?' question that signature-level tools can't answer). Aggregates across all overloads of the method name. Returns a lean summary by default (distinct target names); projection='full' adds per-call kind (call/callvirt/newobj/ldftn) and the source overload signature.")]
@@ -58,7 +58,7 @@ public static class IlAnalysisTools
                     return JsonHelpers.ErrorWithGuidance(
                         "MethodNotFound",
                         $"No method named '{methodName}' was found on type '{typeName}' in {Path.GetFileName(assemblyPath)}.",
-                        "Verify the type and method names. Use GetTypeMethods to list available methods, or set includeNonPublic=true for private methods.",
+                        "Verify the type and method names. Use get_type_methods to list available methods, or set includeNonPublic=true for private methods.",
                         MethodNotFoundAlternatives);
 
                 object result = normalizedProjection == "summary"
@@ -83,7 +83,7 @@ public static class IlAnalysisTools
                         fieldAccesses = analysis.FieldAccesses.Select(f => new { target = f.Target, access = f.Access, sourceMethod = f.SourceMethod }).ToArray()
                     };
 
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "GetMethodCalls");
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "get_method_calls");
                 if (sizeError != null) return sizeError;
 
                 return JsonHelpers.Envelope("il.methodCalls", result);

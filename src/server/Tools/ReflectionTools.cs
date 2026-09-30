@@ -17,7 +17,7 @@ public static class ReflectionTools
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [McpServerTool(Title = "Analyze Assembly", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with GetTypeInfo for specific types.")]
+    [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with get_type_info for specific types.")]
     public static string AnalyzeAssembly(
         IInspectionContextProvider contexts,
         RuntimeOptions runtimeOptions,
@@ -44,7 +44,7 @@ public static class ReflectionTools
             }
 
             // Pagination logic
-            var defaultPageSize = runtimeOptions.GetMaxItemsForTool("AnalyzeAssembly");
+            var defaultPageSize = runtimeOptions.GetMaxItemsForTool("analyze_assembly");
             var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
             var offset = 0;
 
@@ -92,7 +92,7 @@ public static class ReflectionTools
             };
 
             // Check response size before returning
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "AnalyzeAssembly");
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_assembly");
             if (sizeValidationError != null)
                 return sizeValidationError;
 
@@ -154,7 +154,7 @@ public static class ReflectionTools
                     referencedAssemblies
                 };
 
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "GetAssemblyInfo");
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "get_assembly_info");
             if (sizeValidationError != null)
                 return sizeValidationError;
 
@@ -279,7 +279,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool(Title = "Analyze Type", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories. Consider GetTypeMethods etc. for targeted queries.")]
+    [Description("Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories. Consider get_type_methods etc. for targeted queries.")]
     public static string AnalyzeType(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -400,7 +400,7 @@ public static class ReflectionTools
             };
 
             // Check response size before returning
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "AnalyzeType");
+            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_type");
             if (sizeValidationError != null)
                 return sizeValidationError;
 
@@ -538,7 +538,7 @@ public static class ReflectionTools
         && !elicitation.HasResponse(Elicitation.TfmKey);
 
     [McpServerTool(Title = "Analyze Method", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via GetTypeMethods. Lightweight response.")]
+    [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via get_type_methods. Lightweight response.")]
     public static string AnalyzeMethod(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,

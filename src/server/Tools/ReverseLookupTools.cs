@@ -57,7 +57,7 @@ public static class ReverseLookupTools
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
                 var allHits = reverseLookup.FindImplementations(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindImplementationsOf");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("find_implementations_of");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
                 var offset = 0;
                 var salt = TokenHelper.MakeSalt(saltSeed);
@@ -151,7 +151,7 @@ public static class ReverseLookupTools
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
                 var allHits = reverseLookup.FindMethodsReturning(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindMethodsReturning");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("find_methods_returning");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
                 var offset = 0;
                 var salt = TokenHelper.MakeSalt(saltSeed);
@@ -251,7 +251,7 @@ public static class ReverseLookupTools
                 var options = new ReverseLookupOptions(CaseSensitive: caseSensitive, IncludeNonPublic: includeNonPublic);
                 var allHits = reverseLookup.FindExtensionMethodsFor(scope.Paths, typeName, options, ProgressAdapter.ForPhase(progress), cancellationToken);
 
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindExtensionMethodsFor");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("find_extension_methods_for");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
                 var offset = 0;
                 var salt = TokenHelper.MakeSalt(saltSeed);
@@ -353,7 +353,7 @@ public static class ReverseLookupTools
 
             return middleware.Execute(cacheKey, () =>
             {
-                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("FindReferencesTo");
+                var defaultPageSize = runtimeOptions.GetMaxItemsForTool("find_references_to");
                 var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
                 var hardCap = Math.Max(pageSize * 4, 500);
                 var options = new ReverseLookupOptions(
@@ -448,7 +448,7 @@ public static class ReverseLookupTools
                 };
 
                 var links = ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName)));
-                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "FindReferencesTo");
+                var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "find_references_to");
                 if (sizeError != null) return sizeError;
 
                 return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), links);
