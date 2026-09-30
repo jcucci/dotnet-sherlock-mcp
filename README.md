@@ -32,7 +32,19 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Installation
 
-Install the global tool from NuGet (adds `sherlock-mcp` to your PATH):
+### Run with dnx (.NET 10 SDK)
+
+With the .NET 10 SDK, `dnx` downloads the package from NuGet and runs it directly — no install step:
+
+```bash
+dnx Sherlock.MCP.Server@2.13.0 --yes
+```
+
+`--yes` skips the interactive confirmation prompt, which an MCP client launching the server over stdio can't answer. Pinning the version keeps launches reproducible; bump it when you want to upgrade. The package is published with the `McpServer` package type, so it is also listed as an MCP server on NuGet.org.
+
+### Install as a global tool
+
+On any supported SDK (.NET 8 or later), install the global tool from NuGet (adds `sherlock-mcp` to your PATH):
 
 ```bash
 dotnet tool install -g Sherlock.MCP.Server
@@ -47,6 +59,30 @@ dotnet run --project src/server/Sherlock.MCP.Server.csproj
 ## Configure Your MCP Client
 
 Sherlock runs as a standard MCP server that communicates over stdio.
+
+### Using dnx
+
+- Claude Code:
+
+```bash
+claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.13.0 --yes
+```
+
+- VS Code (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "sherlock": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": ["Sherlock.MCP.Server@2.13.0", "--yes"]
+    }
+  }
+}
+```
+
+### Using the global tool
 
 - Cursor: Settings → MCP / Custom tools → Add tool → Command: `sherlock-mcp`
 - Claude Desktop / other MCP clients: Add a server entry pointing to the `sherlock-mcp` command. Example JSON entry (refer to your client’s docs for exact file location/format):
@@ -363,11 +399,13 @@ dotnet versionize
 git push --follow-tags
 ```
 
+`versionize` only bumps the project version. Before pushing, bump both `version` fields in `server.json` (and the pinned `dnx` version in this README) in the same release commit, then re-point the tag at it. `server.json` is packed into the NuGet package as `.mcp/server.json`.
+
 The release workflow will automatically:
-1. Build and test the project
-2. Create a GitHub Release with changelog notes
-3. Publish the NuGet package
-4. Update `server.json` with the new version
+1. Verify that the tag, `server.json` and the project version all match
+2. Build and test the project
+3. Create a GitHub Release with changelog notes
+4. Publish the NuGet package and the MCP Registry entry
 
 ## MCP Registry
 mcp-name: io.github.jcucci/dotnet-sherlock-mcp
