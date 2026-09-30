@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Tools;
 
 namespace Sherlock.MCP.Tests;
@@ -10,12 +11,13 @@ public class TypeHierarchyToolTests
     private readonly ITypeAnalysisService _typeAnalysis = new TypeAnalysisService();
     private readonly IReverseLookupService _reverseLookup = new ReverseLookupService();
     private readonly string _testAssemblyPath = Assembly.GetExecutingAssembly().Location;
+    private static readonly IInspectionContextProvider Contexts = new SharedInspectionContextProvider(new RuntimeOptions());
 
     [Fact]
     public void GetTypeHierarchy_WithoutScope_ReturnsNullDerivedTypes_AndNote()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, _reverseLookup, _testAssemblyPath, "BaseSample");
+            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample");
 
         Assert.DoesNotContain("\"error\"", result);
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -27,7 +29,7 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_WithScope_PopulatesDerivedTypes_AndNullNote()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, _reverseLookup, _testAssemblyPath, "BaseSample",
+            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample",
             additionalAssemblies: new[] { _testAssemblyPath });
 
         Assert.DoesNotContain("\"error\"", result);
@@ -50,7 +52,7 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_TypeNotFound_ReturnsError()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, _reverseLookup, _testAssemblyPath, "NoSuchTypeXyz");
+            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "NoSuchTypeXyz");
 
         Assert.Contains("TypeNotFound", result);
     }
@@ -59,7 +61,7 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_MissingAdditionalAssembly_ReturnsError()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, _reverseLookup, _testAssemblyPath, "BaseSample",
+            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample",
             additionalAssemblies: new[] { "/tmp/does-not-exist.dll" });
 
         Assert.Contains("AssemblyNotFound", result);

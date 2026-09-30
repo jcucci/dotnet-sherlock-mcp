@@ -35,7 +35,7 @@ public static class IlAnalysisTools
             if (string.IsNullOrWhiteSpace(assemblyPath))
                 return JsonHelpers.Error("InvalidArgument", "assemblyPath is required");
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
             if (string.IsNullOrWhiteSpace(typeName))
                 return JsonHelpers.Error("InvalidArgument", "typeName is required");
             if (string.IsNullOrWhiteSpace(methodName))
@@ -95,7 +95,7 @@ public static class IlAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze method calls: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze method calls");
         }
     }
 }

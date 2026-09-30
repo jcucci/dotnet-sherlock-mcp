@@ -25,12 +25,12 @@ public static class XmlDocTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (type == null) return ToolErrors.TypeNotFound(asm, typeName);
             var info = xmlDocs.GetXmlDocsForType(type);
             return info == null
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
@@ -42,7 +42,7 @@ public static class XmlDocTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get type XML docs: {ex.Message}");
+            return ToolErrors.FromException(ex, "get type XML docs");
         }
     }
 
@@ -61,15 +61,15 @@ public static class XmlDocTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (type == null) return ToolErrors.TypeNotFound(asm, typeName);
             var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
                 .FirstOrDefault(m => string.Equals(m.Name, memberName, comparison));
-            if (member == null) return JsonHelpers.Error("MemberNotFound", $"Member '{memberName}' not found");
+            if (member == null) return ToolErrors.MemberNotFound(type, memberName, message: $"Member '{memberName}' not found");
             var info = xmlDocs.GetXmlDocsForMember(member);
             return info == null
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for member")
@@ -81,7 +81,7 @@ public static class XmlDocTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get member XML docs: {ex.Message}");
+            return ToolErrors.FromException(ex, "get member XML docs");
         }
     }
 }

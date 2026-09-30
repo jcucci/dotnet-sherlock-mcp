@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
 using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -30,7 +31,7 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}"));
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -97,16 +98,9 @@ public static class TypeAnalysisTools
                 : ResourceUris.TypeLinks(pageTypes.Select(t => (assemblyPath, t.MetadataName ?? t.FullName)));
             return new ToolResponse(JsonHelpers.Envelope("type.list", result), links).ToCallToolResult();
         }
-        catch (DependencyResolutionException ex)
-        {
-            return ToolResponse.Result(JsonHelpers.ErrorWithGuidance(
-                "DependencyResolutionFailed",
-                ex.Message,
-                suggestion: $"The dependencies ({string.Join(", ", ex.UnresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. Re-run with assemblyPath pointing at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies, or pass the dependency DLL file paths via additionalAssemblies."));
-        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to get types: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "get types"));
         }
     }
 
@@ -114,6 +108,7 @@ public static class TypeAnalysisTools
     [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with get_type_methods etc.")]
     public static string GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.Collections.Generic.List`1')")] string typeName,
         RequestContext<CallToolRequestParams>? context = null)
@@ -123,11 +118,11 @@ public static class TypeAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
             if (info == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
 
             return JsonHelpers.Envelope("type.info", info);
         }
@@ -137,7 +132,7 @@ public static class TypeAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze type");
         }
     }
 
@@ -145,6 +140,7 @@ public static class TypeAnalysisTools
     [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as find_implementations_of.")]
     public static string GetTypeHierarchy(
         ITypeAnalysisService typeAnalysis,
+        IInspectionContextProvider contexts,
         IReverseLookupService reverseLookup,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
@@ -159,9 +155,9 @@ public static class TypeAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             var hierarchy = typeAnalysis.GetTypeHierarchy(assemblyPath, typeName);
-            if (hierarchy == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (hierarchy == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
 
             if (additionalAssemblies == null || additionalAssemblies.Length == 0)
                 return JsonHelpers.Envelope("type.hierarchy", hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use find_implementations_of" });
@@ -180,7 +176,7 @@ public static class TypeAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get type hierarchy: {ex.Message}");
+            return ToolErrors.FromException(ex, "get type hierarchy");
         }
     }
 
@@ -188,6 +184,7 @@ public static class TypeAnalysisTools
     [Description("Gets generic type parameters, constraints, and variance for generic types. Only useful for types where IsGenericType=true. Lightweight response.")]
     public static string GetGenericTypeInfo(
         ITypeAnalysisService typeAnalysis,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
@@ -197,9 +194,9 @@ public static class TypeAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             var genericInfo = typeAnalysis.GetGenericTypeInfo(assemblyPath, typeName);
-            if (genericInfo == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (genericInfo == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             return JsonHelpers.Envelope("type.generic", genericInfo);
         }
         catch (AmbiguousTypeNameException ex)
@@ -208,7 +205,7 @@ public static class TypeAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get generic type info: {ex.Message}");
+            return ToolErrors.FromException(ex, "get generic type info");
         }
     }
 
@@ -216,6 +213,7 @@ public static class TypeAnalysisTools
     [Description("Gets custom attributes declared on a type (e.g., [Serializable], [Obsolete]). Returns attribute types and values. Lightweight response.")]
     public static string GetTypeAttributes(
         ITypeAnalysisService typeAnalysis,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
@@ -225,9 +223,9 @@ public static class TypeAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             var lookup = typeAnalysis.GetTypeAttributes(assemblyPath, typeName);
-            if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (lookup == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             var (typeFullName, attributes) = lookup.Value;
             return JsonHelpers.Envelope("type.attributes", new { typeName = typeFullName, attributeCount = attributes.Length, attributes });
         }
@@ -237,7 +235,7 @@ public static class TypeAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get attributes: {ex.Message}");
+            return ToolErrors.FromException(ex, "get attributes");
         }
     }
 
@@ -245,6 +243,7 @@ public static class TypeAnalysisTools
     [Description("Gets nested/inner types declared within a type. Use for types with inner classes, structs, or enums. Lightweight response.")]
     public static string GetNestedTypes(
         ITypeAnalysisService typeAnalysis,
+        IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
@@ -254,9 +253,9 @@ public static class TypeAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
             var lookup = typeAnalysis.GetNestedTypes(assemblyPath, typeName);
-            if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+            if (lookup == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             var (typeFullName, nested) = lookup.Value;
             return JsonHelpers.Envelope("type.nested", new { typeName = typeFullName, nestedTypeCount = nested.Length, nested });
         }
@@ -266,7 +265,7 @@ public static class TypeAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get nested types: {ex.Message}");
+            return ToolErrors.FromException(ex, "get nested types");
         }
     }
 }

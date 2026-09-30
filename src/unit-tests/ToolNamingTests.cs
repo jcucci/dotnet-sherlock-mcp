@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Middleware;
@@ -78,7 +79,7 @@ public class ToolNamingTests
     public void GetTypeHierarchyNote_UsesSnakeCaseToolNames()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            new TypeAnalysisService(), new ReverseLookupService(), TestAssemblyPath, "BaseSample");
+            new TypeAnalysisService(), new SharedInspectionContextProvider(new RuntimeOptions()), new ReverseLookupService(), TestAssemblyPath, "BaseSample");
 
         var note = JsonDocument.Parse(result).RootElement.GetProperty("data").GetProperty("Note").GetString();
         Assert.False(string.IsNullOrWhiteSpace(note));

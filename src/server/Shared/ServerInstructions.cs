@@ -15,5 +15,7 @@ public static class ServerInstructions
         search_members, get_types_from_assembly and the find_* tools also return resource_link blocks (sherlock://assembly/{path}/type/{fullName}); read one to get a type's get_type_info payload without another tool call. sherlock://nuget/{packageId}/{version} resolves a cached package to its assembly path. Resource template variables (path, fullName, memberId, packageId, version) support completion/complete.
 
         Prefer full type names (Namespace.Type). A simple name that matches several types prompts the client to choose (elicitation) or returns an AmbiguousTypeName error listing the candidate full names. Tool names are snake_case; argument names are camelCase.
+
+        Failed calls return isError: true with a JSON error whose suggestion, alternativeTools and recommendedParams (e.g. candidates for TypeNotFound / MemberNotFound) say how to fix the call - follow them rather than guessing.
         """;
 }

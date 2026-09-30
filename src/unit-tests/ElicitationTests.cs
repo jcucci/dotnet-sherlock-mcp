@@ -22,6 +22,7 @@ public class ElicitationTests
     ];
 
     private static readonly AmbiguousTypeNameException Ambiguity = new("DuplicateWidget", Candidates);
+    private static readonly IInspectionContextProvider Contexts = new SharedInspectionContextProvider(new RuntimeOptions());
 
     [Fact]
     public void AmbiguousType_ClientCanElicit_ThrowsInputRequiredWithCandidates()
@@ -72,7 +73,7 @@ public class ElicitationTests
     [Fact]
     public void GetTypeInfo_AmbiguousName_WithoutContext_ReturnsAmbiguousTypeName()
     {
-        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), TestAssemblyPath, "DuplicateWidget");
+        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, "DuplicateWidget");
 
         AssertAmbiguousError(json);
     }
@@ -84,10 +85,10 @@ public class ElicitationTests
         var middleware = new ToolMiddleware(cache, new NoopTelemetry(), new RuntimeOptions());
         var memberAnalysis = new MemberAnalysisService();
 
-        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
-        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget"));
 
-        var resolved = JsonDocument.Parse(MemberAnalysisTools.GetTypeMethods(memberAnalysis, middleware, new RuntimeOptions(), TestAssemblyPath, Candidates[0]));
+        var resolved = JsonDocument.Parse(MemberAnalysisTools.GetTypeMethods(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, Candidates[0]));
         Assert.NotEqual("error", resolved.RootElement.GetProperty("kind").GetString());
     }
 

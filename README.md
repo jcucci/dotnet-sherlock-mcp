@@ -310,7 +310,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
+Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 
 ```jsonc
 {
@@ -325,9 +325,10 @@ Errors use a consistent shape. Every error carries `kind`, `version`, `code`, an
 
 Error codes:
 
-* **Not found:** `AssemblyNotFound`, `TypeNotFound`, `MemberNotFound`, `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`
+* **Not found:** `AssemblyNotFound` (`recommendedParams.similarFiles` lists near-miss assemblies in the same folder), `TypeNotFound` / `MemberNotFound` (`recommendedParams.candidates` lists the closest names), `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`, `ProjectNotFound`, `FileNotFound`
 * **Bad input:** `AmbiguousTypeName` (only for clients that can't elicit; `recommendedParams.candidates` lists the matching full names), `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidContinuationToken`
-* **Limits, resolution & internal:** `ResponseTooLarge`, `DependencyResolutionFailed`, `InternalError`
+* **Loading:** `InvalidAssembly` (not a managed assembly), `DependencyNotFound` (a referenced assembly couldn't be loaded), `DependencyResolutionFailed`, `AccessDenied`
+* **Limits & internal:** `ResponseTooLarge`, `InternalError`
 
 ## Roadmap
 

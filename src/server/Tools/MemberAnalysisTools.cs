@@ -23,6 +23,7 @@ public static class MemberAnalysisTools
     [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer analyze_method for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
     public static string GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -49,7 +50,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -108,7 +109,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var pageItems = page.Items;
@@ -176,7 +177,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze methods: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze methods");
         }
     }
 
@@ -199,13 +200,13 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                return ToolErrors.TypeNotFound(asm, typeName);
             MemberInfo? member = memberKind.ToLowerInvariant() switch
             {
                 "method" => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
@@ -216,7 +217,7 @@ public static class MemberAnalysisTools
                 _ => null
             };
             if (member == null)
-                return JsonHelpers.Error("MemberNotFound", $"Member '{memberName}' of kind '{memberKind}' not found");
+                return ToolErrors.MemberNotFound(type, memberName, memberKind, message: $"Member '{memberName}' of kind '{memberKind}' not found");
             var attrs = Sherlock.MCP.Runtime.AttributeUtils.FromMember(member);
             return JsonHelpers.Envelope(
                 "member.attributes",
@@ -229,7 +230,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get member attributes: {ex.Message}");
+            return ToolErrors.FromException(ex, "get member attributes");
         }
     }
 
@@ -249,19 +250,19 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                return ToolErrors.TypeNotFound(asm, typeName);
             var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                              .FirstOrDefault(m => string.Equals(m.Name, methodName, comparison))
                         ?? (MethodBase?)type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                              .FirstOrDefault();
             if (method == null)
-                return JsonHelpers.Error("MemberNotFound", $"Method/Constructor '{methodName}' not found");
+                return ToolErrors.MemberNotFound(type, methodName, "method", message: $"Method/Constructor '{methodName}' not found");
             var parameters = method.GetParameters();
             if (parameterIndex < 0 || parameterIndex >= parameters.Length)
                 return JsonHelpers.Error("InvalidArgument", "Parameter index out of range");
@@ -278,7 +279,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get parameter attributes: {ex.Message}");
+            return ToolErrors.FromException(ex, "get parameter attributes");
         }
     }
 
@@ -286,6 +287,7 @@ public static class MemberAnalysisTools
     [Description("Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers. Prefer over get_all_type_members when only properties needed.")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -311,7 +313,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -363,7 +365,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var pageItems = page.Items;
@@ -418,7 +420,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze properties: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze properties");
         }
     }
 
@@ -426,6 +428,7 @@ public static class MemberAnalysisTools
     [Description("Gets fields from a type with filtering and pagination. Returns const/readonly/volatile info and constant values. Fields are compact - can use larger maxItems (75+).")]
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -451,7 +454,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -503,7 +506,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var pageItems = page.Items;
@@ -546,7 +549,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze fields: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze fields");
         }
     }
 
@@ -554,6 +557,7 @@ public static class MemberAnalysisTools
     [Description("Gets events from a type with filtering and pagination. Returns event handler types and add/remove accessor info. Most types have few events.")]
     public static string GetTypeEvents(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -579,7 +583,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.events.salt",
@@ -629,7 +633,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var pageItems = page.Items;
@@ -673,7 +677,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze events: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze events");
         }
     }
 
@@ -681,6 +685,7 @@ public static class MemberAnalysisTools
     [Description("Gets constructors from a type with filtering and pagination. Returns parameter info and access modifiers. Most types have few constructors - use maxItems=30.")]
     public static string GetTypeConstructors(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -706,7 +711,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -757,7 +762,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var pageItems = page.Items;
@@ -803,7 +808,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze constructors: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze constructors");
         }
     }
 
@@ -811,6 +816,7 @@ public static class MemberAnalysisTools
     [Description("Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types. Consider using specific member tools (get_type_methods, get_type_properties) with filtering first for better efficiency.")]
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
@@ -826,7 +832,7 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.all",
@@ -857,7 +863,7 @@ public static class MemberAnalysisTools
                 }
                 catch (ArgumentException)
                 {
-                    return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
                 }
 
                 var result = new
@@ -940,7 +946,7 @@ public static class MemberAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze all members: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze all members");
         }
     }
 }
