@@ -25,11 +25,11 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Resource templates** for type info and XML docs, with `resource_link` results from search and reverse-lookup tools ([#64](https://github.com/jcucci/dotnet-sherlock-mcp/issues/64)).
 - **Assembly locator fixes**: pruned, ranked, and cheaper file-system searches ([#78](https://github.com/jcucci/dotnet-sherlock-mcp/issues/78)).
 - **Elicitation for ambiguous inputs**: ambiguous type names and multi-TFM packages are resolved by asking the client ([#67](https://github.com/jcucci/dotnet-sherlock-mcp/issues/67)).
+- **Structured tool output**: core tools publish an `outputSchema` and return `structuredContent` alongside the text block, and every response is compact JSON ([#58](https://github.com/jcucci/dotnet-sherlock-mcp/issues/58)).
 
 ## Planned
 
 ### Agent ergonomics & MCP protocol
-- Structured tool output (`outputSchema` / `structuredContent`) and compact JSON ([#58](https://github.com/jcucci/dotnet-sherlock-mcp/issues/58))
 - `isError` on tool errors, with guidance for common failures ([#59](https://github.com/jcucci/dotnet-sherlock-mcp/issues/59))
 - Consolidated member-listing tools and optional tool profiles ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60))
 - snake_case wire names in tool descriptions and server instructions ([#61](https://github.com/jcucci/dotnet-sherlock-mcp/issues/61))

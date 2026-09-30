@@ -6,10 +6,7 @@ public static class JsonHelpers
 {
     public const string SchemaVersion = "1.0.0";
 
-    public static readonly JsonSerializerOptions DefaultOptions = new()
-    {
-        WriteIndented = true
-    };
+    public static readonly JsonSerializerOptions DefaultOptions = new();
 
     public static string Envelope(string kind, object data) =>
         JsonSerializer.Serialize(new { kind, version = SchemaVersion, data }, DefaultOptions);

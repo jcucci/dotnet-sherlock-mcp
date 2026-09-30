@@ -207,7 +207,7 @@ public sealed class ToolErrorsTests : IDisposable
     [Fact]
     public void GetTypeInfo_MisspelledType_SuggestsClosestType()
     {
-        var error = Parse(TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, "TestSampleClas"));
+        var error = Parse(TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, "TestSampleClas").Text());
 
         Assert.Equal("TypeNotFound", error.GetProperty("code").GetString());
         Assert.Contains(typeof(TestSampleClass).FullName, Candidates(error));
@@ -242,7 +242,7 @@ public sealed class ToolErrorsTests : IDisposable
             new RuntimeOptions());
 
         var error = Parse(MemberAnalysisTools.GetTypeMethods(
-            new MemberAnalysisService(), Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "testsampleclass2", noCache: true));
+            new MemberAnalysisService(), Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "testsampleclass2", noCache: true).Text());
 
         Assert.Equal("TypeNotFound", error.GetProperty("code").GetString());
         Assert.Contains(typeof(TestSampleClass).FullName, Candidates(error));

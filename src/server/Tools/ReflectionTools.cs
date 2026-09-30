@@ -7,6 +7,7 @@ using System.Text.Json;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Tools;
@@ -14,8 +15,6 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class ReflectionTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
     [McpServerTool(Title = "Analyze Assembly", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with get_type_info for specific types.")]
     public static string AnalyzeAssembly(
@@ -104,9 +103,9 @@ public static class ReflectionTools
         }
     }
 
-    [McpServerTool(Title = "Get Assembly Info", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Get Assembly Info", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<AssemblyInfoData>))]
     [Description("Gets assembly-level metadata: identity/version, target framework, and referenced assemblies. Lightweight orientation tool — call before deep type analysis. Use projection='full' for all assembly-level attributes structurally.")]
-    public static string GetAssemblyInfo(
+    public static CallToolResult GetAssemblyInfo(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Detail level: 'summary' (default, lean) or 'full' (adds all assembly attributes)")] string projection = "summary")
@@ -114,11 +113,11 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -156,13 +155,13 @@ public static class ReflectionTools
 
             var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "get_assembly_info");
             if (sizeValidationError != null)
-                return sizeValidationError;
+                return ToolResponse.Result(sizeValidationError);
 
-            return JsonHelpers.Envelope("reflection.assemblyInfo", result);
+            return ToolResponse.Result(JsonHelpers.Envelope("reflection.assemblyInfo", result));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolErrors.FromException(ex, "get assembly info");
+            return ToolResponse.Result(ToolErrors.FromException(ex, "get assembly info"));
         }
     }
 

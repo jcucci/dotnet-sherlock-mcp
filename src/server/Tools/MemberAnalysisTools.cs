@@ -4,6 +4,7 @@ using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Middleware;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -14,14 +15,9 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class MemberAnalysisTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        WriteIndented = true
-    };
-
-    [McpServerTool(Title = "Get Type Methods", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Get Type Methods", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeMethodsData>))]
     [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer analyze_method for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
-    public static string GetTypeMethods(
+    public static CallToolResult GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
@@ -50,11 +46,11 @@ public static class MemberAnalysisTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
             // params (continuationToken, skip, take, maxItems) and rendering params (projection)
@@ -70,7 +66,7 @@ public static class MemberAnalysisTools
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
                 caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take, normalizedProjection);
 
-            return middleware.Execute(cacheKey, () =>
+            return ToolResponse.Result(middleware.Execute(cacheKey, () =>
             {
                 var options = new MemberFilterOptions
                 {
@@ -155,7 +151,7 @@ public static class MemberAnalysisTools
                         }).ToArray()
                     }).ToArray();
 
-                var methodsJson = JsonSerializer.Serialize(methods, SerializerOptions);
+                var methodsJson = JsonSerializer.Serialize(methods, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     typeName,
@@ -169,15 +165,15 @@ public static class MemberAnalysisTools
                 };
 
                 return JsonHelpers.Envelope("member.methods", result);
-            }, noCache);
+            }, noCache));
         }
         catch (AmbiguousTypeNameException ex)
         {
-            return Elicitation.AmbiguousType(elicitation, ex);
+            return ToolResponse.Result(Elicitation.AmbiguousType(elicitation, ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolErrors.FromException(ex, "analyze methods");
+            return ToolResponse.Result(ToolErrors.FromException(ex, "analyze methods"));
         }
     }
 

@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
 using Sherlock.MCP.Server.Middleware;
+using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Text.Json;
@@ -13,9 +14,7 @@ namespace Sherlock.MCP.Server.Tools;
 [McpServerToolType]
 public static class ReverseLookupTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
-    [McpServerTool(Title = "Find Implementations Of", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Find Implementations Of", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<ReverseLookupData<ImplementationItem>>))]
     [Description("Finds types that implement an interface or derive from a base type, across one or more assemblies. Returns a lean summary ({ typeFullName, kind }) by default. Pass projection='full' for matchedInterfaces[] and baseTypeChain[]. Matches by simple name, full name, or open-generic form (e.g., 'IEnumerable', 'IEnumerable<T>', 'IEnumerable<>', 'IEnumerable`1').")]
     public static CallToolResult FindImplementationsOf(
         IReverseLookupService reverseLookup,
@@ -88,7 +87,7 @@ public static class ReverseLookupTools
                         baseTypeChain = h.BaseTypeChain
                     }).ToArray();
 
-                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var resultsJson = JsonSerializer.Serialize(results, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     typeName,
@@ -109,7 +108,7 @@ public static class ReverseLookupTools
         }
     }
 
-    [McpServerTool(Title = "Find Methods Returning", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Find Methods Returning", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<ReverseLookupData<MethodHitItem>>))]
     [Description("Finds methods whose return type matches the given type, across one or more assemblies. Returns a lean summary ({ declaringType, methodName, signature }) by default. Pass projection='full' for assemblyPath, returnType, isStatic. Open-generic match supported (e.g., 'Snapshot<>' matches methods returning 'Snapshot<int>').")]
     public static CallToolResult FindMethodsReturning(
         IReverseLookupService reverseLookup,
@@ -188,7 +187,7 @@ public static class ReverseLookupTools
                         isStatic = h.IsStatic
                     }).ToArray();
 
-                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var resultsJson = JsonSerializer.Serialize(results, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     typeName,
@@ -209,7 +208,7 @@ public static class ReverseLookupTools
         }
     }
 
-    [McpServerTool(Title = "Find Extension Methods For", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Find Extension Methods For", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<ReverseLookupData<MethodHitItem>>))]
     [Description("Finds extension methods that extend the given type, across one or more assemblies. Scans static classes for methods whose first ('this') parameter matches the target type. Returns a lean summary ({ declaringType, methodName, signature }) by default. Pass projection='full' for assemblyPath and extendedType. Open-generic match supported (e.g., 'IEnumerable<>' matches extensions on 'IEnumerable<T>').")]
     public static CallToolResult FindExtensionMethodsFor(
         IReverseLookupService reverseLookup,
@@ -287,7 +286,7 @@ public static class ReverseLookupTools
                         extendedType = h.ExtendedTypeFriendlyName
                     }).ToArray();
 
-                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var resultsJson = JsonSerializer.Serialize(results, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     typeName,
@@ -308,7 +307,7 @@ public static class ReverseLookupTools
         }
     }
 
-    [McpServerTool(Title = "Find References To", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Title = "Find References To", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<ReferencesData>))]
     [Description("Finds all references to a type across one or more assemblies: base types, implemented interfaces, method returns/parameters, field/property/event types (recurses into generic arguments). With analysisDepth='il', also scans method bodies for inbound callers ('who calls into this type?'). Bounded sweep with hardCap to protect against runaway scans; check truncated=true. Returns lean summary by default; projection='full' adds assemblyPath, signature, dedupeKey.")]
     public static CallToolResult FindReferencesTo(
         IReverseLookupService reverseLookup,
@@ -432,7 +431,7 @@ public static class ReverseLookupTools
                         dedupeKey = h.DedupeKey
                     }).ToArray();
 
-                var resultsJson = JsonSerializer.Serialize(results, SerializerOptions);
+                var resultsJson = JsonSerializer.Serialize(results, JsonHelpers.DefaultOptions);
                 var result = new
                 {
                     typeName,

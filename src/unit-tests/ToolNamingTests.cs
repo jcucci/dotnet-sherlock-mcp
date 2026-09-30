@@ -92,7 +92,7 @@ public class ToolNamingTests
         var middleware = new ToolMiddleware(new InMemoryToolResponseCache(), new NoopTelemetry(), new RuntimeOptions());
 
         var result = IlAnalysisTools.GetMethodCalls(
-            new IlAnalysisService(), middleware, TestAssemblyPath, nameof(ToolNamingTests), "NoSuchMethod");
+            new IlAnalysisService(), middleware, TestAssemblyPath, nameof(ToolNamingTests), "NoSuchMethod").Text();
 
         Assert.Equal("MethodNotFound", JsonDocument.Parse(result).RootElement.GetProperty("code").GetString());
         AssertGuidanceUsesWireNames(nameof(IlAnalysisTools.GetMethodCalls), result);
