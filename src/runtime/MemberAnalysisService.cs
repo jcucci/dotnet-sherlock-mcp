@@ -44,49 +44,101 @@ public class MemberAnalysisService : IMemberAnalysisService
     {
         using var lease = _contexts.Acquire(assemblyPath);
         var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
-        var methods = type.GetMethods(GetBindingFlags(options))
-            .Where(m => !IsAccessorMethod(m));
-
-        var filtered = FilterAndSortMembers(methods, options);
-        return BuildPage(filtered, offset, pageSize, BuildMethodDetails);
+        return BuildPage(FilteredMethods(type, options), offset, pageSize, BuildMethodDetails);
     }
 
     public PagedResult<PropertyDetails> GetPropertiesPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize)
     {
         using var lease = _contexts.Acquire(assemblyPath);
         var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
-        var filtered = FilterAndSortMembers(type.GetProperties(GetBindingFlags(options)), options);
-        return BuildPage(filtered, offset, pageSize, BuildPropertyDetails);
+        return BuildPage(FilteredProperties(type, options), offset, pageSize, BuildPropertyDetails);
     }
 
     public PagedResult<FieldDetails> GetFieldsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize)
     {
         using var lease = _contexts.Acquire(assemblyPath);
         var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
-        var filtered = FilterAndSortMembers(type.GetFields(GetBindingFlags(options)), options);
-        return BuildPage(filtered, offset, pageSize, BuildFieldDetails);
+        return BuildPage(FilteredFields(type, options), offset, pageSize, BuildFieldDetails);
     }
 
     public PagedResult<EventDetails> GetEventsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize)
     {
         using var lease = _contexts.Acquire(assemblyPath);
         var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
-        var filtered = FilterAndSortMembers(type.GetEvents(GetBindingFlags(options)), options);
-        return BuildPage(filtered, offset, pageSize, BuildEventDetails);
+        return BuildPage(FilteredEvents(type, options), offset, pageSize, BuildEventDetails);
     }
 
     public PagedResult<ConstructorDetails> GetConstructorsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize)
     {
         using var lease = _contexts.Acquire(assemblyPath);
         var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
-        var all = type.GetConstructors(GetBindingFlags(options))
-            .Select(BuildConstructorDetails);
-
-        // Constructors sort and filter by full signature, so details are built before paging; counts stay tiny.
-        var filtered = FilterAndSortDetails(all, options, c => c.Signature, c => c.CustomAttributes).ToArray();
+        var filtered = FilteredConstructors(type, options);
         var items = filtered.Skip(Math.Max(0, offset)).Take(Math.Max(0, pageSize)).ToArray();
         return new PagedResult<ConstructorDetails>(filtered.Length, items);
     }
+
+    public TypeMembersPage GetMembersPage(string assemblyPath, string typeName, IReadOnlySet<MemberKind>? kinds, MemberFilterOptions? options, int offset, int pageSize)
+    {
+        using var lease = _contexts.Acquire(assemblyPath);
+        var type = LoadTypeFromAssembly(lease.Assembly, typeName, options);
+        var segments = Enum.GetValues<MemberKind>()
+            .Where(kind => kinds is null || kinds.Count == 0 || kinds.Contains(kind))
+            .Select(kind => BuildSegment(type, kind, options))
+            .ToArray();
+
+        var remainingSkip = Math.Max(0, offset);
+        var remainingTake = Math.Max(0, pageSize);
+        var items = new List<TypeMemberDetails>();
+        foreach (var segment in segments)
+        {
+            if (remainingTake == 0)
+                break;
+            if (remainingSkip >= segment.Count)
+            {
+                remainingSkip -= segment.Count;
+                continue;
+            }
+
+            var slice = segment.Slice(remainingSkip, remainingTake);
+            items.AddRange(slice);
+            remainingTake -= slice.Length;
+            remainingSkip = 0;
+        }
+
+        var countsByKind = segments.ToDictionary(s => s.Kind, s => s.Count);
+        return new TypeMembersPage(segments.Sum(s => s.Count), countsByKind, [.. items]);
+    }
+
+    private sealed record MemberSegment(MemberKind Kind, int Count, Func<int, int, TypeMemberDetails[]> Slice);
+
+    private static MemberSegment BuildSegment(Type type, MemberKind kind, MemberFilterOptions? options) => kind switch
+    {
+        MemberKind.Constructor => Segment(kind, FilteredConstructors(type, options), TypeMemberDetails.FromConstructor),
+        MemberKind.Property => Segment(kind, FilteredProperties(type, options), p => TypeMemberDetails.FromProperty(BuildPropertyDetails(p))),
+        MemberKind.Field => Segment(kind, FilteredFields(type, options), f => TypeMemberDetails.FromField(BuildFieldDetails(f))),
+        MemberKind.Event => Segment(kind, FilteredEvents(type, options), e => TypeMemberDetails.FromEvent(BuildEventDetails(e))),
+        _ => Segment(kind, FilteredMethods(type, options), m => TypeMemberDetails.FromMethod(BuildMethodDetails(m)))
+    };
+
+    private static MemberSegment Segment<T>(MemberKind kind, IReadOnlyList<T> source, Func<T, TypeMemberDetails> build) =>
+        new(kind, source.Count, (skip, take) => source.Skip(skip).Take(take).Select(build).ToArray());
+
+    private static List<MethodInfo> FilteredMethods(Type type, MemberFilterOptions? options) =>
+        FilterAndSortMembers(type.GetMethods(GetBindingFlags(options)).Where(m => !IsAccessorMethod(m)), options);
+
+    private static List<PropertyInfo> FilteredProperties(Type type, MemberFilterOptions? options) =>
+        FilterAndSortMembers(type.GetProperties(GetBindingFlags(options)), options);
+
+    private static List<FieldInfo> FilteredFields(Type type, MemberFilterOptions? options) =>
+        FilterAndSortMembers(type.GetFields(GetBindingFlags(options)), options);
+
+    private static List<EventInfo> FilteredEvents(Type type, MemberFilterOptions? options) =>
+        FilterAndSortMembers(type.GetEvents(GetBindingFlags(options)), options);
+
+    // Constructors sort and filter by full signature, so details are built before paging; counts stay tiny.
+    private static ConstructorDetails[] FilteredConstructors(Type type, MemberFilterOptions? options) =>
+        FilterAndSortDetails(type.GetConstructors(GetBindingFlags(options)).Select(BuildConstructorDetails),
+            options, c => c.Signature, c => c.CustomAttributes).ToArray();
 
     private static PagedResult<TDetails> BuildPage<TMember, TDetails>(IReadOnlyList<TMember> filtered, int offset, int pageSize, Func<TMember, TDetails> build)
         where TMember : MemberInfo

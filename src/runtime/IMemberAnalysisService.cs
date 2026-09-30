@@ -18,5 +18,6 @@ public interface IMemberAnalysisService
     public PagedResult<FieldDetails> GetFieldsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize);
     public PagedResult<EventDetails> GetEventsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize);
     public PagedResult<ConstructorDetails> GetConstructorsPage(string assemblyPath, string typeName, MemberFilterOptions? options, int offset, int pageSize);
+    public TypeMembersPage GetMembersPage(string assemblyPath, string typeName, IReadOnlySet<MemberKind>? kinds, MemberFilterOptions? options, int offset, int pageSize);
 }
 

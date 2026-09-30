@@ -28,6 +28,7 @@ public class StructuredOutputTests
         nameof(TypeAnalysisTools.GetTypesFromAssembly),
         nameof(TypeAnalysisTools.GetTypeInfo),
         nameof(MemberAnalysisTools.GetTypeMethods),
+        nameof(MemberAnalysisTools.GetTypeMembers),
         nameof(ReflectionTools.GetAssemblyInfo),
         nameof(IlAnalysisTools.GetMethodCalls),
         nameof(ReverseLookupTools.FindImplementationsOf),
@@ -50,6 +51,8 @@ public class StructuredOutputTests
         { nameof(TypeAnalysisTools.GetTypeInfo), "summary" },
         { nameof(MemberAnalysisTools.GetTypeMethods), "summary" },
         { nameof(MemberAnalysisTools.GetTypeMethods), "full" },
+        { nameof(MemberAnalysisTools.GetTypeMembers), "summary" },
+        { nameof(MemberAnalysisTools.GetTypeMembers), "full" },
         { nameof(ReflectionTools.GetAssemblyInfo), "summary" },
         { nameof(ReflectionTools.GetAssemblyInfo), "full" },
         { nameof(IlAnalysisTools.GetMethodCalls), "summary" },
@@ -141,6 +144,8 @@ public class StructuredOutputTests
             TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestAssemblyPath, typeof(TestSampleClass).FullName!),
         nameof(MemberAnalysisTools.GetTypeMethods) =>
             MemberAnalysisTools.GetTypeMethods(new MemberAnalysisService(), Contexts, Middleware, Options, TestAssemblyPath, typeof(TestSampleClass).FullName!, projection: projection, noCache: true),
+        nameof(MemberAnalysisTools.GetTypeMembers) =>
+            MemberAnalysisTools.GetTypeMembers(new MemberAnalysisService(), Contexts, Middleware, Options, TestAssemblyPath, typeof(TestSampleClass).FullName!, projection: projection, noCache: true),
         nameof(ReflectionTools.GetAssemblyInfo) =>
             ReflectionTools.GetAssemblyInfo(Contexts, TestAssemblyPath, projection),
         nameof(IlAnalysisTools.GetMethodCalls) =>

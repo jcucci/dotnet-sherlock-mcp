@@ -278,7 +278,7 @@ public static class ReflectionTools
     }
 
     [McpServerTool(Title = "Analyze Type", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories. Consider get_type_methods etc. for targeted queries.")]
+    [Description("Deprecated: use get_type_info for type metadata plus get_type_members with projection='full' for members. Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories.")]
     public static string AnalyzeType(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -537,7 +537,7 @@ public static class ReflectionTools
         && !elicitation.HasResponse(Elicitation.TfmKey);
 
     [McpServerTool(Title = "Analyze Method", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via get_type_methods. Lightweight response.")]
+    [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding the method via get_type_members or search_members. Lightweight response.")]
     public static string AnalyzeMethod(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,

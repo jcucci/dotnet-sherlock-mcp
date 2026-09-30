@@ -19,7 +19,7 @@ public static class SearchTools
     private static readonly char[] KindSeparators = { ',', '|' };
 
     [McpServerTool(Title = "Search Members", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<SearchMembersData>))]
-    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of get_type_methods / get_type_properties (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
+    [Description("Searches an assembly for members whose name contains a fragment, without needing to know the declaring type first. Answers the inverse of get_type_members (e.g., 'where is ParseConnectionString defined?'). Each hit is { declaringType, memberKind, name, signature }; the searched assemblyPath is echoed once at the top level. Filter by memberKinds (csv: method|property|field|event|type).")]
     public static CallToolResult SearchMembers(
         ISearchService searchService,
         ToolMiddleware middleware,

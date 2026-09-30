@@ -13,6 +13,7 @@ public class RuntimeOptions
 
         ToolSpecificMaxItems = new Dictionary<string, int>(ToolNameComparer.Instance)
         {
+            ["get_type_members"] = 50,       // Mixed kinds; summary items are small
             ["get_type_methods"] = 25,       // Methods have parameters, large payloads
             ["get_type_properties"] = 40,    // Properties moderately sized
             ["get_type_fields"] = 75,        // Fields are compact

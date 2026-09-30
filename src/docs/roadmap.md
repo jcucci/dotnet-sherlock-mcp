@@ -26,12 +26,12 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Assembly locator fixes**: pruned, ranked, and cheaper file-system searches ([#78](https://github.com/jcucci/dotnet-sherlock-mcp/issues/78)).
 - **Elicitation for ambiguous inputs**: ambiguous type names and multi-TFM packages are resolved by asking the client ([#67](https://github.com/jcucci/dotnet-sherlock-mcp/issues/67)).
 - **Structured tool output**: core tools publish an `outputSchema` and return `structuredContent` alongside the text block, and every response is compact JSON ([#58](https://github.com/jcucci/dotnet-sherlock-mcp/issues/58)).
+- **Consolidated member listing**: `get_type_members` with a `kinds` filter replaces the per-kind member tools, and a `core` tool profile (`--profile core` / `SHERLOCK_TOOL_PROFILE`) exposes 18 tools ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60)).
 
 ## Planned
 
 ### Agent ergonomics & MCP protocol
 - `isError` on tool errors, with guidance for common failures ([#59](https://github.com/jcucci/dotnet-sherlock-mcp/issues/59))
-- Consolidated member-listing tools and optional tool profiles ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60))
 - snake_case wire names in tool descriptions and server instructions ([#61](https://github.com/jcucci/dotnet-sherlock-mcp/issues/61))
 - Claude Code plugin bundling the server and a Sherlock skill ([#62](https://github.com/jcucci/dotnet-sherlock-mcp/issues/62))
 - NuGet `McpServer` package type and `dnx` launch ([#63](https://github.com/jcucci/dotnet-sherlock-mcp/issues/63))
@@ -74,6 +74,6 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - Dependency weight: decompiler, Roslyn, and MSBuild packages grow the tool's install size.
 
 ## Open Questions
-- Should decompilation, source, and MSBuild-backed tools sit behind a feature flag or tool profile ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60)) given their dependency size?
+- Should decompilation, source, and MSBuild-backed tools stay out of the `core` tool profile ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60)), or sit behind a dedicated profile, given their dependency size?
 - How much call-graph precision is worth the cost beyond single-method IL analysis?
 - Should there be pluggable filters or predicates for organization-specific patterns?

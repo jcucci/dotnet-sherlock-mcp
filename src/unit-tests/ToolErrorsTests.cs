@@ -146,18 +146,18 @@ public sealed class ToolErrorsTests : IDisposable
     }
 
     [Theory]
-    [InlineData("method", "get_type_methods")]
-    [InlineData("property", "get_type_properties")]
-    [InlineData("field", "get_type_fields")]
-    [InlineData("event", "get_type_events")]
-    [InlineData("constructor", "get_type_constructors")]
-    public void MemberNotFound_SuggestsToolForMemberKind(string memberKind, string expectedTool)
+    [InlineData("method")]
+    [InlineData("property")]
+    [InlineData("field")]
+    [InlineData("event")]
+    [InlineData("constructor")]
+    public void MemberNotFound_SuggestsGetTypeMembers(string memberKind)
     {
         var error = Parse(ToolErrors.MemberNotFound(typeof(TestSampleClass), "Missing", memberKind));
 
         var tools = Strings(error.GetProperty("alternativeTools"));
-        Assert.Contains(expectedTool, tools);
-        Assert.DoesNotContain(tools, tool => tool!.StartsWith("get_type_", StringComparison.Ordinal) && tool != expectedTool);
+        Assert.Contains("get_type_members", tools);
+        Assert.DoesNotContain(tools, tool => tool!.StartsWith("get_type_", StringComparison.Ordinal) && tool != "get_type_members");
     }
 
     [Fact]

@@ -133,12 +133,9 @@ public static class ToolErrors
 
     private static string[] MemberDiscoveryTools(string? memberKind) => memberKind?.ToLowerInvariant() switch
     {
-        "method" => ["get_type_methods", "search_members"],
-        "property" => ["get_type_properties", "search_members"],
-        "field" => ["get_type_fields", "search_members"],
-        "event" => ["get_type_events", "search_members"],
-        "constructor" => ["get_type_constructors"],
-        _ => ["search_members"]
+        "method" or "property" or "field" or "event" => ["get_type_members", "search_members"],
+        "constructor" => ["get_type_members"],
+        _ => ["search_members", "get_type_members"]
     };
 
     private static string[] SimilarFiles(string assemblyPath)

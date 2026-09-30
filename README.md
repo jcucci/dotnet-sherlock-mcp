@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 36 specialized tools for .NET assembly analysis
+*   **Comprehensive MCP Server**: Provides 37 specialized tools for .NET assembly analysis, with an optional 18-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -99,13 +99,36 @@ claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.13.0 --yes
 
 No arguments are required. The server self-registers all tools when launched.
 
+### Tool profiles
+
+Large tool lists cost agents context and discoverability (Claude Code switches to deferred Tool Search once tool descriptions grow past roughly 10% of the context window). Sherlock can start with a smaller surface:
+
+| Profile | Tools | Contents |
+|---|---|---|
+| `full` (default) | 37 | Every tool, including the deprecated per-kind member tools |
+| `core` | 18 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) |
+
+Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
+
+```jsonc
+{
+  "servers": {
+    "sherlock": {
+      "command": "sherlock-mcp",
+      "args": ["--profile", "core"]
+      // or: "env": { "SHERLOCK_TOOL_PROFILE": "core" }
+    }
+  }
+}
+```
+
 ## Auto-Configure for .NET Projects
 
 **You usually don't need to paste anything.** Sherlock ships its usage guidance in the MCP `instructions` field returned at initialize, and most MCP clients (including Claude Code) surface that to the agent automatically — so the guidance stays correct and versioned with the package, with no copy-paste to maintain.
 
 The snippets below are **optional reinforcement**. Keep them short and principle-based rather than enumerating tool names and workflows: a static list pasted into your repo will drift as Sherlock's tools evolve, whereas the tools' own descriptions (and the server `instructions`) always match the version you're running.
 
-> Tool names are exposed in `snake_case` (`get_type_methods`, `search_members`, …); argument names stay camelCase (`projection`, `nameContains`).
+> Tool names are exposed in `snake_case` (`get_type_members`, `search_members`, …); argument names stay camelCase (`projection`, `nameContains`).
 
 ### Claude Code (CLAUDE.md)
 
@@ -114,7 +137,7 @@ Optional — a short pointer in your project's `CLAUDE.md`:
 ```markdown
 ## .NET Assembly Analysis
 
-Use the Sherlock MCP tools (`get_type_methods`, `search_members`, …) for .NET type/assembly
+Use the Sherlock MCP tools (`get_type_members`, `search_members`, …) for .NET type/assembly
 questions instead of guessing. Locate DLLs with the `find_assembly_by_*` / `get_project_output_paths`
 tools rather than hardcoding bin paths. Start lean — `search_members` or `get_types_from_assembly`,
 then drill in — and pass `projection='full'` only when you need parameters/attributes/modifiers.
@@ -132,7 +155,7 @@ description: Use Sherlock MCP for .NET assembly/type analysis
 alwaysApply: true
 ---
 
-- Prefer the Sherlock MCP tools (snake_case, e.g. `get_type_methods`, `search_members`) over guessing about .NET APIs.
+- Prefer the Sherlock MCP tools (snake_case, e.g. `get_type_members`, `search_members`) over guessing about .NET APIs.
 - Find DLLs with `find_assembly_by_*` / `get_project_output_paths`; don't hardcode `bin/Debug/<tfm>/*.dll`.
 - Start lean (`search_members` / `get_types_from_assembly`); request `projection='full'` only when you need parameters/attributes/modifiers.
 ```
@@ -182,13 +205,13 @@ List types from /abs/path/MyLib.dll; then get type info for the first result and
 Tune paging and filters
 
 ```text
-Use GetTypeMethods on /abs/path/MyLib.dll, type MyNamespace.MyType, sortBy name, sortOrder asc, skip 0, take 25, hasAttributeContains Obsolete.
+Use GetTypeMembers on /abs/path/MyLib.dll, type MyNamespace.MyType, kinds method, sortBy name, sortOrder asc, skip 0, take 25, hasAttributeContains Obsolete.
 ```
 
 Browse lean, then get detail (projection)
 
 ```text
-On /abs/path/MyLib.dll, run GetTypeMethods for MyNamespace.MyType with the default summary projection to see signatures. Then re-call GetTypeMethods with projection='full' only for the methods I name to get their parameters and attributes.
+On /abs/path/MyLib.dll, run GetTypeMembers for MyNamespace.MyType with the default summary projection to see signatures. Then re-call GetTypeMembers with kinds method, nameContains and projection='full' only for the methods I name to get their parameters and attributes.
 ```
 
 Trace relationships and call sites
@@ -199,7 +222,7 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 
 ## Tools Overview
 
-> **Tool names:** MCP clients call these tools in `snake_case` — `GetTypeMethods` → `get_type_methods`, `SearchMembers` → `search_members`, and so on. The PascalCase names used throughout this README match the underlying C# methods and the tool descriptions your client displays.
+> **Tool names:** MCP clients call these tools in `snake_case` — `GetTypeMembers` → `get_type_members`, `SearchMembers` → `search_members`, and so on. The PascalCase names used throughout this README match the underlying C# methods and the tool descriptions your client displays.
 
 ### Assembly Discovery & Analysis
 - **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
@@ -210,7 +233,7 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 
 ### Type Introspection
 - **`GetTypesFromAssembly`**: List all public types with metadata (paginated)
-- **`AnalyzeType`**: Comprehensive type analysis with all members
+- **`AnalyzeType`** _(deprecated)_: Type metadata plus all members; use `GetTypeInfo` + `GetTypeMembers projection=full`
 - **`GetTypeInfo`**: Detailed type metadata (accessibility, generics, nested types)
 - **`GetTypeHierarchy`**: Inheritance chain and interface implementations
 - **`GetGenericTypeInfo`**: Generic parameters, arguments, and variance information
@@ -218,13 +241,9 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 - **`GetNestedTypes`**: Nested type declarations
 
 ### Member Analysis (Filterable & Paginated)
-- **`GetAllTypeMembers`**: All members across all categories
-- **`GetTypeMethods`**: Method signatures, overloads, and metadata
-- **`GetTypeProperties`**: Property details including getters/setters and indexers
-- **`GetTypeFields`**: Field information including constants and readonly fields
-- **`GetTypeEvents`**: Event declarations with handler types
-- **`GetTypeConstructors`**: Constructor signatures and parameters
+- **`GetTypeMembers`**: Methods, properties, fields, events and constructors of a type in one paginated list. Narrow with `kinds` (`method|property|field|event|constructor`), `nameContains` and `hasAttributeContains`; `summary` items are `{ kind, name, signature }`, `projection=full` adds each kind's structured fields
 - **`AnalyzeMethod`**: Deep method analysis with overloads and attributes
+- _Deprecated, kept for a release or two:_ `GetTypeMethods`, `GetTypeProperties`, `GetTypeFields`, `GetTypeEvents`, `GetTypeConstructors` (use `GetTypeMembers` with `kinds`) and `GetAllTypeMembers` (use `GetTypeMembers projection=full`)
 
 ### Member Search
 - **`SearchMembers`**: Search a whole assembly for members whose name contains a fragment — the entry point when you know a member name but not its declaring type. Filter by `memberKinds` (`method|property|field|event|type`).
@@ -292,7 +311,7 @@ All member analysis tools support comprehensive filtering and pagination:
 
 Most enumerating tools default to a lean **`summary`** projection and let you opt into the heavier **`full`** payload only when you need it. Reach for `full` deliberately — `summary` is usually enough to decide your next call.
 
-* `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, and `FindReferencesTo`. `summary` returns just enough to browse (e.g. `{ name, signature }` for methods); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
+* `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, and `FindReferencesTo`. `summary` returns just enough to browse (e.g. `{ kind, name, signature }` for members); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: the deprecated `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
 * `analysisDepth` (`signatures` | `il`): `FindReferencesTo` only. `signatures` (default) scans member declarations; `il` additionally scans method bodies for inbound callers (slower).
 * `additionalAssemblies` (string[]): widen the search scope for `GetTypeHierarchy` and the reverse-lookup tools. `GetTypeHierarchy.derivedTypes` stays `null` until you pass this.
 * `noCache` (bool): bypass the response cache for a single call when you suspect stale results.
@@ -310,7 +329,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
 
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 
@@ -320,8 +339,8 @@ Error results are flagged with MCP's `isError: true`, so clients can tell a fail
   "version": "1.0.0",
   "code": "MethodNotFound",
   "message": "No method named 'Parse' was found on type 'MyApp.Config' in MyApp.dll.",
-  "suggestion": "Verify the type and method names. Use get_type_methods to list available methods, or set includeNonPublic=true for private methods.",
-  "alternativeTools": ["get_type_methods", "analyze_type"]
+  "suggestion": "Verify the type and method names. Use get_type_members with kinds=method to list available methods, or set includeNonPublic=true for private methods.",
+  "alternativeTools": ["get_type_members", "analyze_method"]
 }
 ```
 

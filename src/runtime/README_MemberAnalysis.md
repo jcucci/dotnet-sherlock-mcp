@@ -131,14 +131,11 @@ The service is integrated with MCP (Model Context Protocol) tools:
 
 ### Available Tools
 
-1. **GetTypeMethods**: Analyze all methods in a type
-2. **GetTypeProperties**: Analyze all properties in a type
-3. **GetTypeFields**: Analyze all fields in a type
-4. **GetTypeEvents**: Analyze all events in a type
-5. **GetTypeConstructors**: Analyze all constructors in a type
-6. **GetAllTypeMembers**: Comprehensive analysis of all member types
+1. **GetTypeMembers**: Lists every member kind of a type in one paginated call (backed by `GetMembersPage`); narrow with `kinds` (`method|property|field|event|constructor`)
+2. **GetTypeMethods**, **GetTypeProperties**, **GetTypeFields**, **GetTypeEvents**, **GetTypeConstructors** _(deprecated)_: per-kind listings, superseded by `GetTypeMembers` with `kinds`
+3. **GetAllTypeMembers** _(deprecated)_: all members at once, superseded by `GetTypeMembers` with `projection='full'`
 
-> These six are the member-analysis tools backed by this service. They are part of a larger surface of **36 MCP tools** — see the project README's "Tools Overview" for the full catalog (type introspection, member search, reverse lookup, IL analysis, XML docs, and project analysis).
+> These are the member-analysis tools backed by this service. They are part of a larger surface of **37 MCP tools** — see the project README's "Tools Overview" for the full catalog (type introspection, member search, reverse lookup, IL analysis, XML docs, and project analysis).
 
 ### Tool Parameters
 
@@ -148,7 +145,7 @@ All tools support filtering options:
 - `includeStatic`: Include static members (default: true)
 - `includeInstance`: Include instance members (default: true)
 
-`GetTypeMethods` additionally supports `projection`: it returns a lean `summary` (`{ name, signature }`) by default and accepts `projection='full'` to add `parameters[]`, `attributes`, `returnType`, and modifier flags. Most member tools also support `nameContains` / `hasAttributeContains` filtering, `maxItems` / `continuationToken` pagination, and `noCache`.
+`GetTypeMembers` and `GetTypeMethods` additionally support `projection`: they return a lean `summary` (`{ kind, name, signature }` / `{ name, signature }`) by default and accept `projection='full'` to add `parameters[]`, `attributes`, `returnType`, and modifier flags. Most member tools also support `nameContains` / `hasAttributeContains` filtering, `maxItems` / `continuationToken` pagination, and `noCache`.
 
 ## Usage Examples
 

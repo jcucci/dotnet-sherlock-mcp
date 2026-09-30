@@ -16,7 +16,7 @@ namespace Sherlock.MCP.Server.Tools;
 public static class MemberAnalysisTools
 {
     [McpServerTool(Title = "Get Type Methods", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeMethodsData>))]
-    [Description("Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer analyze_method for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
+    [Description("Deprecated: use get_type_members with kinds=method. Gets methods from a type with filtering and pagination. Returns a lean summary ({ name, signature }) by default - the signature already encodes return type, parameters, and modifiers in C# form. Pass projection='full' when you need structured fields (parameters[], attributes, returnType, isStatic/Virtual/Abstract/..., genericTypeParameters); prefer analyze_method for one method. Large types may have 100+ methods - use nameContains filter or maxItems=25 for efficiency.")]
     public static CallToolResult GetTypeMethods(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
@@ -177,10 +177,265 @@ public static class MemberAnalysisTools
         }
     }
 
+    private static readonly Dictionary<string, MemberKind> KindsByName =
+        new Dictionary<string, MemberKind>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["constructor"] = MemberKind.Constructor,
+            ["property"] = MemberKind.Property,
+            ["field"] = MemberKind.Field,
+            ["event"] = MemberKind.Event,
+            ["method"] = MemberKind.Method
+        };
+
+    private static readonly char[] KindSeparators = { ',', '|' };
+
+    [McpServerTool(Title = "Get Type Members", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeMembersData>))]
+    [Description("Lists the members of a type - methods, properties, fields, events and constructors - with filtering and pagination. Narrow with kinds (csv: method|property|field|event|constructor), nameContains and hasAttributeContains. Returns a lean summary ({ kind, name, signature }) by default; the C# signature already carries types, parameters and modifiers. Pass projection='full' for structured parameters[], attributes and modifier flags per kind (replaces get_all_type_members / analyze_type). Members are grouped by kind (constructors, properties, fields, events, methods) and sorted within each kind. Use get_type_info for type-level metadata and analyze_method for one method's overloads.")]
+    public static CallToolResult GetTypeMembers(
+        IMemberAnalysisService memberAnalysisService,
+        IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
+        RuntimeOptions runtimeOptions,
+        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Member kinds to include, csv from: method|property|field|event|constructor. Default: all kinds.")] string? kinds = null,
+        [Description("Include public members (default: true)")] bool includePublic = true,
+        [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
+        [Description("Include static members (default: true)")] bool includeStatic = true,
+        [Description("Include instance members (default: true)")] bool includeInstance = true,
+        [Description("Case sensitive type/member matching (default: false)")] bool caseSensitive = false,
+        [Description("Filter by name contains (optional; constructors match on signature)")] string? nameContains = null,
+        [Description("Filter by attribute type contains (optional)")] string? hasAttributeContains = null,
+        [Description("Items to skip (paging)")] int? skip = null,
+        [Description("Items to take (paging)")] int? take = null,
+        [Description("Sort within each kind by: name|access (default: name)")] string sortBy = "name",
+        [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
+        [Description("Maximum items to return (overrides take)")] int? maxItems = null,
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Bypass cache for this request")] bool noCache = false,
+        [Description("Response shape. 'summary' (default, token-lean): { kind, name, signature } only. 'full': adds the structured fields for each kind (parameters[], attributes, types, modifier booleans) - use only for members you have already narrowed to.")] string projection = "summary",
+        RequestContext<CallToolRequestParams>? context = null)
+    {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
+        try
+        {
+            if (!File.Exists(assemblyPath))
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+
+            var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
+            if (normalizedProjection != "summary" && normalizedProjection != "full")
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
+
+            if (!TryParseKinds(kinds, out var selectedKinds, out var invalidKinds))
+                return ToolResponse.Result(JsonHelpers.Error(
+                    "InvalidArgument",
+                    $"Unknown kinds: {string.Join(", ", invalidKinds)}. Valid: method, property, field, event, constructor."));
+
+            var kindNames = selectedKinds.Order().Select(KindName).ToArray();
+            var normalizedKinds = string.Join(",", kindNames);
+
+            // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
+            // params (continuationToken, skip, take, maxItems) and rendering params (projection)
+            // so a token minted on page 1 still validates on page 2.
+            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var saltSeed = CacheKeyHelper.Build(
+                "member.members.salt",
+                assemblyStamp, typeName, normalizedKinds, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder);
+
+            var cacheKey = CacheKeyHelper.Build(
+                "member.members",
+                assemblyStamp, typeName, normalizedKinds, includePublic, includeNonPublic, includeStatic, includeInstance,
+                caseSensitive, nameContains, hasAttributeContains, sortBy, sortOrder, maxItems, continuationToken, skip, take,
+                normalizedProjection);
+
+            return ToolResponse.Result(middleware.Execute(cacheKey, () =>
+            {
+                var options = new MemberFilterOptions
+                {
+                    IncludePublic = includePublic,
+                    IncludeNonPublic = includeNonPublic,
+                    IncludeStatic = includeStatic,
+                    IncludeInstance = includeInstance,
+                    CaseSensitive = caseSensitive,
+                    NameContains = nameContains,
+                    HasAttributeContains = hasAttributeContains,
+                    SortBy = sortBy,
+                    SortOrder = sortOrder
+                };
+
+                var pageSize = Math.Max(1, maxItems ?? take ?? runtimeOptions.GetMaxItemsForTool("get_type_members"));
+                var offset = 0;
+                var salt = TokenHelper.MakeSalt(saltSeed);
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken!, out offset, out var parsedSalt) || parsedSalt != salt)
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                }
+                else if (skip is > 0)
+                    offset = skip.Value;
+
+                TypeMembersPage page;
+                try
+                {
+                    page = memberAnalysisService.GetMembersPage(assemblyPath, typeName, selectedKinds, options, offset, pageSize);
+                }
+                catch (ArgumentException)
+                {
+                    return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
+                }
+
+                var nextOffset = offset + page.Items.Length;
+                var nextToken = nextOffset < page.Total ? TokenHelper.Make(nextOffset, salt) : null;
+
+                object members = normalizedProjection == "summary"
+                    ? page.Items.Select(m => new { kind = KindName(m.Kind), name = m.Name, signature = m.Signature }).ToArray()
+                    : page.Items.Select(FullMember).ToArray();
+
+                var membersJson = JsonSerializer.Serialize(members, JsonHelpers.DefaultOptions);
+                var result = new
+                {
+                    typeName,
+                    assemblyPath,
+                    projection = normalizedProjection,
+                    kinds = kindNames,
+                    total = page.Total,
+                    count = page.Items.Length,
+                    countsByKind = page.CountsByKind.ToDictionary(pair => KindName(pair.Key), pair => pair.Value),
+                    nextToken,
+                    pagination = PaginationMetadata.Create(page.Total, page.Items.Length, nextToken, membersJson.Length),
+                    members
+                };
+
+                return ResponseSizeHelper.ValidateResponseSize(result, "get_type_members")
+                    ?? JsonHelpers.Envelope("member.members", result);
+            }, noCache));
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return ToolResponse.Result(Elicitation.AmbiguousType(elicitation, ex));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ToolResponse.Result(ToolErrors.FromException(ex, "list type members"));
+        }
+    }
+
+    private static bool TryParseKinds(string? kinds, out IReadOnlySet<MemberKind> selected, out string[] invalid)
+    {
+        var requested = (kinds ?? string.Empty)
+            .Split(KindSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        invalid = requested.Where(k => !KindsByName.ContainsKey(k)).ToArray();
+        selected = requested.Length == 0
+            ? Enum.GetValues<MemberKind>().ToHashSet()
+            : requested.Where(KindsByName.ContainsKey).Select(k => KindsByName[k]).ToHashSet();
+        return invalid.Length == 0;
+    }
+
+    private static string KindName(MemberKind kind) => kind.ToString().ToLowerInvariant();
+
+    private static object FullMember(TypeMemberDetails member) => member switch
+    {
+        { Method: { } m } => new
+        {
+            kind = "method",
+            name = m.Name,
+            signature = m.Signature,
+            returnType = m.ReturnTypeName,
+            accessModifier = m.AccessModifier,
+            isStatic = m.IsStatic,
+            isVirtual = m.IsVirtual,
+            isAbstract = m.IsAbstract,
+            isSealed = m.IsSealed,
+            isOverride = m.IsOverride,
+            isOperator = m.IsOperator,
+            isExtensionMethod = m.IsExtensionMethod,
+            genericTypeParameters = m.GenericTypeParameters,
+            attributes = m.CustomAttributes,
+            parameters = m.Parameters.Select(FullParameter).ToArray()
+        },
+        { Property: { } p } => new
+        {
+            kind = "property",
+            name = p.Name,
+            signature = p.Signature,
+            typeName = p.TypeName,
+            accessModifier = p.AccessModifier,
+            isStatic = p.IsStatic,
+            isVirtual = p.IsVirtual,
+            isAbstract = p.IsAbstract,
+            isSealed = p.IsSealed,
+            isOverride = p.IsOverride,
+            canRead = p.CanRead,
+            canWrite = p.CanWrite,
+            isIndexer = p.IsIndexer,
+            getterAccessModifier = p.GetterAccessModifier,
+            setterAccessModifier = p.SetterAccessModifier,
+            attributes = p.CustomAttributes,
+            indexerParameters = p.IndexerParameters.Select(FullParameter).ToArray()
+        },
+        { Field: { } f } => new
+        {
+            kind = "field",
+            name = f.Name,
+            signature = f.Signature,
+            typeName = f.TypeName,
+            accessModifier = f.AccessModifier,
+            isStatic = f.IsStatic,
+            isReadOnly = f.IsReadOnly,
+            isConst = f.IsConst,
+            isVolatile = f.IsVolatile,
+            isInitOnly = f.IsInitOnly,
+            constantValue = f.ConstantValue,
+            attributes = f.CustomAttributes
+        },
+        { Event: { } e } => new
+        {
+            kind = "event",
+            name = e.Name,
+            signature = e.Signature,
+            eventHandlerTypeName = e.EventHandlerTypeName,
+            accessModifier = e.AccessModifier,
+            isStatic = e.IsStatic,
+            isVirtual = e.IsVirtual,
+            isAbstract = e.IsAbstract,
+            isSealed = e.IsSealed,
+            isOverride = e.IsOverride,
+            addMethodAccessModifier = e.AddMethodAccessModifier,
+            removeMethodAccessModifier = e.RemoveMethodAccessModifier,
+            attributes = e.CustomAttributes
+        },
+        { Constructor: { } c } => new
+        {
+            kind = "constructor",
+            name = member.Name,
+            signature = c.Signature,
+            accessModifier = c.AccessModifier,
+            isStatic = c.IsStatic,
+            attributes = c.CustomAttributes,
+            parameters = c.Parameters.Select(FullParameter).ToArray()
+        },
+        _ => new { kind = KindName(member.Kind), name = member.Name, signature = member.Signature }
+    };
+
+    private static object FullParameter(ParameterDetails p) => new
+    {
+        name = p.Name,
+        typeName = p.TypeName,
+        defaultValue = p.DefaultValue,
+        isOptional = p.IsOptional,
+        isOut = p.IsOut,
+        isRef = p.IsRef,
+        isIn = p.IsIn,
+        isParams = p.IsParams,
+        attributes = p.CustomAttributes
+    };
+
 
 
     [McpServerTool(Title = "Get Member Attributes", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via get_type_methods or similar tools.")]
+    [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via get_type_members or search_members.")]
     public static string GetMemberAttributes(
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
@@ -280,7 +535,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Properties", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers. Prefer over get_all_type_members when only properties needed.")]
+    [Description("Deprecated: use get_type_members with kinds=property. Gets properties from a type with filtering and pagination. Returns getter/setter info, indexers, and access modifiers.")]
     public static string GetTypeProperties(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
@@ -421,7 +676,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Fields", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets fields from a type with filtering and pagination. Returns const/readonly/volatile info and constant values. Fields are compact - can use larger maxItems (75+).")]
+    [Description("Deprecated: use get_type_members with kinds=field. Gets fields from a type with filtering and pagination. Returns const/readonly/volatile info and constant values. Fields are compact - can use larger maxItems (75+).")]
     public static string GetTypeFields(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
@@ -550,7 +805,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Events", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets events from a type with filtering and pagination. Returns event handler types and add/remove accessor info. Most types have few events.")]
+    [Description("Deprecated: use get_type_members with kinds=event. Gets events from a type with filtering and pagination. Returns event handler types and add/remove accessor info. Most types have few events.")]
     public static string GetTypeEvents(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
@@ -678,7 +933,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Constructors", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets constructors from a type with filtering and pagination. Returns parameter info and access modifiers. Most types have few constructors - use maxItems=30.")]
+    [Description("Deprecated: use get_type_members with kinds=constructor. Gets constructors from a type with filtering and pagination. Returns parameter info and access modifiers. Most types have few constructors - use maxItems=30.")]
     public static string GetTypeConstructors(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
@@ -809,7 +1064,7 @@ public static class MemberAnalysisTools
     }
 
     [McpServerTool(Title = "Get All Type Members", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types. Consider using specific member tools (get_type_methods, get_type_properties) with filtering first for better efficiency.")]
+    [Description("Deprecated: use get_type_members with projection='full' (filter with kinds / nameContains). Gets ALL members (methods, properties, fields, events, constructors) in one call. WARNING: Can produce very large responses for complex types.")]
     public static string GetAllTypeMembers(
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Completions;
@@ -21,6 +22,12 @@ if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
     return 0;
 }
 
+if (!ToolProfile.TryResolve(args, Environment.GetEnvironmentVariable(ToolProfile.EnvironmentVariable), out var toolProfile, out var profileError))
+{
+    Console.Error.WriteLine(profileError);
+    return 1;
+}
+
 var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = args,
@@ -30,8 +37,20 @@ builder.Logging.AddConsole(consoleLogOptions =>
     consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-// The tool set is scanned from the assembly once at startup and never varies per caller,
-// so clients may cache tools/list for a long time and share it across authorization contexts.
+if (toolProfile.IsRestricted)
+{
+    builder.Services.PostConfigure<McpServerOptions>(options =>
+    {
+        if (options.ToolCollection is not { } tools)
+            return;
+        foreach (var tool in tools.ToArray().Where(tool => !toolProfile.Includes(tool.ProtocolTool.Name)))
+            tools.Remove(tool);
+    });
+}
+
+// The tool set is scanned from the assembly and narrowed by the tool profile once at startup; it
+// never varies per caller, so clients may cache tools/list for a long time and share it across
+// authorization contexts.
 var toolListTimeToLive = TimeSpan.FromHours(1);
 
 // ttlMs and cacheScope were introduced by the 2026-07-28 revision; earlier revisions reject them
