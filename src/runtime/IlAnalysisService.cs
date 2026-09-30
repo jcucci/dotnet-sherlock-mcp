@@ -178,6 +178,7 @@ public class IlAnalysisService : IIlAnalysisService
 
                 foreach (var methodHandle in typeDef.GetMethods())
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var methodDef = md.GetMethodDefinition(methodHandle);
                     if (!options.IncludeNonPublic && !IsMethodPublic(methodDef.Attributes)) continue;
                     if (methodDef.RelativeVirtualAddress == 0) continue;

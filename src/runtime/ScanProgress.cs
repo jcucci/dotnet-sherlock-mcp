@@ -14,7 +14,7 @@ public sealed class ProgressCounter
     {
         _progress = progress;
         _total = total;
-        _step = Math.Max(1, total / 100);
+        _step = Math.Max(1, (total + 99) / 100);
     }
 
     public void Increment(string? current = null)

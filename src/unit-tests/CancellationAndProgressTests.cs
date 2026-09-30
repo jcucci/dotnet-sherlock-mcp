@@ -136,6 +136,19 @@ public class CancellationAndProgressTests
     }
 
     [Fact]
+    public void ProgressCounter_NeverExceedsOneHundredReportsJustAboveTheThreshold()
+    {
+        var progress = new CollectingProgress<ScanProgress>();
+        var counter = new ProgressCounter(progress, total: 150);
+
+        for (var i = 0; i < 150; i++)
+            counter.Increment();
+
+        Assert.True(progress.Reports.Count <= 100);
+        Assert.Equal(150, progress.Reports[^1].Completed);
+    }
+
+    [Fact]
     public void ProgressAdapter_MapsPhasesOntoOneIncreasingScale()
     {
         var sink = new CollectingProgress<ProgressNotificationValue>();
