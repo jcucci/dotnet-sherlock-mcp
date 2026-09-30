@@ -84,10 +84,10 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         _recentAssemblies = recentAssemblies;
     }
 
-    public InspectionContextLease Acquire(string assemblyPath, bool forceRuntimeLoad = false, IReadOnlyList<string>? additionalSearchDirectories = null)
+    public InspectionContextLease Acquire(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
     {
         var fullPath = Path.GetFullPath(assemblyPath);
-        var key = (forceRuntimeLoad ? $"{fullPath}|runtime" : fullPath) + BuildDepsKey(additionalSearchDirectories);
+        var key = fullPath + BuildDepsKey(additionalSearchDirectories);
         var fileInfo = new FileInfo(fullPath);
         if (!fileInfo.Exists)
             throw new FileNotFoundException($"Assembly file not found: {fullPath}", fullPath);
@@ -98,7 +98,7 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         while (true)
         {
             var lazy = _entries.GetOrAdd(key, _ => new Lazy<Entry>(
-                () => new Entry(InspectionContextFactory.Create(fullPath, forceRuntimeLoad, additionalSearchDirectories), stampTicks, length),
+                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
             Entry entry;

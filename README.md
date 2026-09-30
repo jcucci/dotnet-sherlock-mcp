@@ -17,7 +17,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
 *   **XML Documentation Integration**: Automatic extraction of summary, parameters, returns, and remarks
-*   **Performance Optimized**: Caching, streaming, and memory-efficient processing
+*   **Performance Optimized**: Caching, pagination, and memory-efficient processing
 *   **Stable JSON API**: Consistent envelopes with versioning and structured error codes
 *   **.NET 9.0 Native**: Built on the latest .NET platform with modern C# features
 *   **Project Integration**: Solution and project file analysis with dependency resolution

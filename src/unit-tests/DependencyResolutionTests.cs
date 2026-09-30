@@ -14,7 +14,7 @@ public class DependencyResolutionTests
     public void IsolatedAssembly_SurfacesDependencyResolutionError()
     {
         using var isolated = new IsolatedCopy();
-        using var service = new TypeAnalysisService();
+        var service = new TypeAnalysisService();
 
         var ex = Assert.Throws<DependencyResolutionException>(() => service.GetTypesFromAssembly(isolated.DllPath));
 
@@ -37,7 +37,7 @@ public class DependencyResolutionTests
     [Fact]
     public void GetTypesFromAssembly_ThrowsDependencyResolution_WhenEmptyAndUnresolved()
     {
-        using var service = new TypeAnalysisService(new StubProvider(["Azure.Core", "Azure.ResourceManager"]));
+        var service = new TypeAnalysisService(new StubProvider(["Azure.Core", "Azure.ResourceManager"]));
 
         var ex = Assert.Throws<DependencyResolutionException>(() => service.GetTypesFromAssembly("ignored.dll"));
 
@@ -82,7 +82,7 @@ public class DependencyResolutionTests
 
     private sealed class StubProvider(string[] unresolved) : IInspectionContextProvider
     {
-        public InspectionContextLease Acquire(string assemblyPath, bool forceRuntimeLoad = false, IReadOnlyList<string>? additionalSearchDirectories = null) =>
+        public InspectionContextLease Acquire(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null) =>
             new(new StubContext(unresolved), () => { });
     }
 

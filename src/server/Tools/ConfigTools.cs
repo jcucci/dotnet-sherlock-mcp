@@ -17,7 +17,6 @@ public static class ConfigTools
             searchRoots = options.SearchRoots.ToArray(),
             defaultMaxItems = options.DefaultMaxItems,
             cacheTtlSeconds = options.CacheTtlSeconds,
-            enableStreaming = options.EnableStreaming,
             includeNonPublicByDefault = options.IncludeNonPublicByDefault,
             maxLoadedAssemblies = options.MaxLoadedAssemblies,
             maxCachedResponses = options.MaxCachedResponses
@@ -32,7 +31,6 @@ public static class ConfigTools
         RuntimeOptions options,
         [Description("Default page size (maxItems)")] int? defaultMaxItems = null,
         [Description("Cache TTL in seconds")] int? cacheTtlSeconds = null,
-        [Description("Enable server-side streaming")] bool? enableStreaming = null,
         [Description("Include non-public members by default")] bool? includeNonPublicByDefault = null,
         [Description("Add search roots (absolute paths)")] string[]? addSearchRoots = null,
         [Description("Remove search roots (absolute paths)")] string[]? removeSearchRoots = null,
@@ -43,7 +41,6 @@ public static class ConfigTools
         if (cacheTtlSeconds is > 0) options.CacheTtlSeconds = cacheTtlSeconds.Value;
         if (maxLoadedAssemblies is > 0) options.MaxLoadedAssemblies = maxLoadedAssemblies.Value;
         if (maxCachedResponses is > 0) options.MaxCachedResponses = maxCachedResponses.Value;
-        if (enableStreaming.HasValue) options.EnableStreaming = enableStreaming.Value;
         if (includeNonPublicByDefault.HasValue) options.IncludeNonPublicByDefault = includeNonPublicByDefault.Value;
 
         if (addSearchRoots is { Length: > 0 })

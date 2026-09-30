@@ -7,7 +7,6 @@ public class RuntimeOptions
         SearchRoots = new List<string>();
         DefaultMaxItems = 50;
         CacheTtlSeconds = 300;
-        EnableStreaming = false;
         IncludeNonPublicByDefault = false;
         MaxLoadedAssemblies = 64;
         MaxCachedResponses = 256;
@@ -35,8 +34,6 @@ public class RuntimeOptions
     public int DefaultMaxItems { get; set; }
 
     public int CacheTtlSeconds { get; set; }
-
-    public bool EnableStreaming { get; set; }
 
     public bool IncludeNonPublicByDefault { get; set; }
 
