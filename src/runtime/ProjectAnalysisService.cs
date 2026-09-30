@@ -284,9 +284,11 @@ public class ProjectAnalysisService : IProjectAnalysisService
         }
 
         var availableTfms = Directory.GetDirectories(libDir)
+            .Where(d => Directory.EnumerateFiles(d, "*.dll", SearchOption.TopDirectoryOnly).Any())
             .Select(Path.GetFileName)
             .Where(n => !string.IsNullOrEmpty(n))
             .Cast<string>()
+            .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         var resolvedTfm = tfm is not null

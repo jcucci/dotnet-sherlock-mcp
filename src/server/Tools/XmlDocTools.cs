@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Inspection;
@@ -17,21 +18,27 @@ public static class XmlDocTools
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
-        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false)
+        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName)
-                    ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
+            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var info = xmlDocs.GetXmlDocsForType(type);
             return info == null
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
                 : JsonHelpers.Envelope("xml.type", new { type = type.FullName, docs = info });
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -47,16 +54,18 @@ public static class XmlDocTools
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Member name (simple; if overloaded, first match used)")] string memberName,
-        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false)
+        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName)
-                    ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
+            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
                 .FirstOrDefault(m => string.Equals(m.Name, memberName, comparison));
@@ -65,6 +74,10 @@ public static class XmlDocTools
             return info == null
                 ? JsonHelpers.Error("XmlNotFound", "No XML docs found for member")
                 : JsonHelpers.Envelope("xml.member", new { type = type.FullName, member = member.Name, docs = info });
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

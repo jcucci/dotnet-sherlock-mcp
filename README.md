@@ -326,7 +326,7 @@ Errors use a consistent shape. Every error carries `kind`, `version`, `code`, an
 Error codes:
 
 * **Not found:** `AssemblyNotFound`, `TypeNotFound`, `MemberNotFound`, `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`
-* **Bad input:** `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidContinuationToken`
+* **Bad input:** `AmbiguousTypeName` (only for clients that can't elicit; `recommendedParams.candidates` lists the matching full names), `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidContinuationToken`
 * **Limits, resolution & internal:** `ResponseTooLarge`, `DependencyResolutionFailed`, `InternalError`
 
 ## Roadmap

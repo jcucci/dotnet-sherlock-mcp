@@ -119,33 +119,8 @@ public class TypeAnalysisService : ITypeAnalysisService, IDisposable
         return type != null ? (type.FullName ?? type.Name, GetNestedTypes(type)) : null;
     }
 
-    private static Type? ResolveType(IAssemblyInspectionContext ctx, string typeName)
-    {
-        typeName = typeName.Replace('/', '+');
-        var type = ctx.Assembly.GetType(typeName);
-        if (type != null) return type;
-
-        var allTypes = ctx.GetTypes().ToArray();
-        type = allTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                          || string.Equals(t.Name, typeName, StringComparison.Ordinal));
-        if (type != null) return type;
-
-        if (typeName.Contains('.'))
-        {
-            var nestedCandidate = typeName.Replace('.', '+');
-            type = allTypes.FirstOrDefault(t => string.Equals(t.FullName, nestedCandidate, StringComparison.Ordinal))
-                ?? allTypes.FirstOrDefault(t => string.Equals((t.FullName ?? t.Name).Replace('+', '.'), typeName, StringComparison.Ordinal));
-            if (type != null) return type;
-        }
-
-        if (!typeName.Contains('<')) return null;
-
-        var friendlyMatches = allTypes
-            .Where(t => string.Equals(TypeNameFormatter.FriendlyFullName(t), typeName, StringComparison.Ordinal))
-            .Take(2)
-            .ToArray();
-        return friendlyMatches.Length == 1 ? friendlyMatches[0] : null;
-    }
+    private static Type? ResolveType(IAssemblyInspectionContext ctx, string typeName) =>
+        TypeNameResolver.Resolve(ctx.Assembly, ctx.GetTypes, typeName).OrThrowIfAmbiguous(typeName);
 
     public TypeAnalysisHierarchy GetTypeHierarchy(Type type)
     {

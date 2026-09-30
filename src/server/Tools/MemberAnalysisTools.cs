@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
@@ -40,8 +41,11 @@ public static class MemberAnalysisTools
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
         [Description("Bypass cache for this request")] bool noCache = false,
-        [Description("Response shape. 'summary' (default, token-lean): { name, signature } only - the C# signature already carries return type, parameters, and modifiers. 'full': adds parameters[], attributes, returnType, and all modifier booleans - use only when you need structured access to those fields.")] string projection = "summary")
+        [Description("Response shape. 'summary' (default, token-lean): { name, signature } only - the C# signature already carries return type, parameters, and modifiers. 'full': adds parameters[], attributes, returnType, and all modifier booleans - use only when you need structured access to those fields.")] string projection = "summary",
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -166,6 +170,10 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.methods", result);
             }, noCache);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze methods: {ex.Message}");
@@ -183,8 +191,11 @@ public static class MemberAnalysisTools
         string typeName,
         [Description("Member kind: method|property|field|event|constructor")] string memberKind,
         [Description("Member name (for methods, the simple name; first match used)")] string memberName,
-        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false)
+        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -192,8 +203,7 @@ public static class MemberAnalysisTools
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName)
-                       ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
+            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             MemberInfo? member = memberKind.ToLowerInvariant() switch
@@ -213,6 +223,10 @@ public static class MemberAnalysisTools
                 new { assemblyPath, typeName, memberKind, memberName, attributeCount = attrs.Length, attributes = attrs }
             );
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get member attributes: {ex.Message}");
@@ -227,8 +241,11 @@ public static class MemberAnalysisTools
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Method or constructor name")] string methodName,
         [Description("Parameter index (0-based)")] int parameterIndex,
-        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false)
+        [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -236,8 +253,7 @@ public static class MemberAnalysisTools
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = asm.GetType(typeName)
-                       ?? asm.GetTypes().FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
+            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
@@ -255,6 +271,10 @@ public static class MemberAnalysisTools
                 "parameter.attributes",
                 new { assemblyPath, typeName, methodName, parameterIndex, attributeCount = attrs.Length, attributes = attrs }
             );
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -283,8 +303,11 @@ public static class MemberAnalysisTools
         [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -389,6 +412,10 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.properties", result);
             }, noCache);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze properties: {ex.Message}");
@@ -416,8 +443,11 @@ public static class MemberAnalysisTools
         [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -510,6 +540,10 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.fields", result);
             }, noCache);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze fields: {ex.Message}");
@@ -537,8 +571,11 @@ public static class MemberAnalysisTools
         [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -630,6 +667,10 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.events", result);
             }, noCache);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze events: {ex.Message}");
@@ -657,8 +698,11 @@ public static class MemberAnalysisTools
         [Description("Sort order: asc|desc (default: asc)")] string sortOrder = "asc",
         [Description("Maximum items to return (overrides take)")] int? maxItems = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -753,6 +797,10 @@ public static class MemberAnalysisTools
                 return JsonHelpers.Envelope("member.constructors", result);
             }, noCache);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze constructors: {ex.Message}");
@@ -770,8 +818,11 @@ public static class MemberAnalysisTools
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
         [Description("Include instance members (default: true)")] bool includeInstance = true,
-        [Description("Bypass cache for this request")] bool noCache = false)
+        [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -882,6 +933,10 @@ public static class MemberAnalysisTools
 
                 return JsonHelpers.Envelope("member.all", result);
             }, noCache);
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

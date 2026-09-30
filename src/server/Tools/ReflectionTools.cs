@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
@@ -289,8 +290,11 @@ public static class ReflectionTools
         [Description("Include constructors in results (default: true)")] bool includeConstructors = true,
         [Description("Include methods in results (default: true)")] bool includeMethods = true,
         [Description("Include properties in results (default: true)")] bool includeProperties = true,
-        [Description("Include fields in results (default: true)")] bool includeFields = true)
+        [Description("Include fields in results (default: true)")] bool includeFields = true,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -308,8 +312,7 @@ public static class ReflectionTools
                 exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
             }
 
-            var type = assembly.GetType(typeName)
-                ?? exportedTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal) || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+            var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
 
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
@@ -403,6 +406,10 @@ public static class ReflectionTools
 
             return JsonHelpers.Envelope("reflection.type", result);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
@@ -478,13 +485,16 @@ public static class ReflectionTools
     }
 
     [McpServerTool(Title = "Find Assembly by NuGet Package", ReadOnly = true, Destructive = false)]
-    [Description("Finds an assembly in the local NuGet cache by package id. Probes ~/.nuget/packages (or NUGET_PACKAGES env var). Use when you know the package id/version but not the DLL path. Picks highest version and best TFM when omitted.")]
+    [Description("Finds an assembly in the local NuGet cache by package id. Probes ~/.nuget/packages (or NUGET_PACKAGES env var). Use when you know the package id/version but not the DLL path. Picks the highest version when omitted. When tfm is omitted and the package ships several, clients that support elicitation are asked which one to use; otherwise the best TFM is picked. The response lists availableVersions and availableTfms.")]
     public static async Task<string> FindAssemblyByNugetPackage(
         IProjectAnalysisService projectAnalysis,
         [Description("The NuGet package id (case-insensitive, e.g., 'Newtonsoft.Json').")] string packageId,
         [Description("Optional package version (e.g., '13.0.3'). If omitted, the highest available version is picked.")] string? version = null,
-        [Description("Optional target framework moniker (e.g., 'net9.0'). If omitted, the best available TFM is picked.")] string? tfm = null)
+        [Description("Optional target framework moniker (e.g., 'net9.0'). If omitted, the client is asked to choose when several are available, or the best available TFM is picked.")] string? tfm = null,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        var chosenTfm = tfm ?? elicitation.Answer(Elicitation.TfmKey);
         try
         {
             if (string.IsNullOrWhiteSpace(packageId))
@@ -493,7 +503,7 @@ public static class ReflectionTools
             NugetAssemblyLookup lookup;
             try
             {
-                lookup = await projectAnalysis.FindAssemblyInNugetCacheAsync(packageId, version, tfm);
+                lookup = await projectAnalysis.FindAssemblyInNugetCacheAsync(packageId, version, chosenTfm);
             }
             catch (ArgumentException ex)
             {
@@ -506,13 +516,26 @@ public static class ReflectionTools
                     NuGetLookupResponse.FailureMessage(lookup, failure),
                     NuGetLookupResponse.FailureDetails(lookup));
 
+            if (ShouldAskForTfm(elicitation, chosenTfm, lookup))
+                throw Elicitation.ChooseOne(
+                    key: Elicitation.TfmKey,
+                    message: $"'{lookup.PackageId}' {lookup.ResolvedVersion} ships {lookup.AvailableTfms.Length} target frameworks. Which one should be inspected?",
+                    options: lookup.AvailableTfms,
+                    defaultOption: lookup.ResolvedTfm);
+
             return JsonHelpers.Envelope(NuGetLookupResponse.Kind, NuGetLookupResponse.Success(lookup));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException and not InputRequiredException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to resolve NuGet package: {ex.Message}");
         }
     }
+
+    private static bool ShouldAskForTfm(ElicitationContext elicitation, string? chosenTfm, NugetAssemblyLookup lookup) =>
+        chosenTfm is null
+        && lookup.AvailableTfms.Length > 1
+        && elicitation.CanElicit
+        && !elicitation.HasResponse(Elicitation.TfmKey);
 
     [McpServerTool(Title = "Analyze Method", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding method via GetTypeMethods. Lightweight response.")]
@@ -520,8 +543,11 @@ public static class ReflectionTools
         IInspectionContextProvider contexts,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
-        [Description("Name of the method to analyze")] string methodName)
+        [Description("Name of the method to analyze")] string methodName,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -539,9 +565,7 @@ public static class ReflectionTools
                 exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
             }
 
-            var type = assembly.GetType(typeName)
-                ?? exportedTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, StringComparison.Ordinal)
-                                       || string.Equals(t.Name, typeName, StringComparison.Ordinal));
+            var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
             if (type == null)
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
@@ -584,6 +608,10 @@ public static class ReflectionTools
             };
 
             return JsonHelpers.Envelope("reflection.method", result);
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

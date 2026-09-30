@@ -307,6 +307,89 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
+    public async Task Ambiguous_type_name_is_resolved_through_elicitation()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var prompts = new List<ElicitRequestParams>();
+        await using var client = await ConnectAsync(cts.Token, (request, _) =>
+        {
+            prompts.Add(request!);
+            return ValueTask.FromResult(new ElicitResult
+            {
+                Action = "accept",
+                Content = new Dictionary<string, JsonElement>
+                {
+                    ["typeName"] = JsonSerializer.SerializeToElement(typeof(Ambiguity.Beta.DuplicateGadget).FullName)
+                }
+            });
+        });
+
+        var result = await CallGetTypeInfo(client, nameof(Ambiguity.Beta.DuplicateGadget), cts.Token);
+
+        var prompt = Assert.Single(prompts);
+        var schema = Assert.IsType<ElicitRequestParams.UntitledSingleSelectEnumSchema>(prompt.RequestedSchema!.Properties["typeName"]);
+        Assert.Equal([typeof(Ambiguity.Alpha.DuplicateGadget).FullName!, typeof(Ambiguity.Beta.DuplicateGadget).FullName!], schema.Enum);
+        var envelope = Envelope(result);
+        Assert.Equal("type.info", envelope.GetProperty("kind").GetString());
+        Assert.Equal(typeof(Ambiguity.Beta.DuplicateGadget).FullName, envelope.GetProperty("data").GetProperty("FullName").GetString());
+    }
+
+    [Fact]
+    public async Task Ambiguous_type_name_without_elicitation_returns_candidates()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await CallGetTypeInfo(client, nameof(Ambiguity.Beta.DuplicateGadget), cts.Token);
+
+        var envelope = Envelope(result);
+        Assert.Equal("AmbiguousTypeName", envelope.GetProperty("code").GetString());
+        Assert.Equal(2, envelope.GetProperty("recommendedParams").GetProperty("candidates").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Omitted_tfm_for_multi_target_package_is_chosen_through_elicitation()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var cache = Directory.CreateTempSubdirectory("sherlock-nuget-");
+        try
+        {
+            foreach (var tfm in new[] { "net8.0", "netstandard2.0" })
+            {
+                var libDir = Directory.CreateDirectory(Path.Combine(cache.FullName, "multi.tfm", "1.0.0", "lib", tfm));
+                File.WriteAllText(Path.Combine(libDir.FullName, "Multi.Tfm.dll"), "");
+            }
+
+            var prompts = new List<ElicitRequestParams>();
+            await using var client = await ConnectAsync(
+                cts.Token,
+                (request, _) =>
+                {
+                    prompts.Add(request!);
+                    return ValueTask.FromResult(new ElicitResult
+                    {
+                        Action = "accept",
+                        Content = new Dictionary<string, JsonElement> { ["tfm"] = JsonSerializer.SerializeToElement("netstandard2.0") }
+                    });
+                },
+                new Dictionary<string, string?> { ["NUGET_PACKAGES"] = cache.FullName });
+
+            var result = await client.CallToolAsync(
+                "find_assembly_by_nuget_package",
+                new Dictionary<string, object?> { ["packageId"] = "Multi.Tfm" },
+                cancellationToken: cts.Token);
+
+            var schema = Assert.IsType<ElicitRequestParams.UntitledSingleSelectEnumSchema>(Assert.Single(prompts).RequestedSchema!.Properties["tfm"]);
+            Assert.Equal(["net8.0", "netstandard2.0"], schema.Enum);
+            Assert.Equal("netstandard2.0", Envelope(result).GetProperty("data").GetProperty("resolvedTfm").GetString());
+        }
+        finally
+        {
+            cache.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Long_scan_streams_progress_notifications_when_client_sends_progress_token()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -355,7 +438,10 @@ public class McpStdioProtocolTests
         }
     }
 
-    private static async Task<McpClient> ConnectAsync(CancellationToken cancellationToken)
+    private static async Task<McpClient> ConnectAsync(
+        CancellationToken cancellationToken,
+        Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitationHandler = null,
+        IDictionary<string, string?>? environment = null)
     {
         Assert.True(File.Exists(ServerDll), $"Expected server DLL at {ServerDll}");
 
@@ -364,17 +450,29 @@ public class McpStdioProtocolTests
             {
                 Command = "dotnet",
                 Arguments = [ServerDll],
-                Name = "sherlock-e2e"
+                Name = "sherlock-e2e",
+                EnvironmentVariables = environment
             },
             NullLoggerFactory.Instance);
 
         var options = new McpClientOptions
         {
-            ClientInfo = new Implementation { Name = "sherlock-e2e-tests", Version = "1.0.0" }
+            ClientInfo = new Implementation { Name = "sherlock-e2e-tests", Version = "1.0.0" },
+            Handlers = new McpClientHandlers { ElicitationHandler = elicitationHandler }
         };
 
         return await McpClient.CreateAsync(transport, options, NullLoggerFactory.Instance, cancellationToken);
     }
+
+    private static Task<CallToolResult> CallGetTypeInfo(McpClient client, string typeName, CancellationToken cancellationToken) =>
+        client.CallToolAsync(
+            "get_type_info",
+            new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(McpStdioProtocolTests).Assembly.Location,
+                ["typeName"] = typeName
+            },
+            cancellationToken: cancellationToken).AsTask();
 
     private static async Task<CallToolResult> CallGetTypeMethods(
         McpClient client, int maxItems, string? continuationToken, CancellationToken cancellationToken)

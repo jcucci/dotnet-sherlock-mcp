@@ -244,27 +244,8 @@ public class MemberAnalysisService : IMemberAnalysisService
 
     private static Type LoadTypeFromAssembly(Assembly assembly, string typeName, MemberFilterOptions? options)
     {
-        var caseSensitive = options?.CaseSensitive ?? true;
-
-        var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        var type = assembly.GetType(typeName);
-        if (type == null)
-        {
-            var allTypes = assembly.GetTypes();
-            type = allTypes.FirstOrDefault(t => string.Equals(t.FullName, typeName, comparison) || string.Equals(t.Name, typeName, comparison));
-            if (type == null && typeName.Contains('.'))
-            {
-                // Normalize nested types: System.Outer.Inner => System.Outer+Inner
-                var candidate = typeName.Replace('.', '+');
-                type = allTypes.FirstOrDefault(t => string.Equals(t.FullName, candidate, comparison));
-                if (type == null)
-                {
-                    // Alternate: compare with '+' in runtime full name replaced to '.'
-                    type = allTypes.FirstOrDefault(t => string.Equals((t.FullName ?? t.Name).Replace('+', '.'), typeName, comparison));
-                }
-            }
-        }
-
+        var comparison = options?.CaseSensitive ?? true ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var type = TypeNameResolver.Resolve(assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
         return type ?? throw new ArgumentException($"Type '{typeName}' not found in assembly '{assembly.FullName}'");
     }
 

@@ -36,6 +36,10 @@ public static class AssemblyResources
         {
             return typeAnalysis.GetTypeInfo(path, fullName);
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            throw new McpProtocolException($"{ex.Message} Use one of the candidate full names.", McpErrorCode.InvalidParams);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new McpProtocolException(

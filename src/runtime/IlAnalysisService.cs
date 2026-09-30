@@ -27,32 +27,36 @@ public class IlAnalysisService : IIlAnalysisService
         if (!File.Exists(assemblyPath)) return null;
 
         var flags = BuildMemberFlags(options.IncludeNonPublic);
-        Type? targetType = null;
+        Type? targetType;
         var targets = new List<MethodBase>();
 
         using (var lease = _contexts.Acquire(assemblyPath))
         {
+            var matches = new List<Type>();
             foreach (var candidate in SafeGetTypes(lease.Context))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!TypeNameMatcher.Matches(candidate, typeName, options.CaseSensitive)) continue;
+                if (TypeNameMatcher.Matches(candidate, typeName, options.CaseSensitive)) matches.Add(candidate);
+            }
 
-                targetType = candidate;
-                foreach (var method in SafeGetMethods(candidate, flags))
+            var comparison = options.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            targetType = TypeNameResolver.FromMatches(matches, typeName, comparison).OrThrowIfAmbiguous(typeName);
+            if (targetType != null)
+            {
+                foreach (var method in SafeGetMethods(targetType, flags))
                 {
                     if (NameEquals(method.Name, methodName, options.CaseSensitive)) targets.Add(method);
                 }
                 if (IsStaticConstructorName(methodName))
                 {
-                    var cctor = SafeGetTypeInitializer(candidate);
+                    var cctor = SafeGetTypeInitializer(targetType);
                     if (cctor != null) targets.Add(cctor);
                 }
                 else if (IsInstanceConstructorName(methodName))
                 {
-                    foreach (var ctor in SafeGetConstructors(candidate, flags))
+                    foreach (var ctor in SafeGetConstructors(targetType, flags))
                         if (!ctor.IsStatic) targets.Add(ctor);
                 }
-                break;
             }
         }
 

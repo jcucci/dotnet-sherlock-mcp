@@ -14,7 +14,9 @@ public static class NuGetLookupResponse
         resolvedVersion = lookup.ResolvedVersion,
         resolvedTfm = lookup.ResolvedTfm,
         cacheRoot = lookup.CacheRoot,
-        foundAssembly = lookup.FoundAssembly
+        foundAssembly = lookup.FoundAssembly,
+        availableVersions = lookup.AvailableVersions,
+        availableTfms = lookup.AvailableTfms
     };
 
     public static string FailureCode(NugetLookupFailure failure) => failure switch
