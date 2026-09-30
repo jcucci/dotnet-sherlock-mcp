@@ -29,7 +29,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "ISampleEventReader", noCache: true);
+            _testAssemblyPath, "ISampleEventReader", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -53,7 +53,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "ISampleEventReader", projection: "full", noCache: true);
+            _testAssemblyPath, "ISampleEventReader", projection: "full", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -69,7 +69,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "ISampleEventReader", projection: "partial", noCache: true);
+            _testAssemblyPath, "ISampleEventReader", projection: "partial", noCache: true).Text();
 
         Assert.Contains("InvalidProjection", result);
     }
@@ -79,7 +79,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
-            "/tmp/does-not-exist.dll", "ISampleEventReader", noCache: true);
+            "/tmp/does-not-exist.dll", "ISampleEventReader", noCache: true).Text();
 
         Assert.Contains("AssemblyNotFound", result);
     }
@@ -91,7 +91,7 @@ public class ReverseLookupToolsTests
             _svc, _middleware, _runtimeOptions,
             _testAssemblyPath, "ISampleEventReader",
             additionalAssemblies: new[] { "/tmp/also-missing.dll" },
-            noCache: true);
+            noCache: true).Text();
 
         Assert.Contains("AssemblyNotFound", result);
         Assert.Contains("also-missing", result);
@@ -102,7 +102,7 @@ public class ReverseLookupToolsTests
     {
         var page1 = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "ISampleEventReader", maxItems: 1, noCache: true);
+            _testAssemblyPath, "ISampleEventReader", maxItems: 1, noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", page1);
         var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
@@ -114,7 +114,7 @@ public class ReverseLookupToolsTests
         var page2 = ReverseLookupTools.FindImplementationsOf(
             _svc, _middleware, _runtimeOptions,
             _testAssemblyPath, "ISampleEventReader",
-            maxItems: 1, continuationToken: nextToken, noCache: true);
+            maxItems: 1, continuationToken: nextToken, noCache: true).Text();
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
         Assert.DoesNotContain("\"error\"", page2);
@@ -126,7 +126,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindMethodsReturning(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Snapshot", noCache: true);
+            _testAssemblyPath, "Snapshot", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -146,7 +146,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindMethodsReturning(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Snapshot", projection: "full", noCache: true);
+            _testAssemblyPath, "Snapshot", projection: "full", noCache: true).Text();
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
         var first = data.GetProperty("results")[0];
@@ -160,7 +160,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindExtensionMethodsFor(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "string", noCache: true);
+            _testAssemblyPath, "string", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -182,7 +182,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindExtensionMethodsFor(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "string", projection: "full", noCache: true);
+            _testAssemblyPath, "string", projection: "full", noCache: true).Text();
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
         Assert.Equal("full", data.GetProperty("projection").GetString());
@@ -196,7 +196,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindExtensionMethodsFor(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "IEnumerable<>", noCache: true);
+            _testAssemblyPath, "IEnumerable<>", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         Assert.Contains("CountAll", result);
@@ -207,7 +207,7 @@ public class ReverseLookupToolsTests
     {
         var page1 = ReverseLookupTools.FindExtensionMethodsFor(
             _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "string", maxItems: 1, noCache: true);
+            _testAssemblyPath, "string", maxItems: 1, noCache: true).Text();
 
         var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
         if (page1Data.GetProperty("total").GetInt32() < 2) return;
@@ -219,7 +219,7 @@ public class ReverseLookupToolsTests
         var page2 = ReverseLookupTools.FindExtensionMethodsFor(
             _svc, _middleware, _runtimeOptions,
             _testAssemblyPath, "string",
-            maxItems: 1, continuationToken: nextToken, noCache: true);
+            maxItems: 1, continuationToken: nextToken, noCache: true).Text();
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
         var page2Data = JsonDocument.Parse(page2).RootElement.GetProperty("data");
@@ -233,7 +233,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindReferencesTo(
             _svc, _il, _middleware, _runtimeOptions,
-            _testAssemblyPath, "RecordedEvent", noCache: true);
+            _testAssemblyPath, "RecordedEvent", noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -249,7 +249,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindReferencesTo(
             _svc, _il, _middleware, _runtimeOptions,
-            _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true);
+            _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true).Text();
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
         var hardCap = data.GetProperty("hardCap").GetInt32();
@@ -263,7 +263,7 @@ public class ReverseLookupToolsTests
     {
         var result = ReverseLookupTools.FindReferencesTo(
             _svc, _il, _middleware, _runtimeOptions,
-            _testAssemblyPath, "RecordedEvent", maxItems: 200, noCache: true);
+            _testAssemblyPath, "RecordedEvent", maxItems: 200, noCache: true).Text();
 
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
         Assert.Equal(800, data.GetProperty("hardCap").GetInt32());
@@ -274,7 +274,7 @@ public class ReverseLookupToolsTests
     {
         var page1 = ReverseLookupTools.FindReferencesTo(
             _svc, _il, _middleware, _runtimeOptions,
-            _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true);
+            _testAssemblyPath, "RecordedEvent", maxItems: 1, noCache: true).Text();
 
         var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
         if (page1Data.GetProperty("total").GetInt32() < 2) return;
@@ -285,7 +285,7 @@ public class ReverseLookupToolsTests
         var page2 = ReverseLookupTools.FindReferencesTo(
             _svc, _il, _middleware, _runtimeOptions,
             _testAssemblyPath, "RecordedEvent",
-            maxItems: 1, continuationToken: nextToken, noCache: true);
+            maxItems: 1, continuationToken: nextToken, noCache: true).Text();
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
         Assert.Equal(1, JsonDocument.Parse(page2).RootElement.GetProperty("data").GetProperty("count").GetInt32());

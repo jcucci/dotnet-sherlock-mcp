@@ -89,6 +89,65 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
+    public async Task Resource_templates_list_advertises_templates_and_caching_hints()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.ListResourceTemplatesAsync(new ListResourceTemplatesRequestParams(), cts.Token);
+
+        var templates = result.ResourceTemplates.Select(t => t.UriTemplate).ToHashSet();
+        Assert.Contains("sherlock://assembly/{path}/type/{fullName}", templates);
+        Assert.Contains("sherlock://assembly/{path}/docs/{memberId}", templates);
+        Assert.All(result.ResourceTemplates, t => Assert.Equal("application/json", t.MimeType));
+        Assert.Equal(CacheScope.Public, result.CacheScope);
+        Assert.True(result.TimeToLive > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Search_members_resource_links_read_back_as_type_info()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var search = await client.CallToolAsync(
+            "search_members",
+            new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(string).Assembly.Location,
+                ["nameContains"] = "IsNullOrEmpty",
+                ["memberKinds"] = "method"
+            },
+            cancellationToken: cts.Token);
+
+        Assert.Equal("search.members", Envelope(search).GetProperty("kind").GetString());
+        var link = Assert.Single(search.Content.OfType<ResourceLinkBlock>(), l => l.Name == "System.String");
+
+        var read = await client.ReadResourceAsync(new ReadResourceRequestParams { Uri = link.Uri }, cts.Token);
+
+        var contents = Assert.IsType<TextResourceContents>(Assert.Single(read.Contents));
+        Assert.Equal("application/json", contents.MimeType);
+        using var doc = JsonDocument.Parse(contents.Text);
+        Assert.Equal("type.info", doc.RootElement.GetProperty("kind").GetString());
+        Assert.Equal(CacheScope.Private, read.CacheScope);
+        Assert.True(read.TimeToLive > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Read_resource_for_unknown_type_returns_invalid_params()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var uri = $"sherlock://assembly/{Uri.EscapeDataString(typeof(string).Assembly.Location)}/type/Does.Not.Exist";
+
+        var ex = await Assert.ThrowsAsync<ModelContextProtocol.McpProtocolException>(() =>
+            client.ReadResourceAsync(new ReadResourceRequestParams { Uri = uri }, cts.Token).AsTask());
+
+        Assert.Equal(ModelContextProtocol.McpErrorCode.InvalidParams, ex.ErrorCode);
+    }
+
+    [Fact]
     public async Task Tools_list_returns_a_deterministic_order()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));

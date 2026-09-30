@@ -5,4 +5,5 @@ public record ImplementationHit(
     string TypeFullName,
     string Kind,
     string[] MatchedInterfaces,
-    string[] BaseTypeChain);
+    string[] BaseTypeChain,
+    string? TypeMetadataName = null);

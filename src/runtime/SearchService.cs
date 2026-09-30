@@ -33,30 +33,32 @@ public class SearchService : ISearchService
 
             foreach (var type in GetScannableTypes(ctx, options))
             {
-                if (WantsKind("type") && NameMatches(type.Name))
-                    candidates.Add(new Candidate(DeclaringTypeOf(type), "type", FriendlyTypeName(type), TokenOf(type), type));
-
                 var declaringName = TypeNameFormatter.FriendlyFullName(type);
+                var metadataName = type.FullName ?? declaringName;
+
+                if (WantsKind("type") && NameMatches(type.Name))
+                    candidates.Add(new Candidate(DeclaringTypeOf(type), "type", FriendlyTypeName(type), TokenOf(type), type, metadataName));
+
 
                 if (WantsKind("method"))
                     foreach (var method in GetMethodsSafe(type, flags))
                         if (NameMatches(method.Name))
-                            candidates.Add(new Candidate(declaringName, "method", method.Name, TokenOf(method), method));
+                            candidates.Add(new Candidate(declaringName, "method", method.Name, TokenOf(method), method, metadataName));
 
                 if (WantsKind("property"))
                     foreach (var prop in GetPropertiesSafe(type, flags))
                         if (NameMatches(prop.Name))
-                            candidates.Add(new Candidate(declaringName, "property", prop.Name, TokenOf(prop), prop));
+                            candidates.Add(new Candidate(declaringName, "property", prop.Name, TokenOf(prop), prop, metadataName));
 
                 if (WantsKind("field"))
                     foreach (var field in GetFieldsSafe(type, flags))
                         if (NameMatches(field.Name))
-                            candidates.Add(new Candidate(declaringName, "field", field.Name, TokenOf(field), field));
+                            candidates.Add(new Candidate(declaringName, "field", field.Name, TokenOf(field), field, metadataName));
 
                 if (WantsKind("event"))
                     foreach (var evt in GetEventsSafe(type, flags))
                         if (NameMatches(evt.Name))
-                            candidates.Add(new Candidate(declaringName, "event", evt.Name, TokenOf(evt), evt));
+                            candidates.Add(new Candidate(declaringName, "event", evt.Name, TokenOf(evt), evt, metadataName));
             }
 
             var sorted = candidates
@@ -84,7 +86,7 @@ public class SearchService : ISearchService
     private static readonly PagedResult<MemberSearchHit> Empty = new(0, Array.Empty<MemberSearchHit>());
 
     private readonly record struct Candidate(
-        string DeclaringType, string MemberKind, string Name, int Token, object Member);
+        string DeclaringType, string MemberKind, string Name, int Token, object Member, string TypeMetadataName);
 
     private static MemberSearchHit BuildHit(Candidate c)
     {
@@ -97,7 +99,7 @@ public class SearchService : ISearchService
             Type t => FormatTypeSignature(t),
             _ => c.Name
         };
-        return new MemberSearchHit(c.DeclaringType, c.MemberKind, c.Name, signature);
+        return new MemberSearchHit(c.DeclaringType, c.MemberKind, c.Name, signature, c.TypeMetadataName);
     }
 
     private static string DeclaringTypeOf(Type type)

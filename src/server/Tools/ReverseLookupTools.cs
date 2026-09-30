@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
@@ -15,7 +16,7 @@ public static class ReverseLookupTools
 
     [McpServerTool(Title = "Find Implementations Of", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds types that implement an interface or derive from a base type, across one or more assemblies. Returns a lean summary ({ typeFullName, kind }) by default. Pass projection='full' for matchedInterfaces[] and baseTypeChain[]. Matches by simple name, full name, or open-generic form (e.g., 'IEnumerable', 'IEnumerable<T>', 'IEnumerable<>', 'IEnumerable`1').")]
-    public static string FindImplementationsOf(
+    public static CallToolResult FindImplementationsOf(
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
@@ -33,11 +34,11 @@ public static class ReverseLookupTools
         try
         {
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
-            if (scope.Error != null) return scope.Error;
+            if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
@@ -96,18 +97,18 @@ public static class ReverseLookupTools
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
                     results
                 };
-                return JsonHelpers.Envelope("reverselookup.implementations", result);
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.implementations", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.TypeFullName))));
             }, noCache);
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to find implementations: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find implementations: {ex.Message}"));
         }
     }
 
     [McpServerTool(Title = "Find Methods Returning", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds methods whose return type matches the given type, across one or more assemblies. Returns a lean summary ({ declaringType, methodName, signature }) by default. Pass projection='full' for assemblyPath, returnType, isStatic. Open-generic match supported (e.g., 'Snapshot<>' matches methods returning 'Snapshot<int>').")]
-    public static string FindMethodsReturning(
+    public static CallToolResult FindMethodsReturning(
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
@@ -125,11 +126,11 @@ public static class ReverseLookupTools
         try
         {
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
-            if (scope.Error != null) return scope.Error;
+            if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
@@ -194,18 +195,18 @@ public static class ReverseLookupTools
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
                     results
                 };
-                return JsonHelpers.Envelope("reverselookup.returning", result);
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.returning", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to find methods by return type: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find methods by return type: {ex.Message}"));
         }
     }
 
     [McpServerTool(Title = "Find Extension Methods For", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds extension methods that extend the given type, across one or more assemblies. Scans static classes for methods whose first ('this') parameter matches the target type. Returns a lean summary ({ declaringType, methodName, signature }) by default. Pass projection='full' for assemblyPath and extendedType. Open-generic match supported (e.g., 'IEnumerable<>' matches extensions on 'IEnumerable<T>').")]
-    public static string FindExtensionMethodsFor(
+    public static CallToolResult FindExtensionMethodsFor(
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
@@ -223,11 +224,11 @@ public static class ReverseLookupTools
         try
         {
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
-            if (scope.Error != null) return scope.Error;
+            if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
@@ -291,18 +292,18 @@ public static class ReverseLookupTools
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
                     results
                 };
-                return JsonHelpers.Envelope("reverselookup.extensions", result);
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.extensions", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to find extension methods: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find extension methods: {ex.Message}"));
         }
     }
 
     [McpServerTool(Title = "Find References To", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds all references to a type across one or more assemblies: base types, implemented interfaces, method returns/parameters, field/property/event types (recurses into generic arguments). With analysisDepth='il', also scans method bodies for inbound callers ('who calls into this type?'). Bounded sweep with hardCap to protect against runaway scans; check truncated=true. Returns lean summary by default; projection='full' adds assemblyPath, signature, dedupeKey.")]
-    public static string FindReferencesTo(
+    public static CallToolResult FindReferencesTo(
         IReverseLookupService reverseLookup,
         IIlAnalysisService ilAnalysis,
         ToolMiddleware middleware,
@@ -322,15 +323,15 @@ public static class ReverseLookupTools
         try
         {
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
-            if (scope.Error != null) return scope.Error;
+            if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
-                return JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
             var normalizedDepth = (analysisDepth ?? "signatures").Trim().ToLowerInvariant();
             if (normalizedDepth != "signatures" && normalizedDepth != "il")
-                return JsonHelpers.Error("InvalidAnalysisDepth", "analysisDepth must be 'signatures' or 'il'");
+                return ToolResponse.Result(JsonHelpers.Error("InvalidAnalysisDepth", "analysisDepth must be 'signatures' or 'il'"));
 
             var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
             var saltSeed = CacheKeyHelper.Build(
@@ -367,7 +368,8 @@ public static class ReverseLookupTools
                             MemberName: h.CallerMethod,
                             ReferenceKind: h.ReferenceKind,
                             Signature: $"{h.CallerMethod} -> {h.TargetMember}",
-                            DedupeKey: $"{h.CallerTypeFullName}|method|{h.CallerMethod}|{h.ReferenceKind}|{h.TargetMember}"));
+                            DedupeKey: $"{h.CallerTypeFullName}|method|{h.CallerMethod}|{h.ReferenceKind}|{h.TargetMember}",
+                            TypeMetadataName: h.CallerTypeFullName));
 
                         allHits = allHits.Concat(inboundHits)
                             .OrderBy(h => h.AssemblyPath, StringComparer.Ordinal)
@@ -436,12 +438,12 @@ public static class ReverseLookupTools
                 var sizeError = ResponseSizeHelper.ValidateResponseSize(result, "FindReferencesTo");
                 if (sizeError != null) return sizeError;
 
-                return JsonHelpers.Envelope("reverselookup.references", result);
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
         catch (Exception ex)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to find references: {ex.Message}");
+            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find references: {ex.Message}"));
         }
     }
 }
