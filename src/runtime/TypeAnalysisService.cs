@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using Sherlock.MCP.Runtime.Inspection;
 using TypeAnalysisInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeInfo;
@@ -12,54 +11,15 @@ using TypeAnalysisGenericVariance = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.
 
 namespace Sherlock.MCP.Runtime;
 
-public class TypeAnalysisService : ITypeAnalysisService, IDisposable
+public class TypeAnalysisService : ITypeAnalysisService
 {
     private readonly IInspectionContextProvider _contexts;
-    private readonly ConcurrentDictionary<string, InspectionContextLease> _pinned
-        = new(StringComparer.OrdinalIgnoreCase);
-    private bool _disposed;
 
     public TypeAnalysisService() : this(new SharedInspectionContextProvider(new RuntimeOptions()))
     {
     }
 
     public TypeAnalysisService(IInspectionContextProvider contexts) => _contexts = contexts;
-
-    public Assembly? LoadAssembly(string assemblyPath)
-    {
-        try
-        {
-            if (!File.Exists(assemblyPath)) return null;
-            if (_pinned.TryGetValue(assemblyPath, out var existing))
-            {
-                return existing.Assembly;
-            }
-
-            var lease = _contexts.Acquire(assemblyPath);
-            var stored = _pinned.GetOrAdd(assemblyPath, lease);
-            if (!ReferenceEquals(stored, lease))
-            {
-                lease.Dispose();
-            }
-            return stored.Assembly;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        foreach (var lease in _pinned.Values)
-        {
-            try { lease.Dispose(); } catch { }
-        }
-        _pinned.Clear();
-        GC.SuppressFinalize(this);
-    }
 
     public TypeAnalysisInfo GetTypeInfo(Type type)
     {

@@ -1,4 +1,3 @@
-using System.Reflection;
 using TypeAnalysisInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeInfo;
 using TypeAnalysisHierarchy = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.TypeHierarchy;
 using TypeAnalysisGenericTypeInfo = Sherlock.MCP.Runtime.Contracts.TypeAnalysis.GenericTypeInfo;
@@ -8,7 +7,6 @@ namespace Sherlock.MCP.Runtime;
 
 public interface ITypeAnalysisService
 {
-    public Assembly? LoadAssembly(string assemblyPath);
     public TypeAnalysisInfo GetTypeInfo(Type type);
     public TypeAnalysisInfo? GetTypeInfo(string assemblyPath, string typeName);
     public TypeAnalysisHierarchy GetTypeHierarchy(Type type);

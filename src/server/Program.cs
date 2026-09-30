@@ -5,7 +5,6 @@ using ModelContextProtocol.Protocol;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Completions;
-using Sherlock.MCP.Runtime.Indexing;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Completions;
@@ -47,7 +46,6 @@ builder.Services
     .AddSingleton<IRecentAssemblyRegistry, RecentAssemblyRegistry>()
     .AddSingleton<IInspectionContextProvider, SharedInspectionContextProvider>()
     .AddSingleton<IToolResponseCache, InMemoryToolResponseCache>()
-    .AddSingleton<IAssemblyIndexService, NoopAssemblyIndexService>()
     .AddSingleton<ITelemetry, NoopTelemetry>()
     .AddSingleton<IMemberAnalysisService, MemberAnalysisService>()
     .AddSingleton<ITypeAnalysisService, TypeAnalysisService>()

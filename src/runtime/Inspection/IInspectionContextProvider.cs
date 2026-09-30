@@ -4,7 +4,7 @@ namespace Sherlock.MCP.Runtime.Inspection;
 
 public interface IInspectionContextProvider
 {
-    InspectionContextLease Acquire(string assemblyPath, bool forceRuntimeLoad = false, IReadOnlyList<string>? additionalSearchDirectories = null);
+    InspectionContextLease Acquire(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null);
 }
 
 public sealed class InspectionContextLease : IDisposable

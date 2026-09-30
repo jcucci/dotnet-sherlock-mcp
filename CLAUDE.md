@@ -36,7 +36,7 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 1. **Discover assemblies** using multiple strategies (project analysis, class name search, file system scanning)
 2. **Load and analyze** specific assemblies by path with efficient caching
 3. **Deep introspection** of types, members, attributes, and XML documentation
-4. **Performance optimization** through pagination, streaming, and response size validation
+4. **Performance optimization** through pagination, caching, and response size validation
 
 ### Tool Categories (36 Available)
 - **Assembly Discovery & Analysis** (5 tools): `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`, `FindAssemblyByNugetPackage`
@@ -53,7 +53,7 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 - **Smart Pagination**: Token-based continuation for large result sets
 - **Response Size Validation**: Prevents oversized responses that could hit token limits
 - **Caching Layer**: Configurable TTL-based caching for expensive operations
-- **Memory Efficiency**: Streaming and chunked processing for large assemblies
+- **Memory Efficiency**: Metadata-only inspection contexts shared across calls with LRU eviction
 
 The server uses `Microsoft.Extensions.Hosting` with dependency injection and the `ModelContextProtocol` 2.1.0 (GA) package, which implements MCP specification revision `2026-07-28`. The server is stdio-only; it advertises behavioural annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`, `idempotentHint`) on every tool and caching hints (`ttlMs`, `cacheScope`) on `tools/list`, `resources/templates/list` and `resources/read`. Scanning tools take the request's `CancellationToken` (bound by the SDK, not part of the schema) and must throw `OperationCanceledException` rather than return partial results, so cancelled work is never cached; tool catch-alls filter it with `when (ex is not OperationCanceledException)`. Multi-assembly scans and `find_assembly_by_class_name` report `notifications/progress` through `IProgress<ScanProgress>` (`src/runtime/ScanProgress.cs`), adapted to MCP by `src/server/Shared/ProgressAdapter.cs`. Resource templates (`sherlock://assembly/{path}/type/{fullName}`, `sherlock://assembly/{path}/docs/{memberId}`, `sherlock://nuget/{packageId}/{version}`) live in `src/server/Resources`; their variables are completed through `completion/complete` by `src/server/Completions/CompletionHandler.cs`, which delegates to `ICompletionService` in `src/runtime/Completions` (MCP can't complete tool arguments, only template variables and prompt arguments); `search_members`, `get_types_from_assembly` and the `find_*` tools return `resource_link` blocks to the type resource alongside their JSON text. Single-type lookups go through `TypeNameResolver` (`src/runtime/TypeNameResolver.cs`), which reports ambiguity as `AmbiguousTypeNameException` instead of taking the first match. Tools take an optional SDK-bound `RequestContext<CallToolRequestParams>` and use `src/server/Shared/Elicitation.cs`: when the client supports MRTR and elicitation they throw `InputRequiredException` (a single-select form keyed `typeName` or `tfm`) and read the answer from `InputResponses` on the retried call; otherwise they return an `AmbiguousTypeName` error with the candidates. Ambiguity must propagate out of `ToolMiddleware.Execute` so the prompt is never cached, and the chosen name is substituted before the cache key is built.
 

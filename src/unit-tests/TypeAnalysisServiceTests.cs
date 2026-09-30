@@ -9,12 +9,9 @@ public class TypeAnalysisServiceTests
     private readonly ITypeAnalysisService _service = new TypeAnalysisService();
 
     [Fact]
-    public void LoadAssembly_And_GetTypesFromAssembly_Works()
+    public void GetTypesFromAssembly_Works()
     {
         var asmPath = Assembly.GetExecutingAssembly().Location;
-        var asm = _service.LoadAssembly(asmPath);
-        Assert.NotNull(asm);
-
         var types = _service.GetTypesFromAssembly(asmPath);
         Assert.True(types.Length > 0);
         Assert.Contains(types, t => t.Name == nameof(MemberAnalysisServiceTests));

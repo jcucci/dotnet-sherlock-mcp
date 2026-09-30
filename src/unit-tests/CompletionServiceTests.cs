@@ -243,10 +243,10 @@ public class CompletionServiceTests
     {
         public int Acquisitions { get; private set; }
 
-        public InspectionContextLease Acquire(string assemblyPath, bool forceRuntimeLoad = false, IReadOnlyList<string>? additionalSearchDirectories = null)
+        public InspectionContextLease Acquire(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
         {
             Acquisitions++;
-            return inner.Acquire(assemblyPath, forceRuntimeLoad, additionalSearchDirectories);
+            return inner.Acquire(assemblyPath, additionalSearchDirectories);
         }
     }
 }
