@@ -12,7 +12,7 @@ public class RuntimeOptions
         MaxLoadedAssemblies = 64;
         MaxCachedResponses = 256;
 
-        ToolSpecificMaxItems = new Dictionary<string, int>
+        ToolSpecificMaxItems = new Dictionary<string, int>(ToolNameComparer.Instance)
         {
             ["get_type_methods"] = 25,       // Methods have parameters, large payloads
             ["get_type_properties"] = 40,    // Properties moderately sized

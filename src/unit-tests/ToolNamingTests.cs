@@ -3,6 +3,10 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Server;
+using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Caching;
+using Sherlock.MCP.Runtime.Telemetry;
+using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Shared;
 using Sherlock.MCP.Server.Tools;
 
@@ -61,22 +65,64 @@ public class ToolNamingTests
     public void ResponseTooLargeGuidance_UsesWireNames()
     {
         var oversized = new { payload = new string('x', ResponseSizeHelper.MaxResponseSize + 1) };
-        var wireNames = WireNamesByMethodName.Values.ToHashSet();
 
-        foreach (var toolName in wireNames)
+        foreach (var toolName in WireNamesByMethodName.Values)
         {
             var error = ResponseSizeHelper.ValidateResponseSize(oversized, toolName);
             Assert.NotNull(error);
-
-            var root = JsonDocument.Parse(error).RootElement;
-            AssertNoPascalCaseToolNames([(toolName, root.GetProperty("message").GetString())]);
-
-            if (!root.TryGetProperty("alternativeTools", out var alternatives))
-                continue;
-
-            foreach (var alternative in alternatives.EnumerateArray().Select(a => a.GetString()))
-                Assert.True(wireNames.Contains(alternative!), $"{toolName} suggests unknown tool '{alternative}'");
+            AssertGuidanceUsesWireNames(toolName, error);
         }
+    }
+
+    [Fact]
+    public void GetTypeHierarchyNote_UsesSnakeCaseToolNames()
+    {
+        var result = TypeAnalysisTools.GetTypeHierarchy(
+            new TypeAnalysisService(), new ReverseLookupService(), TestAssemblyPath, "BaseSample");
+
+        var note = JsonDocument.Parse(result).RootElement.GetProperty("data").GetProperty("Note").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(note));
+        AssertNoPascalCaseToolNames([(nameof(TypeAnalysisTools.GetTypeHierarchy), note)]);
+    }
+
+    [Fact]
+    public void GetMethodCallsNotFoundGuidance_UsesWireNames()
+    {
+        var middleware = new ToolMiddleware(new InMemoryToolResponseCache(), new NoopTelemetry(), new RuntimeOptions());
+
+        var result = IlAnalysisTools.GetMethodCalls(
+            new IlAnalysisService(), middleware, TestAssemblyPath, nameof(ToolNamingTests), "NoSuchMethod");
+
+        Assert.Equal("MethodNotFound", JsonDocument.Parse(result).RootElement.GetProperty("code").GetString());
+        AssertGuidanceUsesWireNames(nameof(IlAnalysisTools.GetMethodCalls), result);
+    }
+
+    [Fact]
+    public void ToolSpecificMaxItems_AcceptsMethodAndWireNameKeys()
+    {
+        var options = new RuntimeOptions();
+        options.ToolSpecificMaxItems["GetTypeMethods"] = 7;
+
+        Assert.Equal(7, options.GetMaxItemsForTool("get_type_methods"));
+        Assert.Equal(7, options.ToolSpecificMaxItems["get_type_methods"]);
+    }
+
+    private static string TestAssemblyPath => Assembly.GetExecutingAssembly().Location;
+
+    private static void AssertGuidanceUsesWireNames(string source, string errorJson)
+    {
+        var root = JsonDocument.Parse(errorJson).RootElement;
+        var texts = new[] { "message", "suggestion" }
+            .Where(property => root.TryGetProperty(property, out _))
+            .Select(property => (Source: $"{source}.{property}", Text: root.GetProperty(property).GetString()));
+        AssertNoPascalCaseToolNames(texts);
+
+        if (!root.TryGetProperty("alternativeTools", out var alternatives))
+            return;
+
+        var wireNames = WireNamesByMethodName.Values.ToHashSet();
+        foreach (var alternative in alternatives.EnumerateArray().Select(a => a.GetString()))
+            Assert.True(wireNames.Contains(alternative!), $"{source} suggests unknown tool '{alternative}'");
     }
 
     private static IEnumerable<string> FieldStrings(FieldInfo field) =>
