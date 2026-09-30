@@ -132,29 +132,72 @@ public class NuGetCacheProbeTests
     }
 
     [Fact]
-    public void EnumerateCandidateDependencyDlls_SeparatesResultsByTfmAndExclude()
+    public void EnumerateCandidateDependencyDlls_Rebuilds_AfterTtl_EvenWhenWallClockMovesBackward()
+    {
+        using var cache = new TempCache();
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        NuGetCacheProbe.Clock = clock;
+        cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        cache.AddPackageDll("depb", "1.0.0", "net8.0", "DepB.dll");
+        var rootWriteTime = Directory.GetLastWriteTimeUtc(cache.Root);
+
+        NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        var newer = cache.AddPackageDll("depb", "2.0.0", "net8.0", "DepB.dll");
+        Directory.SetLastWriteTimeUtc(cache.Root, rootWriteTime);
+
+        clock.RewindWallClock(TimeSpan.FromHours(1));
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        Assert.Contains(newer, NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga"));
+    }
+
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_SeparatesResultsByExclude()
     {
         using var cache = new TempCache();
         var pkgA = cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
         var depB = cache.AddPackageDll("depb", "1.0.0", "net8.0", "DepB.dll");
+
+        var excludingA = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
+        var excludingB = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "depb");
+
+        Assert.Equal([depB], excludingA);
+        Assert.Equal([pkgA], excludingB);
+    }
+
+    [Fact]
+    public void EnumerateCandidateDependencyDlls_SeparatesResultsByTfm()
+    {
+        using var cache = new TempCache();
+        cache.AddPackageDll("pkga", "1.0.0", "net8.0", "PkgA.dll");
+        var depBNet8 = cache.AddPackageDll("depb", "1.0.0", "net8.0", "DepB.dll");
         var depBStandard = cache.AddPackageDll("depb", "1.0.0", "netstandard2.0", "DepB.dll");
 
         var forNet8 = NuGetCacheProbe.EnumerateCandidateDependencyDlls("net8.0", "pkga");
-        var forStandard = NuGetCacheProbe.EnumerateCandidateDependencyDlls("netstandard2.0", "depb");
+        var forStandard = NuGetCacheProbe.EnumerateCandidateDependencyDlls("netstandard2.0", "pkga");
 
-        Assert.Equal([depB], forNet8);
-        Assert.DoesNotContain(pkgA, forStandard);
-        Assert.DoesNotContain(depBStandard, forStandard);
-        Assert.DoesNotContain(depB, forStandard);
+        Assert.Equal([depBNet8], forNet8);
+        Assert.Equal([depBStandard], forStandard);
     }
 
     private sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
     {
         private DateTimeOffset _now = start;
+        private long _ticks;
 
         public override DateTimeOffset GetUtcNow() => _now;
 
-        public void Advance(TimeSpan delta) => _now += delta;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => _ticks;
+
+        public void Advance(TimeSpan delta)
+        {
+            _now += delta;
+            _ticks += delta.Ticks;
+        }
+
+        public void RewindWallClock(TimeSpan delta) => _now -= delta;
     }
 
     private sealed class TempCache : IDisposable

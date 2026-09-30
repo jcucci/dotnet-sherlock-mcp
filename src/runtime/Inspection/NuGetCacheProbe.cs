@@ -48,8 +48,10 @@ internal static class NuGetCacheProbe
         if (string.IsNullOrWhiteSpace(cacheRoot) || !Directory.Exists(cacheRoot)) return [];
 
         var snapshot = GetSnapshot(Path.GetFullPath(cacheRoot));
-        var cached = snapshot.Results.GetOrAdd((consumingTfm, excludePackageId), key => ResolveCandidates(snapshot.Packages, key.Tfm, key.Exclude));
-        return new List<string>(cached);
+        var cached = snapshot.Results.GetOrAdd(
+            (consumingTfm, excludePackageId),
+            key => new Lazy<string[]>(() => ResolveCandidates(snapshot.Packages, key.Tfm, key.Exclude)));
+        return new List<string>(cached.Value);
     }
 
     internal static TimeProvider Clock { get; set; } = TimeProvider.System;
@@ -59,13 +61,18 @@ internal static class NuGetCacheProbe
     private static CacheSnapshot GetSnapshot(string root)
     {
         var rootWriteTime = SafeGetLastWriteTimeUtc(root);
-        var now = Clock.GetUtcNow();
         var current = Volatile.Read(ref _snapshot);
-        if (current is not null && current.IsValidFor(root, rootWriteTime, now)) return current;
+        if (current is not null && current.IsValidFor(root, rootWriteTime)) return current;
 
-        var rebuilt = new CacheSnapshot(root, rootWriteTime, now, BuildPackageIndex(root));
-        Interlocked.Exchange(ref _snapshot, rebuilt);
-        return rebuilt;
+        lock (SnapshotLock)
+        {
+            current = Volatile.Read(ref _snapshot);
+            if (current is not null && current.IsValidFor(root, rootWriteTime)) return current;
+
+            var rebuilt = new CacheSnapshot(root, rootWriteTime, Clock.GetTimestamp(), BuildPackageIndex(root));
+            Volatile.Write(ref _snapshot, rebuilt);
+            return rebuilt;
+        }
     }
 
     private static PackageEntry[] BuildPackageIndex(string root)
@@ -122,20 +129,22 @@ internal static class NuGetCacheProbe
 
     private static readonly TimeSpan SnapshotTtl = TimeSpan.FromMinutes(5);
 
+    private static readonly object SnapshotLock = new();
+
     private static CacheSnapshot? _snapshot;
 
     private sealed record PackageEntry(string PackageId, string LibDir, string[] Tfms);
 
-    private sealed class CacheSnapshot(string root, DateTime rootWriteTimeUtc, DateTimeOffset builtAt, PackageEntry[] packages)
+    private sealed class CacheSnapshot(string root, DateTime rootWriteTimeUtc, long builtAtTimestamp, PackageEntry[] packages)
     {
         public PackageEntry[] Packages { get; } = packages;
 
-        public ConcurrentDictionary<(string Tfm, string Exclude), string[]> Results { get; } = new(CandidateKeyComparer.Instance);
+        public ConcurrentDictionary<(string Tfm, string Exclude), Lazy<string[]>> Results { get; } = new(CandidateKeyComparer.Instance);
 
-        public bool IsValidFor(string candidateRoot, DateTime candidateWriteTimeUtc, DateTimeOffset now) =>
+        public bool IsValidFor(string candidateRoot, DateTime candidateWriteTimeUtc) =>
             string.Equals(root, candidateRoot, PathComparison)
             && rootWriteTimeUtc == candidateWriteTimeUtc
-            && now - builtAt < SnapshotTtl;
+            && Clock.GetElapsedTime(builtAtTimestamp) < SnapshotTtl;
     }
 
     private sealed class CandidateKeyComparer : IEqualityComparer<(string Tfm, string Exclude)>
