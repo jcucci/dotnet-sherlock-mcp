@@ -6,6 +6,7 @@ public static class ResourceUris
 {
     public const string TypeTemplate = "sherlock://assembly/{path}/type/{fullName}";
     public const string DocsTemplate = "sherlock://assembly/{path}/docs/{memberId}";
+    public const string NuGetTemplate = "sherlock://nuget/{packageId}/{version}";
     public const string JsonMimeType = "application/json";
 
     public static string Type(string assemblyPath, string fullName) =>

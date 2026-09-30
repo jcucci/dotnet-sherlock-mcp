@@ -49,6 +49,9 @@ public class XmlDocService : IXmlDocService
         return doc != null && doc.MembersById.TryGetValue(memberId, out var el) ? Extract(el) : null;
     }
 
+    public IReadOnlyCollection<string> GetDocumentedMemberIds(string assemblyPath) =>
+        LoadDoc(Path.GetFullPath(assemblyPath))?.MembersById.Keys ?? (IReadOnlyCollection<string>)[];
+
     private CachedDoc? LoadDoc(Assembly assembly) => LoadDoc(assembly.Location);
 
     private CachedDoc? LoadDoc(string key)

@@ -71,9 +71,18 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
 
     private readonly ConcurrentDictionary<string, Lazy<Entry>> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly RuntimeOptions _options;
+    private readonly IRecentAssemblyRegistry? _recentAssemblies;
     private long _accessCounter;
 
-    public SharedInspectionContextProvider(RuntimeOptions options) => _options = options;
+    public SharedInspectionContextProvider(RuntimeOptions options) : this(options, recentAssemblies: null)
+    {
+    }
+
+    public SharedInspectionContextProvider(RuntimeOptions options, IRecentAssemblyRegistry? recentAssemblies)
+    {
+        _options = options;
+        _recentAssemblies = recentAssemblies;
+    }
 
     public InspectionContextLease Acquire(string assemblyPath, bool forceRuntimeLoad = false, IReadOnlyList<string>? additionalSearchDirectories = null)
     {
@@ -118,6 +127,7 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
 
             Interlocked.Exchange(ref entry.LastAccess, Interlocked.Increment(ref _accessCounter));
             EvictOverflow();
+            _recentAssemblies?.Record(fullPath);
             return new InspectionContextLease(entry.Context, entry.Release);
         }
     }

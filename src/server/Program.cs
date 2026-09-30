@@ -4,9 +4,11 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
+using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Runtime.Indexing;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
+using Sherlock.MCP.Server.Completions;
 using Sherlock.MCP.Server.Middleware;
 using System.Reflection;
 
@@ -38,7 +40,7 @@ const string serverInstructions =
 
     For relationships use find_implementations_of, find_methods_returning, find_extension_methods_for, and find_references_to (set analysisDepth='il' to resolve inbound callers); use get_method_calls to see what a method body invokes.
 
-    search_members, get_types_from_assembly and the find_* tools also return resource_link blocks (sherlock://assembly/{path}/type/{fullName}); read one to get a type's get_type_info payload without another tool call.
+    search_members, get_types_from_assembly and the find_* tools also return resource_link blocks (sherlock://assembly/{path}/type/{fullName}); read one to get a type's get_type_info payload without another tool call. sherlock://nuget/{packageId}/{version} resolves a cached package to its assembly path. Resource template variables (path, fullName, memberId, packageId, version) support completion/complete.
 
     Prefer full type names (Namespace.Type). Tool names are snake_case; argument names are camelCase.
     """;
@@ -56,6 +58,7 @@ static bool SupportsCachingHints<TParams>(ModelContextProtocol.Server.RequestCon
 
 builder.Services
     .AddSingleton<RuntimeOptions>()
+    .AddSingleton<IRecentAssemblyRegistry, RecentAssemblyRegistry>()
     .AddSingleton<IInspectionContextProvider, SharedInspectionContextProvider>()
     .AddSingleton<IToolResponseCache, InMemoryToolResponseCache>()
     .AddSingleton<IAssemblyIndexService, NoopAssemblyIndexService>()
@@ -67,11 +70,13 @@ builder.Services
     .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
     .AddSingleton<ISearchService, SearchService>()
+    .AddSingleton<ICompletionService, CompletionService>()
     .AddSingleton<ToolMiddleware>()
     .AddMcpServer(options => options.ServerInstructions = serverInstructions)
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly()
+    .WithCompleteHandler(CompletionHandler.HandleAsync)
     .WithRequestFilters(filters => filters
         .AddListToolsFilter(next => async (request, cancellationToken) =>
         {

@@ -497,44 +497,12 @@ public static class ReflectionTools
             }
 
             if (lookup.Failure is NugetLookupFailure failure)
-            {
-                var code = failure switch
-                {
-                    NugetLookupFailure.PackageNotFound => "PackageNotFound",
-                    NugetLookupFailure.VersionNotFound => "VersionNotFound",
-                    _ => "AssemblyNotFound"
-                };
-                var message = failure switch
-                {
-                    NugetLookupFailure.PackageNotFound => $"Package '{packageId}' not found under NuGet cache '{lookup.CacheRoot}'.",
-                    NugetLookupFailure.VersionNotFound => version is null
-                        ? $"No versions available for package '{packageId}' under '{lookup.CacheRoot}'."
-                        : $"Version '{version}' not found for package '{packageId}'.",
-                    _ => $"No compatible assembly found for '{packageId}' {lookup.ResolvedVersion} (tfm: {tfm ?? "any"})."
-                };
-                return JsonHelpers.Error(code, message, new
-                {
-                    packageId,
-                    requestedVersion = version,
-                    requestedTfm = tfm,
-                    resolvedVersion = lookup.ResolvedVersion,
-                    cacheRoot = lookup.CacheRoot,
-                    availableVersions = lookup.AvailableVersions,
-                    availableTfms = lookup.AvailableTfms
-                });
-            }
+                return JsonHelpers.Error(
+                    NuGetLookupResponse.FailureCode(failure),
+                    NuGetLookupResponse.FailureMessage(lookup, failure),
+                    NuGetLookupResponse.FailureDetails(lookup));
 
-            var result = new
-            {
-                packageId = lookup.PackageId,
-                requestedVersion = lookup.RequestedVersion,
-                requestedTfm = lookup.RequestedTfm,
-                resolvedVersion = lookup.ResolvedVersion,
-                resolvedTfm = lookup.ResolvedTfm,
-                cacheRoot = lookup.CacheRoot,
-                foundAssembly = lookup.FoundAssembly
-            };
-            return JsonHelpers.Envelope("reflection.findByNugetPackage", result);
+            return JsonHelpers.Envelope(NuGetLookupResponse.Kind, NuGetLookupResponse.Success(lookup));
         }
         catch (Exception ex)
         {

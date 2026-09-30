@@ -222,11 +222,18 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 - **`UpdateRuntimeOptions`**: Modify pagination, caching, and search behavior
 
 ### Resources
-Two resource templates let clients fetch a single type or doc entry without another tool call. Path, type name and documentation id are percent-encoded.
+Three resource templates let clients fetch a single type, doc entry or cached package without another tool call. Every variable is percent-encoded.
 - **`sherlock://assembly/{path}/type/{fullName}`**: Type metadata, the same payload as `get_type_info`
 - **`sherlock://assembly/{path}/docs/{memberId}`**: XML documentation for a documentation id such as `T:Ns.Type` or `M:Ns.Type.Method(System.String)`
+- **`sherlock://nuget/{packageId}/{version}`**: The assembly a cached NuGet package version resolves to, the same payload as `find_assembly_by_nuget_package`
 
-`search_members`, `get_types_from_assembly` and the `find_*` reverse-lookup tools return a `resource_link` to the type resource for each distinct type on the page, after the JSON text block. `resources/read` carries private caching hints; a URI whose assembly, type or doc id doesn't exist fails with `-32602`.
+`search_members`, `get_types_from_assembly` and the `find_*` reverse-lookup tools return a `resource_link` to the type resource for each distinct type on the page, after the JSON text block. `resources/read` carries private caching hints; a URI whose assembly, type, doc id or package doesn't exist fails with `-32602`.
+
+Template variables support `completion/complete`, returning at most 100 values:
+- `path`: recently loaded assemblies, then `.dll`/`.exe` files and subfolders of the folder being typed
+- `fullName`: type names (metadata form, e.g. ``List`1``) from the assembly in the `path` context argument
+- `memberId`: documentation ids from the XML file next to the `path` assembly
+- `packageId` / `version`: package folders and their versions (newest first) in the local NuGet cache
 
 ### Advanced Filtering & Pagination
 

@@ -4,11 +4,6 @@ namespace Sherlock.MCP.Runtime.Inspection;
 
 internal static class NuGetCacheProbe
 {
-    private static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-
     public static string GetCacheRoot()
     {
         var overridePath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
@@ -27,7 +22,7 @@ internal static class NuGetCacheProbe
 
         var fullCacheRoot = Path.GetFullPath(cacheRoot);
         var normalized = Path.GetFullPath(fullAssemblyPath);
-        if (!normalized.StartsWith(EnsureTrailingSeparator(fullCacheRoot), PathComparison)) return false;
+        if (!normalized.StartsWith(EnsureTrailingSeparator(fullCacheRoot), PathComparers.Comparison)) return false;
 
         var relative = Path.GetRelativePath(fullCacheRoot, normalized);
         var segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -142,7 +137,7 @@ internal static class NuGetCacheProbe
         public ConcurrentDictionary<(string Tfm, string Exclude), Lazy<string[]>> Results { get; } = new(CandidateKeyComparer.Instance);
 
         public bool IsValidFor(string candidateRoot, DateTime candidateWriteTimeUtc) =>
-            string.Equals(root, candidateRoot, PathComparison)
+            string.Equals(root, candidateRoot, PathComparers.Comparison)
             && rootWriteTimeUtc == candidateWriteTimeUtc
             && Clock.GetElapsedTime(builtAtTimestamp) < SnapshotTtl;
     }
