@@ -105,7 +105,7 @@ public static class ReverseLookupTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find implementations: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "find implementations"));
         }
     }
 
@@ -205,7 +205,7 @@ public static class ReverseLookupTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find methods by return type: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "find methods by return type"));
         }
     }
 
@@ -304,7 +304,7 @@ public static class ReverseLookupTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find extension methods: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "find extension methods"));
         }
     }
 
@@ -456,7 +456,7 @@ public static class ReverseLookupTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to find references: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "find references"));
         }
     }
 }

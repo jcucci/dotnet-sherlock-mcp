@@ -190,7 +190,7 @@ public class CancellationAndProgressTests
             _reverseLookup, _ilAnalysis, _middleware, _runtimeOptions, TestAssemblyPath, "String",
             analysisDepth: "il", noCache: true, cancellationToken: token));
         Assert.Throws<OperationCanceledException>(() => TypeAnalysisTools.GetTypeHierarchy(
-            new TypeAnalysisService(), _reverseLookup, TestAssemblyPath, typeof(CancellationAndProgressTests).FullName!,
+            new TypeAnalysisService(), new SharedInspectionContextProvider(new RuntimeOptions()), _reverseLookup, TestAssemblyPath, typeof(CancellationAndProgressTests).FullName!,
             additionalAssemblies: ScanScope[1..], cancellationToken: token));
         Assert.Throws<OperationCanceledException>(() => ReflectionTools.FindAssemblyByClassName(
             nameof(CancellationAndProgressTests), Path.GetDirectoryName(TestAssemblyPath)!, cancellationToken: token));

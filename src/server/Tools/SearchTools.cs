@@ -41,7 +41,7 @@ public static class SearchTools
             if (string.IsNullOrWhiteSpace(assemblyPath))
                 return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "assemblyPath is required"));
             if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}"));
+                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
             if (string.IsNullOrWhiteSpace(nameContains))
                 return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "nameContains is required"));
 
@@ -130,7 +130,7 @@ public static class SearchTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return ToolResponse.Result(JsonHelpers.Error("InternalError", $"Failed to search members: {ex.Message}"));
+            return ToolResponse.Result(ToolErrors.FromException(ex, "search members"));
         }
     }
 }

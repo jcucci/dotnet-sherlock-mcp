@@ -13,7 +13,7 @@ internal static class AssemblyScope
         if (string.IsNullOrWhiteSpace(assemblyPath))
             return new ScopeResult { Error = JsonHelpers.Error("InvalidArgument", "assemblyPath is required") };
         if (!File.Exists(assemblyPath))
-            return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}") };
+            return new ScopeResult { Error = ToolErrors.AssemblyNotFound(assemblyPath) };
 
         var pathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparer.OrdinalIgnoreCase
@@ -30,7 +30,7 @@ internal static class AssemblyScope
             {
                 if (string.IsNullOrWhiteSpace(extra)) continue;
                 if (!File.Exists(extra))
-                    return new ScopeResult { Error = JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {extra}") };
+                    return new ScopeResult { Error = ToolErrors.AssemblyNotFound(extra) };
                 var normalizedExtra = Path.GetFullPath(extra);
                 if (seen.Add(normalizedExtra)) paths.Add(normalizedExtra);
             }

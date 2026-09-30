@@ -22,7 +22,8 @@ public static class JsonHelpers
         string message,
         string? suggestion = null,
         string[]? alternativeTools = null,
-        object? recommendedParams = null)
+        object? recommendedParams = null,
+        object? details = null)
     {
         var error = new Dictionary<string, object?>
         {
@@ -38,6 +39,8 @@ public static class JsonHelpers
             error["alternativeTools"] = alternativeTools;
         if (recommendedParams != null)
             error["recommendedParams"] = recommendedParams;
+        if (details != null)
+            error["details"] = details;
 
         return JsonSerializer.Serialize(error, DefaultOptions);
     }

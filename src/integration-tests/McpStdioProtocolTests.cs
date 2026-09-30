@@ -284,7 +284,7 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
-    public async Task Unknown_type_returns_TypeNotFound_error_envelope()
+    public async Task Unknown_type_returns_TypeNotFound_error_flagged_with_isError()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await using var client = await ConnectAsync(cts.Token);
@@ -298,12 +298,15 @@ public class McpStdioProtocolTests
             },
             cancellationToken: cts.Token);
 
-        Assert.NotEqual(true, result.IsError);
+        Assert.True(result.IsError);
 
         var envelope = Envelope(result);
         Assert.Equal("error", envelope.GetProperty("kind").GetString());
         Assert.Equal("TypeNotFound", envelope.GetProperty("code").GetString());
         Assert.False(string.IsNullOrWhiteSpace(envelope.GetProperty("message").GetString()));
+        var candidates = envelope.GetProperty("recommendedParams").GetProperty("candidates")
+            .EnumerateArray().Select(candidate => candidate.GetString()).ToArray();
+        Assert.Contains("System.Type", candidates);
     }
 
     [Fact]

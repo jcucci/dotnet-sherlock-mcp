@@ -132,7 +132,9 @@ The enumerating tools return a lean **`summary`** payload by default (e.g. `GetT
 - **Stale results**: pass `noCache=true` to bypass the response cache for a single call.
 
 ### Error Handling & Troubleshooting
-- If `TypeNotFound`: try the simple name instead of the full name, or `GetTypesFromAssembly` / `SearchMembers` to find it first.
+- Error results carry `isError: true`; the JSON payload's `suggestion`, `alternativeTools` and `recommendedParams` say how to fix the call.
+- If `TypeNotFound` / `MemberNotFound`: retry with one of the near-miss names in `recommendedParams.candidates`, or use `GetTypesFromAssembly` / `SearchMembers` to find it first.
+- If `InvalidAssembly`: the path is a native or non-.NET file. If `DependencyNotFound`: point at the assembly's build-output copy so its dependencies sit beside it.
 - If `AmbiguousTypeName`: the simple name matched several types; retry with one of the full names in `recommendedParams.candidates`.
 - If response too large: reduce `maxItems`, keep `projection='summary'`, and page with `continuationToken`.
 - For nested types: use format `OuterType+InnerType` or `GetNestedTypes`.

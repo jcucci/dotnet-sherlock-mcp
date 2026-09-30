@@ -25,7 +25,7 @@ public static class ProjectAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze solution: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze solution", fileNotFoundCode: "ProjectNotFound");
         }
     }
 
@@ -43,7 +43,7 @@ public static class ProjectAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze project: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze project", fileNotFoundCode: "ProjectNotFound");
         }
     }
 
@@ -62,7 +62,7 @@ public static class ProjectAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get output paths: {ex.Message}");
+            return ToolErrors.FromException(ex, "get output paths", fileNotFoundCode: "ProjectNotFound");
         }
     }
 
@@ -81,7 +81,7 @@ public static class ProjectAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to resolve packages: {ex.Message}");
+            return ToolErrors.FromException(ex, "resolve packages", fileNotFoundCode: "ProjectNotFound");
         }
     }
 
@@ -100,7 +100,7 @@ public static class ProjectAnalysisTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to parse deps.json: {ex.Message}");
+            return ToolErrors.FromException(ex, "parse deps.json", fileNotFoundCode: "FileNotFound");
         }
     }
 }

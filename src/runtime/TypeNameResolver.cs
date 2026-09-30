@@ -58,7 +58,7 @@ public static class TypeNameResolver
         return TypeResolution.NotFound;
     }
 
-    private static IEnumerable<Type> LoadableTypes(Assembly assembly)
+    internal static IEnumerable<Type> LoadableTypes(Assembly assembly)
     {
         try
         {

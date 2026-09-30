@@ -64,6 +64,8 @@ builder.Services
     .WithResourcesFromAssembly()
     .WithCompleteHandler(CompletionHandler.HandleAsync)
     .WithRequestFilters(filters => filters
+        .AddCallToolFilter(next => async (request, cancellationToken) =>
+            ToolErrorFlag.Apply(await next(request, cancellationToken)))
         .AddListToolsFilter(next => async (request, cancellationToken) =>
         {
             var result = await next(request, cancellationToken);

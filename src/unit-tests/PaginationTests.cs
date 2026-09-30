@@ -83,7 +83,7 @@ public class PaginationTests
 
         // Act
         var result = MemberAnalysisTools.GetTypeProperties(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, maxItems: 2);
 
         // Assert
@@ -177,7 +177,7 @@ public class PaginationTests
         var typeName = typeof(TestSampleClass).FullName!;
 
         var result = MemberAnalysisTools.GetTypeMethods(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, maxItems: 3);
 
         Assert.DoesNotContain("\"error\"", result);
@@ -204,7 +204,7 @@ public class PaginationTests
         var typeName = typeof(TestSampleClass).FullName!;
 
         var result = MemberAnalysisTools.GetTypeMethods(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, maxItems: 3, projection: "full");
 
         Assert.DoesNotContain("\"error\"", result);
@@ -228,7 +228,7 @@ public class PaginationTests
         var typeName = typeof(TestSampleClass).FullName!;
 
         var page1 = MemberAnalysisTools.GetTypeMethods(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, maxItems: 1, noCache: true);
 
         Assert.DoesNotContain("\"error\"", page1);
@@ -240,7 +240,7 @@ public class PaginationTests
         Assert.False(string.IsNullOrEmpty(nextToken), "Page 1 should mint a nextToken when more pages remain");
 
         var page2 = MemberAnalysisTools.GetTypeMethods(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, maxItems: 1, continuationToken: nextToken, noCache: true);
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
@@ -255,7 +255,7 @@ public class PaginationTests
         var typeName = typeof(TestSampleClass).FullName!;
 
         var page1 = MemberAnalysisTools.GetTypeProperties(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, includeNonPublic: true, maxItems: 1, noCache: true);
 
         Assert.DoesNotContain("\"error\"", page1);
@@ -266,7 +266,7 @@ public class PaginationTests
         Assert.False(string.IsNullOrEmpty(nextToken), "Page 1 should mint a nextToken when more pages remain");
 
         var page2 = MemberAnalysisTools.GetTypeProperties(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, includeNonPublic: true, maxItems: 1, continuationToken: nextToken, noCache: true);
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
@@ -281,7 +281,7 @@ public class PaginationTests
         var typeName = typeof(TestSampleClass).FullName!;
 
         var result = MemberAnalysisTools.GetTypeMethods(
-            _memberAnalysisService, _middleware, _runtimeOptions,
+            _memberAnalysisService, _contexts, _middleware, _runtimeOptions,
             _testAssemblyPath, typeName, projection: "partial");
 
         Assert.Contains("InvalidProjection", result);

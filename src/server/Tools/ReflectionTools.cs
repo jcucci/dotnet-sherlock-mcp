@@ -29,7 +29,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -100,7 +100,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze assembly: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze assembly");
         }
     }
 
@@ -114,7 +114,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -162,7 +162,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to get assembly info: {ex.Message}");
+            return ToolErrors.FromException(ex, "get assembly info");
         }
     }
 
@@ -298,7 +298,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -315,7 +315,7 @@ public static class ReflectionTools
             var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
 
             if (type == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
 
             // Pagination logic
             var defaultPageSize = 25;
@@ -412,7 +412,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze type: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze type");
         }
     }
 
@@ -480,7 +480,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to search for assembly: {ex.Message}");
+            return ToolErrors.FromException(ex, "search for assembly");
         }
     }
 
@@ -527,7 +527,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException and not InputRequiredException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to resolve NuGet package: {ex.Message}");
+            return ToolErrors.FromException(ex, "resolve NuGet package");
         }
     }
 
@@ -551,7 +551,7 @@ public static class ReflectionTools
         try
         {
             if (!File.Exists(assemblyPath))
-                return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
+                return ToolErrors.AssemblyNotFound(assemblyPath);
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -567,14 +567,20 @@ public static class ReflectionTools
 
             var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
             if (type == null)
-                return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
+                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
 
-            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+            const BindingFlags searchedMethods = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
+            var methods = type.GetMethods(searchedMethods)
                 .Where(m => m.Name == methodName)
                 .ToArray();
 
             if (methods.Length == 0)
-                return JsonHelpers.Error("MemberNotFound", $"Method '{methodName}' not found in type '{typeName}'");
+                return ToolErrors.MemberNotFound(
+                    type,
+                    methodName,
+                    "method",
+                    message: $"Method '{methodName}' not found in type '{typeName}'",
+                    bindingFlags: searchedMethods);
 
             var result = new
             {
@@ -615,7 +621,7 @@ public static class ReflectionTools
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return JsonHelpers.Error("InternalError", $"Failed to analyze method: {ex.Message}");
+            return ToolErrors.FromException(ex, "analyze method");
         }
     }
 }
