@@ -24,6 +24,7 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Runtime configuration**: `get_runtime_options` / `update_runtime_options` for paging, caching, and search defaults.
 - **Resource templates** for type info and XML docs, with `resource_link` results from search and reverse-lookup tools ([#64](https://github.com/jcucci/dotnet-sherlock-mcp/issues/64)).
 - **Assembly locator fixes**: pruned, ranked, and cheaper file-system searches ([#78](https://github.com/jcucci/dotnet-sherlock-mcp/issues/78)).
+- **Elicitation for ambiguous inputs**: ambiguous type names and multi-TFM packages are resolved by asking the client ([#67](https://github.com/jcucci/dotnet-sherlock-mcp/issues/67)).
 
 ## Planned
 
@@ -36,7 +37,6 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - NuGet `McpServer` package type and `dnx` launch ([#63](https://github.com/jcucci/dotnet-sherlock-mcp/issues/63))
 - Completions for type names, assembly paths, and package IDs ([#65](https://github.com/jcucci/dotnet-sherlock-mcp/issues/65))
 - Cancellation and progress notifications for long scans ([#66](https://github.com/jcucci/dotnet-sherlock-mcp/issues/66))
-- Elicitation for ambiguous inputs ([#67](https://github.com/jcucci/dotnet-sherlock-mcp/issues/67))
 - Assembly handles for stateless cross-call context ([#68](https://github.com/jcucci/dotnet-sherlock-mcp/issues/68))
 - MCP prompts for common workflows ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69))
 

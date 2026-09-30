@@ -115,8 +115,11 @@ public static class TypeAnalysisTools
     public static string GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
-        [Description("Type name to analyze. Prefer full name (e.g., 'System.Collections.Generic.List`1')")] string typeName)
+        [Description("Type name to analyze. Prefer full name (e.g., 'System.Collections.Generic.List`1')")] string typeName,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath))
@@ -127,6 +130,10 @@ public static class TypeAnalysisTools
                 return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
 
             return JsonHelpers.Envelope("type.info", info);
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -145,8 +152,11 @@ public static class TypeAnalysisTools
         [Description("Optional additional assembly paths to include in the search scope")]
         string[]? additionalAssemblies = null,
         IProgress<ProgressNotificationValue>? progress = null,
+        RequestContext<CallToolRequestParams>? context = null,
         CancellationToken cancellationToken = default)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
@@ -164,6 +174,10 @@ public static class TypeAnalysisTools
             var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
             return JsonHelpers.Envelope("type.hierarchy", hierarchy with { DerivedTypes = derived, Note = null });
         }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return JsonHelpers.Error("InternalError", $"Failed to get type hierarchy: {ex.Message}");
@@ -176,14 +190,21 @@ public static class TypeAnalysisTools
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
-        string typeName)
+        string typeName,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
             var genericInfo = typeAnalysis.GetGenericTypeInfo(assemblyPath, typeName);
             if (genericInfo == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             return JsonHelpers.Envelope("type.generic", genericInfo);
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -197,8 +218,11 @@ public static class TypeAnalysisTools
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
-        string typeName)
+        string typeName,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
@@ -206,6 +230,10 @@ public static class TypeAnalysisTools
             if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var (typeFullName, attributes) = lookup.Value;
             return JsonHelpers.Envelope("type.attributes", new { typeName = typeFullName, attributeCount = attributes.Length, attributes });
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -219,8 +247,11 @@ public static class TypeAnalysisTools
         ITypeAnalysisService typeAnalysis,
         [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
         [Description("Type name to analyze. Prefer full name")]
-        string typeName)
+        string typeName,
+        RequestContext<CallToolRequestParams>? context = null)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (!File.Exists(assemblyPath)) return JsonHelpers.Error("AssemblyNotFound", $"Assembly file not found: {assemblyPath}");
@@ -228,6 +259,10 @@ public static class TypeAnalysisTools
             if (lookup == null) return JsonHelpers.Error("TypeNotFound", $"Type '{typeName}' not found in assembly");
             var (typeFullName, nested) = lookup.Value;
             return JsonHelpers.Envelope("type.nested", new { typeName = typeFullName, nestedTypeCount = nested.Length, nested });
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

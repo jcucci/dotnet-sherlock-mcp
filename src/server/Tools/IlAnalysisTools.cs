@@ -1,3 +1,4 @@
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Il;
@@ -24,8 +25,11 @@ public static class IlAnalysisTools
         [Description("Include non-public methods and the non-public declaring type (default: false)")] bool includeNonPublic = false,
         [Description("Response shape. 'summary' (default, token-lean): distinct target names only. 'full': adds { target, kind, sourceMethod } per call and { target, access, sourceMethod } per field access.")] string projection = "summary",
         [Description("Bypass cache for this request")] bool noCache = false,
+        RequestContext<CallToolRequestParams>? context = null,
         CancellationToken cancellationToken = default)
     {
+        var elicitation = ElicitationContext.From(context);
+        typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
             if (string.IsNullOrWhiteSpace(assemblyPath))
@@ -84,6 +88,10 @@ public static class IlAnalysisTools
 
                 return JsonHelpers.Envelope("il.methodCalls", result);
             }, noCache);
+        }
+        catch (AmbiguousTypeNameException ex)
+        {
+            return Elicitation.AmbiguousType(elicitation, ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
