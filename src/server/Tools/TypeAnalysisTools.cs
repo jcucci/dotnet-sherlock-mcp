@@ -104,7 +104,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Info", ReadOnly = true, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<TypeInfoData>))]
-    [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with get_type_methods etc.")]
+    [Description("Gets detailed metadata for a single type including accessibility, inheritance, interfaces, and member counts. Lightweight response - use as entry point before exploring members with get_type_members.")]
     public static CallToolResult GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,

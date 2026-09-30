@@ -103,9 +103,14 @@ public static class ResponseSizeHelper
         toolName switch
         {
             "get_all_type_members" => (
-                "Use specific member tools with filtering instead of retrieving all members at once.",
-                new[] { "get_type_methods", "get_type_properties", "get_type_fields", "get_type_constructors" },
-                new { maxItems = 20, nameContains = "<filter_pattern>" }
+                "Use get_type_members with kinds and nameContains filters instead of retrieving all members at once.",
+                new[] { "get_type_members" },
+                new { maxItems = 20, kinds = "method", nameContains = "<filter_pattern>" }
+            ),
+            "get_type_members" => (
+                "Narrow with kinds or nameContains, keep projection='summary', or reduce page size.",
+                Array.Empty<string>(),
+                new { maxItems = 25, kinds = "method", nameContains = "<member_name_pattern>", projection = "summary" }
             ),
             "get_type_methods" => (
                 "Filter by method name or reduce page size for types with many methods.",
@@ -123,8 +128,8 @@ public static class ResponseSizeHelper
                 new { maxItems = 25 }
             ),
             "analyze_type" => (
-                "Use specific member tools for targeted queries.",
-                new[] { "get_type_methods", "get_type_properties", "get_type_fields" },
+                "Use get_type_info for type metadata and get_type_members for targeted member queries.",
+                new[] { "get_type_info", "get_type_members" },
                 new { maxItems = 15 }
             ),
             "get_assembly_info" => (

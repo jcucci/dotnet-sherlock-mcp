@@ -3,12 +3,13 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
+using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.IntegrationTests;
 
 public class McpStdioProtocolTests
 {
-    private const int ExpectedToolCount = 36;
+    private const int ExpectedToolCount = 37;
 
     private const string CurrentProtocolVersion = "2026-07-28";
 
@@ -54,6 +55,7 @@ public class McpStdioProtocolTests
             $"If a tool was intentionally added or removed, update ExpectedToolCount. " +
             $"Tools: {string.Join(", ", names.OrderBy(n => n))}");
 
+        Assert.Contains("get_type_members", names);
         Assert.Contains("get_type_methods", names);
         Assert.Contains("find_implementations_of", names);
         Assert.Contains("update_runtime_options", names);
@@ -256,6 +258,59 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
+    public async Task Call_get_type_members_returns_structured_summary()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.CallToolAsync(
+            "get_type_members",
+            new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(string).Assembly.Location,
+                ["typeName"] = "System.String",
+                ["kinds"] = "property,constructor",
+                ["maxItems"] = 5
+            },
+            cancellationToken: cts.Token);
+
+        Assert.NotEqual(true, result.IsError);
+        Assert.NotNull(result.StructuredContent);
+
+        var data = Envelope(result).GetProperty("data");
+        Assert.Equal("summary", data.GetProperty("projection").GetString());
+        var kinds = data.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("kind").GetString()).ToHashSet();
+        Assert.Subset(new HashSet<string?> { "constructor", "property" }, kinds);
+        Assert.False(string.IsNullOrEmpty(data.GetProperty("nextToken").GetString()));
+    }
+
+    [Fact]
+    public async Task Core_profile_from_environment_exposes_only_core_tools()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(
+            cts.Token,
+            environment: new Dictionary<string, string?> { [ToolProfile.EnvironmentVariable] = "core" });
+
+        var names = (await client.ListToolsAsync(cancellationToken: cts.Token)).Select(t => t.Name).ToHashSet();
+
+        Assert.Equal(ToolProfile.CoreToolNames.ToHashSet(), names);
+        Assert.DoesNotContain("get_type_methods", names);
+    }
+
+    [Fact]
+    public async Task Core_profile_from_command_line_exposes_only_core_tools()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token, arguments: ["--profile", "core"]);
+
+        var names = (await client.ListToolsAsync(cancellationToken: cts.Token)).Select(t => t.Name).ToHashSet();
+
+        Assert.Equal(ToolProfile.CoreToolNames.Length, names.Count);
+        Assert.Contains("get_type_members", names);
+    }
+
+    [Fact]
     public async Task Continuation_token_round_trip_has_no_overlap_and_stable_total()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -444,7 +499,8 @@ public class McpStdioProtocolTests
     private static async Task<McpClient> ConnectAsync(
         CancellationToken cancellationToken,
         Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitationHandler = null,
-        IDictionary<string, string?>? environment = null)
+        IDictionary<string, string?>? environment = null,
+        IReadOnlyList<string>? arguments = null)
     {
         Assert.True(File.Exists(ServerDll), $"Expected server DLL at {ServerDll}");
 
@@ -452,7 +508,7 @@ public class McpStdioProtocolTests
             new StdioClientTransportOptions
             {
                 Command = "dotnet",
-                Arguments = [ServerDll],
+                Arguments = [ServerDll, .. arguments ?? []],
                 Name = "sherlock-e2e",
                 EnvironmentVariables = environment
             },

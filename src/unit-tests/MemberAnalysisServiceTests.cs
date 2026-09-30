@@ -163,4 +163,38 @@ public class MemberAnalysisServiceTests
         Assert.True(methodDocs.Params.Length >= 1);
     }
 
+
+    [Fact]
+    public void GetMembersPage_GroupsByKindInFixedOrder()
+    {
+        var page = _service.GetMembersPage(_testAssemblyPath, "Sherlock.MCP.Tests.TestSampleClass", kinds: null, options: null, offset: 0, pageSize: int.MaxValue);
+
+        Assert.Equal(page.Total, page.Items.Length);
+        Assert.Equal(page.Total, page.CountsByKind.Values.Sum());
+        Assert.Equal(Enum.GetValues<MemberKind>(), page.Items.Select(i => i.Kind).Distinct().ToArray());
+        Assert.All(page.Items, item => Assert.False(string.IsNullOrEmpty(item.Signature)));
+    }
+
+    [Fact]
+    public void GetMembersPage_RestrictsToRequestedKinds()
+    {
+        var kinds = new HashSet<MemberKind> { MemberKind.Field, MemberKind.Event };
+
+        var page = _service.GetMembersPage(_testAssemblyPath, "Sherlock.MCP.Tests.TestSampleClass", kinds, options: null, offset: 0, pageSize: 50);
+
+        Assert.Equal(kinds, page.CountsByKind.Keys.ToHashSet());
+        Assert.All(page.Items, item => Assert.Contains(item.Kind, kinds));
+        Assert.All(page.Items.Where(i => i.Kind == MemberKind.Field), item => Assert.NotNull(item.Field));
+    }
+
+    [Fact]
+    public void GetMembersPage_SliceMatchesFullListing()
+    {
+        const string typeName = "Sherlock.MCP.Tests.TestSampleClass";
+        var all = _service.GetMembersPage(_testAssemblyPath, typeName, kinds: null, options: null, offset: 0, pageSize: int.MaxValue).Items;
+
+        var slice = _service.GetMembersPage(_testAssemblyPath, typeName, kinds: null, options: null, offset: 3, pageSize: 4);
+
+        Assert.Equal(all.Skip(3).Take(4).Select(i => i.Signature), slice.Items.Select(i => i.Signature));
+    }
 }

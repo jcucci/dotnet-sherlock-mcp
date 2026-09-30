@@ -15,7 +15,19 @@
       "version": "2.13.0",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "environmentVariables": [
+        {
+          "name": "SHERLOCK_TOOL_PROFILE",
+          "description": "Tool profile to expose: 'full' (default, every tool) or 'core' (16 essential tools).",
+          "isRequired": false,
+          "default": "full",
+          "choices": [
+            "full",
+            "core"
+          ]
+        }
+      ]
     }
   ]
 }

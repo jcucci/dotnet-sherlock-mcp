@@ -79,6 +79,20 @@ public class ElicitationTests
     }
 
     [Fact]
+    public void GetTypeMembers_AmbiguousName_IsNotCached()
+    {
+        var cache = new InMemoryToolResponseCache();
+        var middleware = new ToolMiddleware(cache, new NoopTelemetry(), new RuntimeOptions());
+        var memberAnalysis = new MemberAnalysisService();
+
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMembers(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget").Text());
+        AssertAmbiguousError(MemberAnalysisTools.GetTypeMembers(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, "DuplicateWidget").Text());
+
+        var resolved = JsonDocument.Parse(MemberAnalysisTools.GetTypeMembers(memberAnalysis, Contexts, middleware, new RuntimeOptions(), TestAssemblyPath, Candidates[0]).Text());
+        Assert.NotEqual("error", resolved.RootElement.GetProperty("kind").GetString());
+    }
+
+    [Fact]
     public void GetTypeMethods_AmbiguousName_IsNotCached()
     {
         var cache = new InMemoryToolResponseCache();
