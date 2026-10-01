@@ -25,6 +25,8 @@ public sealed record AssemblyHandle(string Id, IReadOnlyList<AssemblyFileStamp> 
     public IReadOnlyList<string> AdditionalAssemblies => Files.Skip(1).Select(file => file.Path).ToArray();
 
     public IReadOnlyList<string> ChangedFiles => Files.Where(file => !file.IsCurrent()).Select(file => file.Path).ToArray();
+
+    public IReadOnlyList<string> MissingFiles => Files.Where(file => AssemblyFileStamp.Read(file.Path) is null).Select(file => file.Path).ToArray();
 }
 
 public enum HandleStatus

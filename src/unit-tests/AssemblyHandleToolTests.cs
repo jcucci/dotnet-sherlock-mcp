@@ -110,6 +110,23 @@ public sealed class AssemblyHandleToolTests : IDisposable
         Assert.Equal([Path.GetFullPath(dependency)], recommended.GetProperty("additionalAssemblies").EnumerateArray().Select(e => e.GetString()));
     }
 
+    [Fact]
+    public void Tool_HandleWithDeletedFile_ListsMissingFilesInsteadOfReopenParams()
+    {
+        var primary = CopyAssembly("Primary.dll");
+        var dependency = CopyAssembly("Dependency.dll");
+        var handle = Open(primary, dependency);
+        File.Delete(dependency);
+
+        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: "X", assemblyHandle: handle).Text();
+
+        using var doc = JsonDocument.Parse(result);
+        Assert.Equal("StaleAssemblyHandle", doc.RootElement.GetProperty("code").GetString());
+        Assert.False(doc.RootElement.TryGetProperty("recommendedParams", out _));
+        Assert.Equal([Path.GetFullPath(dependency)], doc.RootElement.GetProperty("details").GetProperty("missingFiles").EnumerateArray().Select(e => e.GetString()));
+        Assert.Contains("find_assembly_by_file_name", doc.RootElement.GetProperty("alternativeTools").EnumerateArray().Select(e => e.GetString()));
+    }
+
     [Theory]
     [InlineData(null, null)]
     [InlineData("  ", "")]

@@ -209,6 +209,28 @@ public sealed class AssemblyHandleRegistryTests : IDisposable
     }
 
     [Fact]
+    public void Resolve_PersistingUsage_EnforcesLoweredCapAndKeepsResolvedHandle()
+    {
+        var time = new ManualTimeProvider();
+        var options = new RuntimeOptions { StateDirectory = _stateDirectory };
+        var registry = new AssemblyHandleRegistry(options, new NoopTelemetry(), time);
+        var oldest = registry.Open(CopyAssembly("Oldest.dll"));
+        time.Advance();
+        var middle = registry.Open(CopyAssembly("Middle.dll"));
+        time.Advance();
+        var newest = registry.Open(CopyAssembly("Newest.dll"));
+
+        options.MaxAssemblyHandles = 2;
+        time.Advance(TimeSpan.FromHours(2));
+        new AssemblyHandleRegistry(options, new NoopTelemetry(), time).Resolve(oldest.Id);
+
+        var fresh = Registry();
+        Assert.Equal(HandleStatus.Resolved, fresh.Resolve(oldest.Id).Status);
+        Assert.Equal(HandleStatus.Unknown, fresh.Resolve(middle.Id).Status);
+        Assert.Equal(HandleStatus.Resolved, fresh.Resolve(newest.Id).Status);
+    }
+
+    [Fact]
     public void Open_MissingFile_Throws() =>
         Assert.Throws<FileNotFoundException>(() => Registry().Open(Path.Combine(_workDirectory, "missing.dll")));
 

@@ -56,7 +56,7 @@ Failed calls return `isError: true` with JSON guidance. Follow it rather than re
 - Response too large: lower `maxItems`, keep `projection='summary'`, page with `continuationToken`.
 - `DependencyNotFound`: point at the build-output copy of the assembly so its dependencies sit beside it.
 - Results look stale after a rebuild: pass `noCache=true`.
-- `StaleAssemblyHandle` (the assembly was rebuilt) or `UnknownAssemblyHandle`: call `open_assembly` again, with the paths in `recommendedParams` when given.
+- `StaleAssemblyHandle` or `UnknownAssemblyHandle`: call `open_assembly` again, with the paths in `recommendedParams` when given. If the error lists `details.missingFiles`, the assembly was moved or deleted: locate it again first.
 
 Use full type names (`Namespace.Type`, nested as `Outer+Inner`) whenever you know them.
 

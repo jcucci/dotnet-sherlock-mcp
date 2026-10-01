@@ -43,10 +43,20 @@ public static class ToolErrors
             alternativeTools: ["open_assembly"]);
 
     public static string StaleAssemblyHandle(AssemblyHandle handle) =>
+        handle.MissingFiles is { Count: > 0 } missingFiles
+            ? JsonHelpers.ErrorWithGuidance(
+                "StaleAssemblyHandle",
+                $"Assembly handle {handle.Id} is stale: {string.Join(", ", missingFiles)} no longer exists",
+                suggestion: "The assembly was moved or deleted. Locate its current path, then call open_assembly with it.",
+                alternativeTools: [.. AssemblyDiscoveryTools, "open_assembly"],
+                details: new { missingFiles })
+            : RebuiltAssemblyHandle(handle);
+
+    private static string RebuiltAssemblyHandle(AssemblyHandle handle) =>
         JsonHelpers.ErrorWithGuidance(
             "StaleAssemblyHandle",
-            $"Assembly handle {handle.Id} is stale: {string.Join(", ", handle.ChangedFiles)} changed or was removed since it was opened",
-            suggestion: "The assembly was rebuilt or moved. Call open_assembly again with recommendedParams to get a fresh handle.",
+            $"Assembly handle {handle.Id} is stale: {string.Join(", ", handle.ChangedFiles)} changed since it was opened",
+            suggestion: "The assembly was rebuilt. Call open_assembly again with recommendedParams to get a fresh handle.",
             alternativeTools: ["open_assembly"],
             recommendedParams: new { assemblyPath = handle.AssemblyPath, additionalAssemblies = handle.AdditionalAssemblies });
 

@@ -54,7 +54,6 @@ public sealed class AssemblyHandleRegistry : IAssemblyHandleRegistry
         {
             MergeFromDisk();
             _handles[handle.Id] = handle;
-            EvictOverCapacity();
             Persist();
         }
 
@@ -161,6 +160,7 @@ public sealed class AssemblyHandleRegistry : IAssemblyHandleRegistry
 
     private void Persist()
     {
+        EvictOverCapacity();
         var store = new HandleStore(StoreVersion, _handles.Values
             .OrderByDescending(handle => handle.LastUsedUtc)
             .Select(handle => new StoredHandle(
