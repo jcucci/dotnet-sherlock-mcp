@@ -91,7 +91,8 @@ public class WorkflowPromptsTests
 
         Assert.Contains("assemblyPath '/libs/a.dll'", text);
         Assert.Contains("typeName 'Ns.Widget'", text);
-        Assert.Contains("includeNonPublic=true", text);
+        Assert.Contains("analysisDepth='il' and includeNonPublic=true", text);
+        Assert.Contains("truncated=true", text);
     }
 
     [Fact]
@@ -101,6 +102,9 @@ public class WorkflowPromptsTests
 
         Assert.Contains("Ns.Widget.Render", text);
         Assert.Contains("includeNonPublic=true", text);
+        Assert.Contains("get_Render and set_Render", text);
+        Assert.Contains("truncated=true", text);
+        Assert.DoesNotContain("which overload each one calls", text);
         Assert.Contains("additionalAssemblies ['/libs/b.dll', '/libs/c.dll']", text);
         Assert.DoesNotContain("additionalAssemblies", WorkflowPrompts.WhoCalls("/libs/a.dll", "Ns.Widget", "Render"));
     }
