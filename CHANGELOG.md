@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The first launch of a new version through the Claude Code plugin no longer fails to connect. On a fresh download `dnx` printed "Skipping NuGet package signature verification." to stdout, corrupting the MCP stream, so the client dropped the connection until a manual reconnect. The plugin now runs `dnx -v q --yes Sherlock.MCP.Server@<version>` (options before the package id, since later arguments are forwarded to the server), and the README's `dnx` examples do the same.
+
 ## [2.14.0] - 2026-10-01
 
 ### Added

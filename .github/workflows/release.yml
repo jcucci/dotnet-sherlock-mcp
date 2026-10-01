@@ -38,7 +38,7 @@ jobs:
           PROJECT_VERSION=$(sed -n -E 's|.*<Version>([^<]*)</Version>.*|\1|p' src/server/Sherlock.MCP.Server.csproj)
           PLUGIN_VERSION=$(jq -r '.version' plugins/sherlock/.claude-plugin/plugin.json)
           MARKETPLACE_VERSION=$(jq -r '.plugins[] | select(.name == "sherlock") | .version' .claude-plugin/marketplace.json)
-          PLUGIN_DNX_VERSION=$(jq -r '.sherlock.args[0]' plugins/sherlock/.mcp.json | sed 's/.*@//')
+          PLUGIN_DNX_VERSION=$(jq -r '.sherlock.args[-1]' plugins/sherlock/.mcp.json | sed 's/.*@//')
           echo "Tag version: $VERSION"
           FAILED=0
           check() {
