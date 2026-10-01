@@ -31,6 +31,7 @@
     <PackageProjectUrl>https://github.com/jcucci/dotnet-sherlock-mcp</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>mcp,model-context-protocol,dotnet,assembly-analysis,reflection</PackageTags>
+    <NoWarn Condition="'$(RuntimeIdentifier)' == ''">$(NoWarn);NU5118</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
