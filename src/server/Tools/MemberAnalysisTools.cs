@@ -2,6 +2,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.MemberAnalysis;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Schemas;
@@ -22,8 +23,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -45,8 +48,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -196,8 +201,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Member kinds to include, csv from: method|property|field|event|constructor. Default: all kinds.")] string? kinds = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
@@ -220,8 +227,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -438,11 +447,13 @@ public static class MemberAnalysisTools
     [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via get_type_members or search_members.")]
     public static string GetMemberAttributes(
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")]
         string typeName,
         [Description("Member kind: method|property|field|event|constructor")] string memberKind,
         [Description("Member name (for methods, the simple name; first match used)")] string memberName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
@@ -450,8 +461,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
@@ -489,10 +502,12 @@ public static class MemberAnalysisTools
     [Description("Gets custom attributes for a specific parameter of a method or constructor. Use when you need to inspect parameter-level attributes like [FromBody], [Required], etc.")]
     public static string GetParameterAttributes(
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Method or constructor name")] string methodName,
         [Description("Parameter index (0-based)")] int parameterIndex,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
@@ -500,8 +515,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
@@ -541,8 +558,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -563,8 +582,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -682,8 +703,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -704,8 +727,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -811,8 +836,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -833,8 +860,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.events.salt",
@@ -939,8 +968,10 @@ public static class MemberAnalysisTools
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -961,8 +992,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
@@ -1069,8 +1102,10 @@ public static class MemberAnalysisTools
         IMemberAnalysisService memberAnalysisService,
         IInspectionContextProvider contexts,
         ToolMiddleware middleware,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Include public members (default: true)")] bool includePublic = true,
         [Description("Include non-public members (default: false)")] bool includeNonPublic = false,
         [Description("Include static members (default: true)")] bool includeStatic = true,
@@ -1082,8 +1117,10 @@ public static class MemberAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.all",

@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 37 specialized tools for .NET assembly analysis, with an optional 18-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 38 specialized tools for .NET assembly analysis, with an optional 19-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -141,8 +141,8 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 37 | Every tool, including the deprecated per-kind member tools |
-| `core` | 18 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) |
+| `full` (default) | 38 | Every tool, including the deprecated per-kind member tools |
+| `core` | 19 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -261,6 +261,7 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 > **Tool names:** MCP clients call these tools in `snake_case` — `GetTypeMembers` → `get_type_members`, `SearchMembers` → `search_members`, and so on. The PascalCase names used throughout this README match the underlying C# methods and the tool descriptions your client displays.
 
 ### Assembly Discovery & Analysis
+- **`OpenAssembly`**: Returns a short `asm_…` handle to pass as `assemblyHandle` instead of `assemblyPath` on any tool that takes an assembly. The handle carries `additionalAssemblies` too, persists across server restarts (in `handles.json` under `SHERLOCK_STATE_DIR`, default the user's local app-data `sherlock` folder) and is pinned to the current build: after a rebuild, calls fail with `StaleAssemblyHandle` until it is reopened
 - **`AnalyzeAssembly`**: Complete assembly overview with public types and metadata
 - **`GetAssemblyInfo`**: Assembly-level metadata — identity/version, target framework, and referenced assemblies (`projection=full` adds all assembly attributes)
 - **`FindAssemblyByClassName`**: Locate assemblies declaring a public type by simple, full or nested name; skips `obj/`, `ref/`, `refint/`, `node_modules/`, `packages/`, `TestResults/` and dot-directories, and ranks `bin/` matches first
@@ -351,6 +352,7 @@ Most enumerating tools default to a lean **`summary`** projection and let you op
 * `analysisDepth` (`signatures` | `il`): `FindReferencesTo` only. `signatures` (default) scans member declarations; `il` additionally scans method bodies for inbound callers (slower).
 * `additionalAssemblies` (string[]): widen the search scope for `GetTypeHierarchy` and the reverse-lookup tools. `GetTypeHierarchy.derivedTypes` stays `null` until you pass this.
 * `noCache` (bool): bypass the response cache for a single call when you suspect stale results.
+* `assemblyHandle` (string): accepted by every tool that takes `assemblyPath`, as an alternative to it (pass one, not both). Get one from `open_assembly`; it also supplies the `additionalAssemblies` it was opened with, and any you pass explicitly are added to them.
 
 **Type Resolution:**
 * Supports full names (`Namespace.Type`), simple names (`Type`), and nested types (`Outer+Inner`)

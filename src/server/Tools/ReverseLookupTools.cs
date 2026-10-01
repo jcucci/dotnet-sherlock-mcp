@@ -3,6 +3,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
@@ -20,8 +21,10 @@ public static class ReverseLookupTools
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to find implementers of. Interface name (e.g., 'IDisposable') or base class name (e.g., 'Stream'). Simple name, full name, or generic variants accepted.")] string typeName,
+        [Description("Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public types (default: false)")] bool includeNonPublic = false,
@@ -35,6 +38,11 @@ public static class ReverseLookupTools
     {
         try
         {
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
@@ -114,8 +122,10 @@ public static class ReverseLookupTools
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Return type to search for. Simple name, full name, or open-generic form accepted.")] string typeName,
+        [Description("Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public methods and types (default: false)")] bool includeNonPublic = false,
@@ -129,6 +139,11 @@ public static class ReverseLookupTools
     {
         try
         {
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
@@ -214,8 +229,10 @@ public static class ReverseLookupTools
         IReverseLookupService reverseLookup,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type to find extension methods for. Simple name, full name, or open-generic form accepted (e.g., 'IEnumerable<>').")] string typeName,
+        [Description("Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public methods and types (default: false)")] bool includeNonPublic = false,
@@ -229,6 +246,11 @@ public static class ReverseLookupTools
     {
         try
         {
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return ToolResponse.Result(scope.Error);
 
@@ -314,8 +336,10 @@ public static class ReverseLookupTools
         IIlAnalysisService ilAnalysis,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the primary .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type to search references to. Simple name, full name, or open-generic form accepted.")] string typeName,
+        [Description("Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public members and types (default: false)")] bool includeNonPublic = false,
@@ -330,6 +354,11 @@ public static class ReverseLookupTools
     {
         try
         {
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
             var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
             if (scope.Error != null) return ToolResponse.Result(scope.Error);
 

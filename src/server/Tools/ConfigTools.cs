@@ -19,7 +19,8 @@ public static class ConfigTools
             cacheTtlSeconds = options.CacheTtlSeconds,
             includeNonPublicByDefault = options.IncludeNonPublicByDefault,
             maxLoadedAssemblies = options.MaxLoadedAssemblies,
-            maxCachedResponses = options.MaxCachedResponses
+            maxCachedResponses = options.MaxCachedResponses,
+            maxAssemblyHandles = options.MaxAssemblyHandles
         };
 
         return JsonHelpers.Envelope("runtime.options", result);
@@ -35,12 +36,14 @@ public static class ConfigTools
         [Description("Add search roots (absolute paths)")] string[]? addSearchRoots = null,
         [Description("Remove search roots (absolute paths)")] string[]? removeSearchRoots = null,
         [Description("Maximum assemblies kept loaded in the inspection cache")] int? maxLoadedAssemblies = null,
-        [Description("Maximum cached tool responses kept in memory")] int? maxCachedResponses = null)
+        [Description("Maximum cached tool responses kept in memory")] int? maxCachedResponses = null,
+        [Description("Maximum assembly handles kept in the on-disk handle registry")] int? maxAssemblyHandles = null)
     {
         if (defaultMaxItems is > 0) options.DefaultMaxItems = defaultMaxItems.Value;
         if (cacheTtlSeconds is > 0) options.CacheTtlSeconds = cacheTtlSeconds.Value;
         if (maxLoadedAssemblies is > 0) options.MaxLoadedAssemblies = maxLoadedAssemblies.Value;
         if (maxCachedResponses is > 0) options.MaxCachedResponses = maxCachedResponses.Value;
+        if (maxAssemblyHandles is > 0) options.MaxAssemblyHandles = maxAssemblyHandles.Value;
         if (includeNonPublicByDefault.HasValue) options.IncludeNonPublicByDefault = includeNonPublicByDefault.Value;
 
         if (addSearchRoots is { Length: > 0 })

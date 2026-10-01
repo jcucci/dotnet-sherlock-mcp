@@ -17,7 +17,12 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_WithoutScope_ReturnsNullDerivedTypes_AndNote()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample");
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample");
 
         Assert.DoesNotContain("\"error\"", result);
         var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
@@ -29,7 +34,12 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_WithScope_PopulatesDerivedTypes_AndNullNote()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample",
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
             additionalAssemblies: new[] { _testAssemblyPath });
 
         Assert.DoesNotContain("\"error\"", result);
@@ -52,7 +62,12 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_TypeNotFound_ReturnsError()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "NoSuchTypeXyz");
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "NoSuchTypeXyz");
 
         Assert.Contains("TypeNotFound", result);
     }
@@ -61,7 +76,12 @@ public class TypeHierarchyToolTests
     public void GetTypeHierarchy_MissingAdditionalAssembly_ReturnsError()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            _typeAnalysis, Contexts, _reverseLookup, _testAssemblyPath, "BaseSample",
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
             additionalAssemblies: new[] { "/tmp/does-not-exist.dll" });
 
         Assert.Contains("AssemblyNotFound", result);

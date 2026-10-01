@@ -9,7 +9,7 @@ namespace Sherlock.MCP.IntegrationTests;
 
 public class McpStdioProtocolTests
 {
-    private const int ExpectedToolCount = 37;
+    private const int ExpectedToolCount = 38;
 
     private const string CurrentProtocolVersion = "2026-07-28";
 
@@ -219,13 +219,16 @@ public class McpStdioProtocolTests
         // Discovery tools scan search roots for an unbounded set of assemblies, so they stay open-world.
         Assert.NotEqual(false, tools["find_assembly_by_class_name"].Annotations!.OpenWorldHint);
 
-        // The only tool that mutates server state.
-        var mutating = tools["update_runtime_options"];
-        Assert.NotEqual(true, mutating.Annotations!.ReadOnlyHint);
-        Assert.Equal(true, mutating.Annotations.IdempotentHint);
+        // The only tools that mutate server state: runtime options and the assembly handle registry.
+        string[] mutatingTools = ["open_assembly", "update_runtime_options"];
+        foreach (var name in mutatingTools)
+        {
+            Assert.NotEqual(true, tools[name].Annotations!.ReadOnlyHint);
+            Assert.Equal(true, tools[name].Annotations!.IdempotentHint);
+        }
 
         var readOnlyCount = tools.Values.Count(t => t.Annotations?.ReadOnlyHint == true);
-        Assert.Equal(ExpectedToolCount - 1, readOnlyCount);
+        Assert.Equal(ExpectedToolCount - mutatingTools.Length, readOnlyCount);
     }
 
     [Fact]
@@ -282,6 +285,49 @@ public class McpStdioProtocolTests
         var kinds = data.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("kind").GetString()).ToHashSet();
         Assert.Subset(new HashSet<string?> { "constructor", "property" }, kinds);
         Assert.False(string.IsNullOrEmpty(data.GetProperty("nextToken").GetString()));
+    }
+
+    [Fact]
+    public async Task Assembly_handle_works_across_calls_and_server_restarts()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var stateDirectory = Path.Combine(Path.GetTempPath(), "sherlock-e2e", Guid.NewGuid().ToString("N"));
+        var environment = new Dictionary<string, string?> { ["SHERLOCK_STATE_DIR"] = stateDirectory };
+        try
+        {
+            string handle;
+            await using (var client = await ConnectAsync(cts.Token, environment: environment))
+            {
+                var opened = await client.CallToolAsync(
+                    "open_assembly",
+                    new Dictionary<string, object?> { ["assemblyPath"] = typeof(string).Assembly.Location },
+                    cancellationToken: cts.Token);
+                Assert.NotEqual(true, opened.IsError);
+                Assert.NotNull(opened.StructuredContent);
+                handle = Envelope(opened).GetProperty("data").GetProperty("handle").GetString()!;
+            }
+
+            await using (var restarted = await ConnectAsync(cts.Token, environment: environment))
+            {
+                var result = await restarted.CallToolAsync(
+                    "get_type_members",
+                    new Dictionary<string, object?>
+                    {
+                        ["assemblyHandle"] = handle,
+                        ["typeName"] = "System.String",
+                        ["kinds"] = "property",
+                        ["maxItems"] = 5
+                    },
+                    cancellationToken: cts.Token);
+
+                Assert.NotEqual(true, result.IsError);
+                Assert.Equal("member.members", Envelope(result).GetProperty("kind").GetString());
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(stateDirectory, recursive: true); } catch (IOException) { }
+        }
     }
 
     [Fact]

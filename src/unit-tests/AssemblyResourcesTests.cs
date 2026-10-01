@@ -99,7 +99,13 @@ public class AssemblyResourcesTests
     public void SearchMembers_ReturnsDistinctTypeLinks_ThatResolve()
     {
         var result = SearchTools.SearchMembers(
-            _search, _middleware, _runtimeOptions, _testAssemblyPath, "Method", noCache: true);
+            _search,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            noCache: true);
 
         var links = result.Links();
         Assert.NotEmpty(links);
@@ -111,8 +117,8 @@ public class AssemblyResourcesTests
     [Fact]
     public void SearchMembers_CachedResponse_KeepsLinks()
     {
-        var first = SearchTools.SearchMembers(_search, _middleware, _runtimeOptions, _testAssemblyPath, "Method");
-        var second = SearchTools.SearchMembers(_search, _middleware, _runtimeOptions, _testAssemblyPath, "Method");
+        var first = SearchTools.SearchMembers(_search, _middleware, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, nameContains: "Method");
+        var second = SearchTools.SearchMembers(_search, _middleware, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, nameContains: "Method");
 
         Assert.Equal(first.Text(), second.Text());
         Assert.Equal(first.Links().Select(l => l.Uri), second.Links().Select(l => l.Uri));
@@ -123,7 +129,13 @@ public class AssemblyResourcesTests
     public void FindImplementationsOf_LinksEachImplementer()
     {
         var result = ReverseLookupTools.FindImplementationsOf(
-            _reverseLookup, _middleware, _runtimeOptions, _testAssemblyPath, "ISampleEventReader", noCache: true);
+            _reverseLookup,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "ISampleEventReader",
+            noCache: true);
 
         var resultCount = JsonDocument.Parse(result.Text()).RootElement.GetProperty("data").GetProperty("results")
             .GetArrayLength();
@@ -136,7 +148,7 @@ public class AssemblyResourcesTests
     [Fact]
     public void GetTypesFromAssembly_LinksEveryTypeOnThePage()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, _testAssemblyPath, maxItems: 5);
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5);
 
         var data = JsonDocument.Parse(result.Text()).RootElement.GetProperty("data");
         Assert.Equal(data.GetProperty("returnedTypeCount").GetInt32(), result.Links().Length);
@@ -147,7 +159,14 @@ public class AssemblyResourcesTests
     public void SearchMembers_NestedTypeInGenericOuter_LinksToItsOwnType()
     {
         var result = SearchTools.SearchMembers(
-            _search, _middleware, _runtimeOptions, _testAssemblyPath, "Linked", memberKinds: "method", noCache: true);
+            _search,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Linked",
+            memberKinds: "method",
+            noCache: true);
 
         var names = result.Links().Select(l => l.Name).ToHashSet();
         Assert.Equal(
@@ -176,7 +195,7 @@ public class AssemblyResourcesTests
     [Fact]
     public void GetTypesFromAssembly_GenericTypeLink_UsesMetadataNameWithoutExposingIt()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, _testAssemblyPath, maxItems: 1000, projection: "full");
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 1000, projection: "full");
 
         var metadataName = typeof(GenericOuter<>).FullName!;
         var link = Assert.Single(result.Links(), l => l.Name == metadataName);
@@ -190,7 +209,11 @@ public class AssemblyResourcesTests
         var dependency = typeof(TypeAnalysisService).Assembly.Location;
 
         var result = TypeAnalysisTools.GetTypesFromAssembly(
-            _typeAnalysis, _testAssemblyPath, maxItems: 5, additionalAssemblies: [dependency]);
+            _typeAnalysis,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            maxItems: 5,
+            additionalAssemblies: [dependency]);
 
         Assert.Equal("type.list", JsonDocument.Parse(result.Text()).RootElement.GetProperty("kind").GetString());
         Assert.Empty(result.Links());
@@ -200,7 +223,13 @@ public class AssemblyResourcesTests
     public void ErrorResponse_HasNoLinks()
     {
         var result = SearchTools.SearchMembers(
-            _search, _middleware, _runtimeOptions, _testAssemblyPath, "Method", memberKinds: "bogus");
+            _search,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            memberKinds: "bogus");
 
         Assert.Contains("\"error\"", result.Text());
         Assert.Empty(result.Links());

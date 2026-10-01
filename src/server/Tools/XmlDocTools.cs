@@ -1,6 +1,7 @@
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
@@ -16,8 +17,10 @@ public static class XmlDocTools
     public static string GetXmlDocsForType(
         IXmlDocService xmlDocs,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
@@ -25,7 +28,10 @@ public static class XmlDocTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
@@ -51,9 +57,11 @@ public static class XmlDocTools
     public static string GetXmlDocsForMember(
         IXmlDocService xmlDocs,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Member name (simple; if overloaded, first match used)")] string memberName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
@@ -61,7 +69,10 @@ public static class XmlDocTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             using var lease = contexts.Acquire(assemblyPath);
             var asm = lease.Assembly;
             var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;

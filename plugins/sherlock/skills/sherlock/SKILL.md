@@ -20,6 +20,8 @@ Every tool takes an assembly path. Find it rather than guessing:
 
 Never hardcode `bin/Debug/<tfm>/...`; the target framework and configuration vary.
 
+When you will make several calls against the same assembly, call `open_assembly` once and pass the returned `assemblyHandle` (a short `asm_…` id) instead of `assemblyPath`. The handle also carries any `additionalAssemblies` you opened it with.
+
 ## 2. Orient cheaply
 
 - `get_assembly_info` - identity, target framework, references.
@@ -54,6 +56,7 @@ Failed calls return `isError: true` with JSON guidance. Follow it rather than re
 - Response too large: lower `maxItems`, keep `projection='summary'`, page with `continuationToken`.
 - `DependencyNotFound`: point at the build-output copy of the assembly so its dependencies sit beside it.
 - Results look stale after a rebuild: pass `noCache=true`.
+- `StaleAssemblyHandle` (the assembly was rebuilt) or `UnknownAssemblyHandle`: call `open_assembly` again, with the paths in `recommendedParams` when given.
 
 Use full type names (`Namespace.Type`, nested as `Outer+Inner`) whenever you know them.
 

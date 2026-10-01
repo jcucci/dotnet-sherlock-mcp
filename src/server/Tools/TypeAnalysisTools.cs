@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ReverseLookup;
 using Sherlock.MCP.Runtime.Contracts.TypeAnalysis;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
@@ -20,7 +21,9 @@ public static class TypeAnalysisTools
     [Description("Lists public types from an assembly. Returns a lean summary ({ FullName, Namespace, Kind }) by default - use this to browse or search large assemblies. Pass projection='full' when you need attributes, inheritance, interfaces, generic params, and nested types; prefer get_type_info for a single type instead. Returns totalTypeCount for pagination planning; use maxItems=25 for very large assemblies.")]
     public static CallToolResult GetTypesFromAssembly(
         ITypeAnalysisService typeAnalysis,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath. The additionalAssemblies it was opened with are used as dependency folders, exactly as if passed here, so resource_link blocks are omitted.")] string? assemblyHandle = null,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
@@ -29,8 +32,11 @@ public static class TypeAnalysisTools
     {
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -108,16 +114,20 @@ public static class TypeAnalysisTools
     public static CallToolResult GetTypeInfo(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.Collections.Generic.List`1')")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
 
             var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
             if (info == null)
@@ -141,9 +151,11 @@ public static class TypeAnalysisTools
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
         IReverseLookupService reverseLookup,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")]
         string[]? additionalAssemblies = null,
         IProgress<ProgressNotificationValue>? progress = null,
@@ -154,7 +166,11 @@ public static class TypeAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
+            additionalAssemblies = target.AdditionalAssemblies;
             var hierarchy = typeAnalysis.GetTypeHierarchy(assemblyPath, typeName);
             if (hierarchy == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
 
@@ -184,16 +200,21 @@ public static class TypeAnalysisTools
     public static string GetGenericTypeInfo(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             var genericInfo = typeAnalysis.GetGenericTypeInfo(assemblyPath, typeName);
             if (genericInfo == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             return JsonHelpers.Envelope("type.generic", genericInfo);
@@ -213,16 +234,21 @@ public static class TypeAnalysisTools
     public static string GetTypeAttributes(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             var lookup = typeAnalysis.GetTypeAttributes(assemblyPath, typeName);
             if (lookup == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             var (typeFullName, attributes) = lookup.Value;
@@ -243,16 +269,21 @@ public static class TypeAnalysisTools
     public static string GetNestedTypes(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name")]
         string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath)) return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
             var lookup = typeAnalysis.GetNestedTypes(assemblyPath, typeName);
             if (lookup == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
             var (typeFullName, nested) = lookup.Value;

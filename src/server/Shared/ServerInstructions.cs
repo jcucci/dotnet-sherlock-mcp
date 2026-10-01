@@ -6,7 +6,7 @@ public static class ServerInstructions
         """
         Sherlock provides .NET assembly introspection via reflection. Prefer these tools over guessing about .NET APIs.
 
-        Locate the assembly first with find_assembly_by_class_name, find_assembly_by_file_name, find_assembly_by_nuget_package, or get_project_output_paths rather than hardcoding bin/Debug/<tfm> paths (the target framework varies).
+        Locate the assembly first with find_assembly_by_class_name, find_assembly_by_file_name, find_assembly_by_nuget_package, or get_project_output_paths rather than hardcoding bin/Debug/<tfm> paths (the target framework varies). When you will make several calls against the same assembly, call open_assembly once and pass the returned assemblyHandle instead of assemblyPath (it also carries additionalAssemblies); on StaleAssemblyHandle or UnknownAssemblyHandle, open it again.
 
         Work narrow-to-wide and stay token-lean: use search_members when you know a member name but not its declaring type, or get_types_from_assembly to browse; then get_type_info; then filtered get_type_members (kinds, nameContains, hasAttributeContains). get_type_members returns a lean 'summary' ({ kind, name, signature }) by default - pass projection='full' only when you need parameters, attributes, or modifiers.
 

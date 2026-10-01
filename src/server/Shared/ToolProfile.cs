@@ -11,6 +11,7 @@ public sealed class ToolProfile
         "find_assembly_by_file_name",
         "find_assembly_by_nuget_package",
         "get_project_output_paths",
+        "open_assembly",
         "get_assembly_info",
         "get_types_from_assembly",
         "get_type_info",

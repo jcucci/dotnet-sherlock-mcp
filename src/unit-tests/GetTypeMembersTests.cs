@@ -167,8 +167,13 @@ public class GetTypeMembersTests
         string? continuationToken = null,
         string projection = "summary") =>
         MemberAnalysisTools.GetTypeMembers(
-            _service, _contexts, _middleware, _options,
-            TestAssemblyPath, typeName ?? SampleType,
+            _service,
+            _contexts,
+            _middleware,
+            _options,
+            TestHandles.Registry,
+            assemblyPath: TestAssemblyPath,
+            typeName: typeName ?? SampleType,
             kinds: kinds,
             includeNonPublic: includeNonPublic,
             nameContains: nameContains,
