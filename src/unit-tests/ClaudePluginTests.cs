@@ -12,7 +12,7 @@ public class ClaudePluginTests
     private static readonly string PluginRoot = Path.Combine(RepoRoot, "plugins", "sherlock");
     private static readonly string SkillText = File.ReadAllText(Path.Combine(PluginRoot, "skills", "sherlock", "SKILL.md"));
 
-    private static readonly Regex ToolLikeToken = new(@"\b(?:get|find|search|analyze|resolve|update)_[a-z_]+(?![a-z_*])", RegexOptions.Compiled);
+    private static readonly Regex ToolLikeToken = new(@"\b(?:get|find|search|analyze|resolve|update|decompile)_[a-z_]+(?![a-z_*])", RegexOptions.Compiled);
 
     [Fact]
     public void Skill_HasNameAndDescriptionFrontmatter()

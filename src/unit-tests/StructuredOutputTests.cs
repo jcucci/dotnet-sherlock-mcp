@@ -5,6 +5,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
+using Sherlock.MCP.Runtime.Decompilation;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Middleware;
@@ -31,6 +32,7 @@ public class StructuredOutputTests
         nameof(MemberAnalysisTools.GetTypeMembers),
         nameof(ReflectionTools.GetAssemblyInfo),
         nameof(IlAnalysisTools.GetMethodCalls),
+        nameof(DecompilationTools.DecompileMember),
         nameof(ReverseLookupTools.FindImplementationsOf),
         nameof(ReverseLookupTools.FindMethodsReturning),
         nameof(ReverseLookupTools.FindExtensionMethodsFor),
@@ -58,6 +60,7 @@ public class StructuredOutputTests
         { nameof(ReflectionTools.GetAssemblyInfo), "full" },
         { nameof(IlAnalysisTools.GetMethodCalls), "summary" },
         { nameof(IlAnalysisTools.GetMethodCalls), "full" },
+        { nameof(DecompilationTools.DecompileMember), "summary" },
         { nameof(ReverseLookupTools.FindImplementationsOf), "summary" },
         { nameof(ReverseLookupTools.FindImplementationsOf), "full" },
         { nameof(ReverseLookupTools.FindMethodsReturning), "summary" },
@@ -157,6 +160,8 @@ public class StructuredOutputTests
             ReflectionTools.GetAssemblyInfo(Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, projection: projection),
         nameof(IlAnalysisTools.GetMethodCalls) =>
             IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, methodName: nameof(IlSampleSubject.DoWork), projection: projection, noCache: true),
+        nameof(DecompilationTools.DecompileMember) =>
+            DecompilationTools.DecompileMember(new DecompilerService(), Contexts, Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, memberName: nameof(IlSampleSubject.Helper), noCache: true),
         nameof(ReverseLookupTools.FindImplementationsOf) =>
             ReverseLookupTools.FindImplementationsOf(ReverseLookup, Middleware, Options, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "ISampleEventReader", projection: projection, noCache: true),
         nameof(ReverseLookupTools.FindMethodsReturning) =>
