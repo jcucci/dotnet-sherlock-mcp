@@ -62,7 +62,7 @@ public class ClaudePluginTests
 
         Assert.Equal(projectVersion, plugin.RootElement.GetProperty("version").GetString());
         Assert.Equal(projectVersion, marketplaceEntry.GetProperty("version").GetString());
-        Assert.Equal($"Sherlock.MCP.Server@{projectVersion}", ReadServerEntry().GetProperty("args")[0].GetString());
+        Assert.Equal($"Sherlock.MCP.Server@{projectVersion}", ReadServerArgs().Last());
     }
 
     [Fact]
@@ -72,6 +72,18 @@ public class ClaudePluginTests
 
         Assert.Equal($"${{{ToolProfile.EnvironmentVariable}:-core}}", profile);
     }
+
+    [Fact]
+    public void McpConfig_PassesDnxOptionsBeforePackageId()
+    {
+        var args = ReadServerArgs();
+
+        Assert.StartsWith("Sherlock.MCP.Server@", args[^1]);
+        Assert.Equal(["-v", "q", "--yes"], args[..^1]);
+    }
+
+    private static string[] ReadServerArgs() =>
+        ReadServerEntry().GetProperty("args").EnumerateArray().Select(a => a.GetString()!).ToArray();
 
     private static JsonElement ReadServerEntry()
     {

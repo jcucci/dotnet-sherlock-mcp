@@ -38,10 +38,10 @@ This tool is essential for developers who want to harness LLM capabilities for:
 With the .NET 10 SDK, `dnx` downloads the package from NuGet and runs it directly — no install step:
 
 ```bash
-dnx Sherlock.MCP.Server@2.14.0 --yes
+dnx -v q --yes Sherlock.MCP.Server@2.14.0
 ```
 
-`--yes` skips the interactive confirmation prompt, which an MCP client launching the server over stdio can't answer. Pinning the version keeps launches reproducible; bump it when you want to upgrade. The package is published with the `McpServer` package type, so it is also listed as an MCP server on NuGet.org.
+`--yes` skips the interactive confirmation prompt, which an MCP client launching the server over stdio can't answer. `-v q` stops `dnx` from printing a "Skipping NuGet package signature verification." notice to stdout the first time it downloads a version, which would otherwise corrupt the MCP stream and fail that first connection. Both are `dnx` options, so they must come before the package id; anything after it is passed to the server. Pinning the version keeps launches reproducible; bump it when you want to upgrade. The package is published with the `McpServer` package type, so it is also listed as an MCP server on NuGet.org.
 
 ### Install as a global tool
 
@@ -101,7 +101,7 @@ Teammates still need the .NET 10 SDK on their `PATH` for `dnx`.
 - Claude Code:
 
 ```bash
-claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.14.0 --yes
+claude mcp add sherlock -- dnx -v q --yes Sherlock.MCP.Server@2.14.0
 ```
 
 - VS Code (`.vscode/mcp.json`):
@@ -112,7 +112,7 @@ claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.14.0 --yes
     "sherlock": {
       "type": "stdio",
       "command": "dnx",
-      "args": ["Sherlock.MCP.Server@2.14.0", "--yes"]
+      "args": ["-v", "q", "--yes", "Sherlock.MCP.Server@2.14.0"]
     }
   }
 }
