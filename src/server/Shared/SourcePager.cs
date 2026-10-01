@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Sherlock.MCP.Server.Shared;
@@ -7,6 +8,7 @@ public static class SourcePager
     public const int DefaultMaxLines = 400;
     public const int MaxLinesLimit = 5000;
     public const int MaxLineLength = 2000;
+    public const int PageCharacterBudget = ResponseSizeHelper.MaxResponseSize - 10_000;
 
     public static bool TryReadOffset(string? continuationToken, string salt, out int offset)
     {
@@ -25,7 +27,7 @@ public static class SourcePager
         if (offset > 0 && offset >= lines.Length)
             return InvalidToken();
 
-        var page = lines.Skip(offset).Take(maxLines).ToArray();
+        var page = TakePage(lines, offset, maxLines);
         var clippedLines = page.Count(line => line.Clipped);
         var nextOffset = offset + page.Length;
         var truncated = nextOffset < lines.Length;
@@ -48,4 +50,18 @@ public static class SourcePager
         line.Length <= MaxLineLength
             ? (line, false)
             : ($"{line[..MaxLineLength]} /* {line.Length - MaxLineLength} more characters clipped */", true);
+
+    private static (string Text, bool Clipped)[] TakePage((string Text, bool Clipped)[] lines, int offset, int maxLines)
+    {
+        var page = new List<(string Text, bool Clipped)>();
+        var used = 0;
+        foreach (var line in lines.Skip(offset).Take(maxLines))
+        {
+            var cost = JsonSerializer.Serialize(line.Text, JsonHelpers.DefaultOptions).Length;
+            if (page.Count > 0 && used + cost > PageCharacterBudget) break;
+            page.Add(line);
+            used += cost;
+        }
+        return page.ToArray();
+    }
 }

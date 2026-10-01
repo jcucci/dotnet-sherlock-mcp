@@ -111,6 +111,52 @@ public class DecompilationToolsTests
     }
 
     [Fact]
+    public void SourcePager_KeepsPagesWithinTheResponseBudget()
+    {
+        var lines = Enumerable.Range(0, 200).Select(i => $"{i:D3}:".PadRight(SourcePager.MaxLineLength, 'x')).ToArray();
+        var envelope = JsonHelpers.Envelope("decompile.type", new { typeName = "T", source = string.Join('\n', lines) });
+
+        var pages = new List<string>();
+        var offset = 0;
+        while (true)
+        {
+            var json = SourcePager.Page(envelope, offset, maxLines: SourcePager.MaxLinesLimit, salt: "s", toolName: "decompile_type");
+            Assert.True(json.Length <= ResponseSizeHelper.MaxResponseSize, $"page of {json.Length} characters");
+            var data = Data(json);
+            Assert.True(data.GetProperty("lineCount").GetInt32() > 0);
+            pages.Add(data.GetProperty("source").GetString()!);
+            if (!data.GetProperty("truncated").GetBoolean()) break;
+            offset += data.GetProperty("lineCount").GetInt32();
+        }
+
+        Assert.True(pages.Count > 1);
+        Assert.Equal(string.Join('\n', lines), string.Join('\n', pages));
+    }
+
+    [Fact]
+    public void DecompileMember_UsesAdditionalAssembliesAsDependencyScope()
+    {
+        var dependency = typeof(JsonDocument).Assembly.Location;
+
+        var json = DecompilationTools.DecompileMember(
+            new DecompilerService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry,
+            typeName: SubjectName, memberName: nameof(DecompileSubject.Total), assemblyPath: TestAssemblyPath,
+            additionalAssemblies: [dependency]).Text();
+
+        Assert.Contains("foreach", Data(json).GetProperty("source").GetString());
+    }
+
+    [Fact]
+    public void DecompileType_MissingAdditionalAssemblyReturnsAssemblyNotFound()
+    {
+        using var doc = JsonDocument.Parse(DecompilationTools.DecompileType(
+            new DecompilerService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry,
+            typeName: SubjectName, assemblyPath: TestAssemblyPath, additionalAssemblies: ["/no/such/dependency.dll"]));
+
+        Assert.Equal("AssemblyNotFound", doc.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
     public void SourcePager_ClipsLinesLongerThanTheLimit()
     {
         var longLine = new string('x', SourcePager.MaxLineLength * 100);

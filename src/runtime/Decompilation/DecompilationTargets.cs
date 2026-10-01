@@ -53,7 +53,7 @@ public static class DecompilationTargets
     private static MemberInfo[] Candidates(Type type, string memberName, BindingFlags flags, StringComparison comparison)
     {
         if (IsStaticConstructorName(memberName))
-            return Safe(() => type.TypeInitializer) is { } cctor ? [cctor] : [];
+            return Safe(() => type.TypeInitializer) is { } cctor && (flags.HasFlag(BindingFlags.NonPublic) || cctor.IsPublic) ? [cctor] : [];
         if (IsInstanceConstructorName(memberName))
             return Safe(() => type.GetConstructors(flags))?.Where(c => !c.IsStatic).ToArray<MemberInfo>() ?? [];
 

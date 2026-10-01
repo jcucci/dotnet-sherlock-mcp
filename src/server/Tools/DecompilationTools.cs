@@ -31,6 +31,7 @@ public static class DecompilationTools
         [Description("Comma-separated parameter types selecting one overload, e.g. 'string,int' or 'System.String,System.Int32'. Empty string selects the parameterless overload. Omit to return every overload.")] string? parameterTypes = null,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
+        [Description("Optional dependency assembly paths; their folders are searched when resolving referenced types (added to the handle's)")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type/member matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public members (default: true)")] bool includeNonPublic = true,
         [Description("Maximum source lines per page (default: 400, max: 5000)")] int maxLines = SourcePager.DefaultMaxLines,
@@ -43,7 +44,7 @@ public static class DecompilationTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
             if (target.Error != null)
                 return ToolResponse.Result(target.Error);
             assemblyPath = target.Path;
@@ -53,17 +54,19 @@ public static class DecompilationTools
                 return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "memberName is required"));
             if (MaxLinesError(maxLines) is { } maxLinesError)
                 return ToolResponse.Result(maxLinesError);
+            var scope = DependencyScope.Build(assemblyPath, target.AdditionalAssemblies);
+            if (scope.Error != null)
+                return ToolResponse.Result(scope.Error);
 
-            var stamp = CacheKeyHelper.FileStamp(assemblyPath);
             var cacheKey = CacheKeyHelper.Build(
-                "decompile.member", stamp, typeName, memberName, parameterTypes ?? AllOverloads, caseSensitive, includeNonPublic);
+                "decompile.member", scope.Stamp, typeName, memberName, parameterTypes ?? AllOverloads, caseSensitive, includeNonPublic);
             var salt = TokenHelper.MakeSalt(cacheKey);
             if (!SourcePager.TryReadOffset(continuationToken, salt, out var offset))
                 return ToolResponse.Result(SourcePager.InvalidToken());
 
             var envelope = middleware.Execute(cacheKey, () =>
             {
-                using var lease = contexts.Acquire(assemblyPath);
+                using var lease = contexts.Acquire(assemblyPath, scope.SearchDirectories);
                 var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
                 var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
                 if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
@@ -77,7 +80,8 @@ public static class DecompilationTools
                     : DecompilationTargets.SelectMembers(type, memberName, parameterTypes, comparison, includeNonPublic);
                 if (members.Count == 0) return OverloadNotFound(type, memberName, parameterTypes!, named);
 
-                var sources = decompiler.DecompileMembers(assemblyPath, members.Select(m => m.MetadataToken).ToArray(), cancellationToken);
+                var sources = decompiler.DecompileMembers(
+                    assemblyPath, members.Select(m => m.MetadataToken).ToArray(), scope.SearchDirectories, cancellationToken);
                 return JsonHelpers.Envelope("decompile.member", new
                 {
                     typeName = type.FullName ?? type.Name,
@@ -109,6 +113,7 @@ public static class DecompilationTools
         [Description("Type to decompile. Prefer the full name; use Outer+Inner for nested types.")] string typeName,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
+        [Description("Optional dependency assembly paths; their folders are searched when resolving referenced types (added to the handle's)")] string[]? additionalAssemblies = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Maximum source lines per page (default: 400, max: 5000)")] int maxLines = SourcePager.DefaultMaxLines,
         [Description("Continuation token from a previous page")] string? continuationToken = null,
@@ -120,7 +125,7 @@ public static class DecompilationTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle, additionalAssemblies);
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
@@ -128,15 +133,18 @@ public static class DecompilationTools
                 return JsonHelpers.Error("InvalidArgument", "typeName is required");
             if (MaxLinesError(maxLines) is { } maxLinesError)
                 return maxLinesError;
+            var scope = DependencyScope.Build(assemblyPath, target.AdditionalAssemblies);
+            if (scope.Error != null)
+                return scope.Error;
 
-            var cacheKey = CacheKeyHelper.Build("decompile.type", CacheKeyHelper.FileStamp(assemblyPath), typeName, caseSensitive);
+            var cacheKey = CacheKeyHelper.Build("decompile.type", scope.Stamp, typeName, caseSensitive);
             var salt = TokenHelper.MakeSalt(cacheKey);
             if (!SourcePager.TryReadOffset(continuationToken, salt, out var offset))
                 return SourcePager.InvalidToken();
 
             var envelope = middleware.Execute(cacheKey, () =>
             {
-                using var lease = contexts.Acquire(assemblyPath);
+                using var lease = contexts.Acquire(assemblyPath, scope.SearchDirectories);
                 var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
                 var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
                 if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
@@ -145,7 +153,7 @@ public static class DecompilationTools
                 return JsonHelpers.Envelope("decompile.type", new
                 {
                     typeName = type.FullName ?? type.Name,
-                    source = decompiler.DecompileType(assemblyPath, type.MetadataToken, cancellationToken)
+                    source = decompiler.DecompileType(assemblyPath, type.MetadataToken, scope.SearchDirectories, cancellationToken)
                 });
             }, noCache);
 
@@ -158,6 +166,28 @@ public static class DecompilationTools
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return ToolErrors.FromException(ex, "decompile type");
+        }
+    }
+
+    private sealed record DependencyScope(string Stamp, string[]? SearchDirectories, string? Error)
+    {
+        public static DependencyScope Build(string assemblyPath, string[]? additionalAssemblies)
+        {
+            if (additionalAssemblies is not { Length: > 0 })
+                return new DependencyScope(CacheKeyHelper.FileStamp(assemblyPath), null, null);
+
+            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
+            if (scope.Error != null)
+                return new DependencyScope("", null, scope.Error);
+
+            var directories = scope.Paths
+                .Skip(1)
+                .Select(Path.GetDirectoryName)
+                .OfType<string>()
+                .Where(directory => directory.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            return new DependencyScope(CacheKeyHelper.ScopeStamp(scope.Paths), directories, null);
         }
     }
 

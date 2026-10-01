@@ -64,7 +64,7 @@ public class DecompilerServiceTests
         var method = typeof(DecompileSubject).GetMethod(nameof(DecompileSubject.Total))!;
 
         Assert.ThrowsAny<OperationCanceledException>(() =>
-            _decompiler.DecompileMembers(TestAssemblyPath, [method.MetadataToken], cts.Token));
+            _decompiler.DecompileMembers(TestAssemblyPath, [method.MetadataToken], cancellationToken: cts.Token));
     }
 
     [Theory]
@@ -98,6 +98,8 @@ public class DecompilerServiceTests
     {
         Assert.Single(DecompilationTargets.SelectMembers(
             typeof(DecompileSubject), ".cctor", null, StringComparison.Ordinal, includeNonPublic: true));
+        Assert.Empty(DecompilationTargets.SelectMembers(
+            typeof(DecompileSubject), ".cctor", null, StringComparison.Ordinal, includeNonPublic: false));
         Assert.Empty(DecompilationTargets.SelectMembers(
             typeof(DecompileSubject), "Scale", null, StringComparison.Ordinal, includeNonPublic: false));
     }
