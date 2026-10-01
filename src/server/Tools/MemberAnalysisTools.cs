@@ -447,6 +447,7 @@ public static class MemberAnalysisTools
     [Description("Gets custom attributes for a specific member (method, property, field, event, constructor). Returns attribute types and values. Use after identifying the member via get_type_members or search_members.")]
     public static string GetMemberAttributes(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")]
         string typeName,
@@ -455,6 +456,7 @@ public static class MemberAnalysisTools
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -465,28 +467,32 @@ public static class MemberAnalysisTools
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
-            using var lease = contexts.Acquire(assemblyPath);
-            var asm = lease.Assembly;
-            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null)
-                return ToolErrors.TypeNotFound(lease.Context, typeName);
-            MemberInfo? member = memberKind.ToLowerInvariant() switch
+
+            var cacheKey = CacheKeyHelper.Build("member.attributes", CacheKeyHelper.FileStamp(assemblyPath), typeName, memberKind, memberName, caseSensitive);
+            return middleware.Execute(cacheKey, () =>
             {
-                "method" => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
-                "property" => type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(p => string.Equals(p.Name, memberName, comparison)),
-                "field" => type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(f => string.Equals(f.Name, memberName, comparison)),
-                "event" => type.GetEvents(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(e => string.Equals(e.Name, memberName, comparison)),
-                "constructor" => type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault() as MemberInfo,
-                _ => null
-            };
-            if (member == null)
-                return ToolErrors.MemberNotFound(type, memberName, memberKind, message: $"Member '{memberName}' of kind '{memberKind}' not found");
-            var attrs = Sherlock.MCP.Runtime.AttributeUtils.FromMember(member);
-            return JsonHelpers.Envelope(
-                "member.attributes",
-                new { assemblyPath, typeName, memberKind, memberName, attributeCount = attrs.Length, attributes = attrs }
-            );
+                using var lease = contexts.Acquire(assemblyPath);
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
+                if (type == null)
+                    return ToolErrors.TypeNotFound(lease.Context, typeName);
+                MemberInfo? member = memberKind.ToLowerInvariant() switch
+                {
+                    "method" => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(m => string.Equals(m.Name, memberName, comparison)),
+                    "property" => type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(p => string.Equals(p.Name, memberName, comparison)),
+                    "field" => type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(f => string.Equals(f.Name, memberName, comparison)),
+                    "event" => type.GetEvents(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault(e => string.Equals(e.Name, memberName, comparison)),
+                    "constructor" => type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).FirstOrDefault() as MemberInfo,
+                    _ => null
+                };
+                if (member == null)
+                    return ToolErrors.MemberNotFound(type, memberName, memberKind, message: $"Member '{memberName}' of kind '{memberKind}' not found");
+                var attrs = Sherlock.MCP.Runtime.AttributeUtils.FromMember(member);
+                return JsonHelpers.Envelope(
+                    "member.attributes",
+                    new { assemblyPath, typeName, memberKind, memberName, attributeCount = attrs.Length, attributes = attrs }
+                );
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {
@@ -502,6 +508,7 @@ public static class MemberAnalysisTools
     [Description("Gets custom attributes for a specific parameter of a method or constructor. Use when you need to inspect parameter-level attributes like [FromBody], [Required], etc.")]
     public static string GetParameterAttributes(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Method or constructor name")] string methodName,
@@ -509,6 +516,7 @@ public static class MemberAnalysisTools
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -519,27 +527,31 @@ public static class MemberAnalysisTools
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
-            using var lease = contexts.Acquire(assemblyPath);
-            var asm = lease.Assembly;
-            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null)
-                return ToolErrors.TypeNotFound(lease.Context, typeName);
-            var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                             .FirstOrDefault(m => string.Equals(m.Name, methodName, comparison))
-                        ?? (MethodBase?)type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                             .FirstOrDefault();
-            if (method == null)
-                return ToolErrors.MemberNotFound(type, methodName, "method", message: $"Method/Constructor '{methodName}' not found");
-            var parameters = method.GetParameters();
-            if (parameterIndex < 0 || parameterIndex >= parameters.Length)
-                return JsonHelpers.Error("InvalidArgument", "Parameter index out of range");
-            var param = parameters[parameterIndex];
-            var attrs = Sherlock.MCP.Runtime.AttributeUtils.FromParameter(param);
-            return JsonHelpers.Envelope(
-                "parameter.attributes",
-                new { assemblyPath, typeName, methodName, parameterIndex, attributeCount = attrs.Length, attributes = attrs }
-            );
+
+            var cacheKey = CacheKeyHelper.Build("parameter.attributes", CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName, parameterIndex, caseSensitive);
+            return middleware.Execute(cacheKey, () =>
+            {
+                using var lease = contexts.Acquire(assemblyPath);
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
+                if (type == null)
+                    return ToolErrors.TypeNotFound(lease.Context, typeName);
+                var method = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                 .FirstOrDefault(m => string.Equals(m.Name, methodName, comparison))
+                            ?? (MethodBase?)type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                 .FirstOrDefault();
+                if (method == null)
+                    return ToolErrors.MemberNotFound(type, methodName, "method", message: $"Method/Constructor '{methodName}' not found");
+                var parameters = method.GetParameters();
+                if (parameterIndex < 0 || parameterIndex >= parameters.Length)
+                    return JsonHelpers.Error("InvalidArgument", "Parameter index out of range");
+                var param = parameters[parameterIndex];
+                var attrs = Sherlock.MCP.Runtime.AttributeUtils.FromParameter(param);
+                return JsonHelpers.Envelope(
+                    "parameter.attributes",
+                    new { assemblyPath, typeName, methodName, parameterIndex, attributeCount = attrs.Length, attributes = attrs }
+                );
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {

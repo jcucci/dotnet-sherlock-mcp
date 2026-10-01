@@ -3,6 +3,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Shared;
 using System.ComponentModel;
 using System.Reflection;
@@ -17,11 +18,13 @@ public static class XmlDocTools
     public static string GetXmlDocsForType(
         IXmlDocService xmlDocs,
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -32,15 +35,19 @@ public static class XmlDocTools
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
-            using var lease = contexts.Acquire(assemblyPath);
-            var asm = lease.Assembly;
-            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
-            var info = xmlDocs.GetXmlDocsForType(type);
-            return info == null
-                ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
-                : JsonHelpers.Envelope("xml.type", new { type = type.FullName, docs = info });
+
+            var cacheKey = CacheKeyHelper.Build("xml.type", CacheKeyHelper.XmlDocStamp(assemblyPath), typeName, caseSensitive);
+            return middleware.Execute(cacheKey, () =>
+            {
+                using var lease = contexts.Acquire(assemblyPath);
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
+                if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
+                var info = xmlDocs.GetXmlDocsForType(type);
+                return info == null
+                    ? JsonHelpers.Error("XmlNotFound", "No XML docs found for type")
+                    : JsonHelpers.Envelope("xml.type", new { type = type.FullName, docs = info });
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {
@@ -57,12 +64,14 @@ public static class XmlDocTools
     public static string GetXmlDocsForMember(
         IXmlDocService xmlDocs,
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name. Prefer full name")] string typeName,
         [Description("Member name (simple; if overloaded, first match used)")] string memberName,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive matching (default: false)")] bool caseSensitive = false,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -73,18 +82,22 @@ public static class XmlDocTools
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
-            using var lease = contexts.Acquire(assemblyPath);
-            var asm = lease.Assembly;
-            var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            var type = TypeNameResolver.Resolve(asm, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
-            var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
-                .FirstOrDefault(m => string.Equals(m.Name, memberName, comparison));
-            if (member == null) return ToolErrors.MemberNotFound(type, memberName, message: $"Member '{memberName}' not found");
-            var info = xmlDocs.GetXmlDocsForMember(member);
-            return info == null
-                ? JsonHelpers.Error("XmlNotFound", "No XML docs found for member")
-                : JsonHelpers.Envelope("xml.member", new { type = type.FullName, member = member.Name, docs = info });
+
+            var cacheKey = CacheKeyHelper.Build("xml.member", CacheKeyHelper.XmlDocStamp(assemblyPath), typeName, memberName, caseSensitive);
+            return middleware.Execute(cacheKey, () =>
+            {
+                using var lease = contexts.Acquire(assemblyPath);
+                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                var type = TypeNameResolver.Resolve(lease.Assembly, typeName, comparison).OrThrowIfAmbiguous(typeName);
+                if (type == null) return ToolErrors.TypeNotFound(lease.Context, typeName);
+                var member = (MemberInfo?) type.GetMembers(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
+                    .FirstOrDefault(m => string.Equals(m.Name, memberName, comparison));
+                if (member == null) return ToolErrors.MemberNotFound(type, memberName, message: $"Member '{memberName}' not found");
+                var info = xmlDocs.GetXmlDocsForMember(member);
+                return info == null
+                    ? JsonHelpers.Error("XmlNotFound", "No XML docs found for member")
+                    : JsonHelpers.Envelope("xml.member", new { type = type.FullName, member = member.Name, docs = info });
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {

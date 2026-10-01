@@ -25,21 +25,44 @@ public sealed class ToolMiddleware
 
     public string Execute(string cacheKey, Func<string> action, bool noCache = false)
     {
-        if (!noCache && _cache.TryGet(cacheKey, out var cached) && cached != null)
-        {
-            _telemetry.Increment("cache.hit");
+        if (TryGetCached(cacheKey, noCache, out var cached))
             return cached;
-        }
 
         var sw = Stopwatch.StartNew();
         var result = action();
+        return Store(cacheKey, result, sw, noCache);
+    }
+
+    public async Task<string> ExecuteAsync(string cacheKey, Func<Task<string>> action, bool noCache = false)
+    {
+        if (TryGetCached(cacheKey, noCache, out var cached))
+            return cached;
+
+        var sw = Stopwatch.StartNew();
+        var result = await action();
+        return Store(cacheKey, result, sw, noCache);
+    }
+
+    private bool TryGetCached(string cacheKey, bool noCache, out string cached)
+    {
+        if (!noCache && _cache.TryGet(cacheKey, out var hit) && hit != null)
+        {
+            _telemetry.Increment("cache.hit");
+            cached = hit;
+            return true;
+        }
+
+        cached = string.Empty;
+        return false;
+    }
+
+    private string Store(string cacheKey, string result, Stopwatch sw, bool noCache)
+    {
         sw.Stop();
         _telemetry.TrackDuration("tool.duration", sw.Elapsed);
 
         if (!noCache)
-        {
             _cache.Set(cacheKey, result, TimeSpan.FromSeconds(Math.Max(1, _options.CacheTtlSeconds)));
-        }
 
         return result;
     }

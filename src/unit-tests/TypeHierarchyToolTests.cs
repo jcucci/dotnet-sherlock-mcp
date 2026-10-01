@@ -20,6 +20,7 @@ public class TypeHierarchyToolTests
             _typeAnalysis,
             Contexts,
             _reverseLookup,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: _testAssemblyPath,
             typeName: "BaseSample");
@@ -37,6 +38,7 @@ public class TypeHierarchyToolTests
             _typeAnalysis,
             Contexts,
             _reverseLookup,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: _testAssemblyPath,
             typeName: "BaseSample",
@@ -65,6 +67,7 @@ public class TypeHierarchyToolTests
             _typeAnalysis,
             Contexts,
             _reverseLookup,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: _testAssemblyPath,
             typeName: "NoSuchTypeXyz");
@@ -79,6 +82,7 @@ public class TypeHierarchyToolTests
             _typeAnalysis,
             Contexts,
             _reverseLookup,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: _testAssemblyPath,
             typeName: "BaseSample",

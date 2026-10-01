@@ -73,7 +73,7 @@ public class ElicitationTests
     [Fact]
     public void GetTypeInfo_AmbiguousName_WithoutContext_ReturnsAmbiguousTypeName()
     {
-        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "DuplicateWidget").Text();
+        var json = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "DuplicateWidget").Text();
 
         AssertAmbiguousError(json);
     }
@@ -121,7 +121,7 @@ public class ElicitationTests
     {
         var contexts = new SharedInspectionContextProvider(new RuntimeOptions());
 
-        var json = XmlDocTools.GetXmlDocsForType(new XmlDocService(), contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "DuplicateWidget");
+        var json = XmlDocTools.GetXmlDocsForType(new XmlDocService(), contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "DuplicateWidget");
 
         AssertAmbiguousError(json);
     }

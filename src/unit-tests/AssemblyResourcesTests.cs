@@ -148,7 +148,7 @@ public class AssemblyResourcesTests
     [Fact]
     public void GetTypesFromAssembly_LinksEveryTypeOnThePage()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5);
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5);
 
         var data = JsonDocument.Parse(result.Text()).RootElement.GetProperty("data");
         Assert.Equal(data.GetProperty("returnedTypeCount").GetInt32(), result.Links().Length);
@@ -195,7 +195,7 @@ public class AssemblyResourcesTests
     [Fact]
     public void GetTypesFromAssembly_GenericTypeLink_UsesMetadataNameWithoutExposingIt()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 1000, projection: "full");
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysis, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 1000, projection: "full");
 
         var metadataName = typeof(GenericOuter<>).FullName!;
         var link = Assert.Single(result.Links(), l => l.Name == metadataName);
@@ -210,6 +210,7 @@ public class AssemblyResourcesTests
 
         var result = TypeAnalysisTools.GetTypesFromAssembly(
             _typeAnalysis,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: _testAssemblyPath,
             maxItems: 5,

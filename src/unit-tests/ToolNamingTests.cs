@@ -86,6 +86,7 @@ public class ToolNamingTests
             new TypeAnalysisService(),
             new SharedInspectionContextProvider(new RuntimeOptions()),
             new ReverseLookupService(),
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: TestAssemblyPath,
             typeName: "BaseSample");
