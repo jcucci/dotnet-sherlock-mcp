@@ -36,6 +36,9 @@ jobs:
           SERVER_VERSION=$(jq -r '.version' server.json)
           PACKAGE_VERSION=$(jq -r '.packages[0].version' server.json)
           PROJECT_VERSION=$(sed -n -E 's|.*<Version>([^<]*)</Version>.*|\1|p' src/server/Sherlock.MCP.Server.csproj)
+          PLUGIN_VERSION=$(jq -r '.version' plugins/sherlock/.claude-plugin/plugin.json)
+          MARKETPLACE_VERSION=$(jq -r '.plugins[] | select(.name == "sherlock") | .version' .claude-plugin/marketplace.json)
+          PLUGIN_DNX_VERSION=$(jq -r '.sherlock.args[0]' plugins/sherlock/.mcp.json | sed 's/.*@//')
           echo "Tag version: $VERSION"
           FAILED=0
           check() {
@@ -48,8 +51,11 @@ jobs:
           check "server.json version" "$SERVER_VERSION"
           check "server.json packages[0].version" "$PACKAGE_VERSION"
           check "Sherlock.MCP.Server.csproj <Version>" "$PROJECT_VERSION"
+          check "plugin.json version" "$PLUGIN_VERSION"
+          check "marketplace.json sherlock version" "$MARKETPLACE_VERSION"
+          check "plugin .mcp.json dnx version" "$PLUGIN_DNX_VERSION"
           if [ "$FAILED" -ne 0 ]; then
-            echo "Please update server.json and the server project version before creating the release tag."
+            echo "Please update server.json, the server project version and the Claude Code plugin versions before creating the release tag."
             exit 1
           fi
 

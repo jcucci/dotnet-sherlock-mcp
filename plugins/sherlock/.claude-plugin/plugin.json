@@ -1,0 +1,12 @@
+{
+  "name": "sherlock",
+  "version": "2.14.0",
+  "description": "Sherlock MCP server plus a skill for inspecting .NET assemblies, types, members and call graphs",
+  "author": {
+    "name": "Joe Cucci"
+  },
+  "homepage": "https://github.com/jcucci/dotnet-sherlock-mcp",
+  "repository": "https://github.com/jcucci/dotnet-sherlock-mcp",
+  "license": "MIT",
+  "keywords": ["dotnet", "csharp", "reflection", "assembly", "nuget", "mcp"]
+}
