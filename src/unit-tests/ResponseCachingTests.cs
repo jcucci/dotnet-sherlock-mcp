@@ -167,7 +167,6 @@ public sealed class ResponseCachingTests : IDisposable
         [
             noCache => ProjectAnalysisTools.AnalyzeSolution(analysis, middleware, solution, noCache),
             noCache => ProjectAnalysisTools.GetProjectOutputPaths(analysis, middleware, project, noCache: noCache),
-            noCache => ProjectAnalysisTools.ResolvePackageReferences(analysis, middleware, project, noCache: noCache),
             noCache => ProjectAnalysisTools.FindDepsJsonDependencies(analysis, middleware, project, noCache: noCache),
         ];
 
@@ -181,6 +180,12 @@ public sealed class ResponseCachingTests : IDisposable
         Assert.Equal(calls.Length, cache.Sets);
         Assert.Equal(calls.Length, cache.Hits);
     }
+
+    [Fact]
+    public void ResolvePackageReferences_ReadsNuGetCache_IsNotCached() =>
+        Assert.DoesNotContain(
+            typeof(ProjectAnalysisTools).GetMethod(nameof(ProjectAnalysisTools.ResolvePackageReferences))!.GetParameters(),
+            p => p.ParameterType == typeof(ToolMiddleware));
 
     [Fact]
     public async Task FindDepsJsonDependencies_NewDepsFile_MissesCache()

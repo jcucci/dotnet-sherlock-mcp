@@ -87,20 +87,14 @@ public static class ProjectAnalysisTools
     [Description("Resolves NuGet package references to local assembly paths from NuGet cache. Use packageName filter to find specific packages. Returns paths for assembly analysis.")]
     public static async Task<string> ResolvePackageReferences(
         IProjectAnalysisService projectAnalysis,
-        ToolMiddleware middleware,
         [Description("Path to the project file")] string projectFilePath,
         [Description("Optional package name to filter")] string? packageName = null,
-        [Description("Bypass cache for this request")] bool noCache = false,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var cacheKey = CacheKeyHelper.Build("project.packages", CacheKeyHelper.ProjectStamp(projectFilePath), packageName);
-            return await middleware.ExecuteAsync(cacheKey, async () =>
-            {
-                var packages = await projectAnalysis.ResolvePackageReferencesAsync(projectFilePath, packageName, cancellationToken);
-                return JsonHelpers.Envelope("project.packages", new { projectFilePath, packageName, packages });
-            }, noCache);
+            var packages = await projectAnalysis.ResolvePackageReferencesAsync(projectFilePath, packageName, cancellationToken);
+            return JsonHelpers.Envelope("project.packages", new { projectFilePath, packageName, packages });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
