@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
+using Sherlock.MCP.Server.Prompts;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.IntegrationTests;
@@ -105,6 +106,61 @@ public class McpStdioProtocolTests
         Assert.All(result.ResourceTemplates, t => Assert.Equal("application/json", t.MimeType));
         Assert.Equal(CacheScope.Public, result.CacheScope);
         Assert.True(result.TimeToLive > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Prompts_list_advertises_workflow_prompts_and_caching_hints()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token, arguments: ["--profile", "core"]);
+
+        var result = await client.ListPromptsAsync(new ListPromptsRequestParams(), cts.Token);
+
+        Assert.NotNull(client.ServerCapabilities.Prompts);
+        Assert.Equal(
+            [PromptNames.ExplainType, PromptNames.ExplorePackage, PromptNames.WhoCalls],
+            result.Prompts.Select(p => p.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(CacheScope.Public, result.CacheScope);
+        Assert.True(result.TimeToLive > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Get_prompt_renders_arguments_into_a_user_message()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.GetPromptAsync(
+            PromptNames.WhoCalls,
+            new Dictionary<string, object?> { ["assemblyPath"] = "/libs/a.dll", ["typeName"] = "Ns.Widget", ["memberName"] = "Render" },
+            cancellationToken: cts.Token);
+
+        var message = Assert.Single(result.Messages);
+        Assert.Equal(Role.User, message.Role);
+        var text = Assert.IsType<TextContentBlock>(message.Content).Text;
+        Assert.Contains("Ns.Widget.Render", text);
+        Assert.Contains("analysisDepth='il'", text);
+    }
+
+    [Fact]
+    public async Task Complete_prompt_type_name_returns_types_from_assembly_path_context()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.CompleteAsync(
+            new CompleteRequestParams
+            {
+                Ref = new PromptReference { Name = PromptNames.ExplainType },
+                Argument = new Argument { Name = "typeName", Value = "System.Collections.Generic.List" },
+                Context = new CompleteContext
+                {
+                    Arguments = new Dictionary<string, string> { ["assemblyPath"] = typeof(string).Assembly.Location }
+                }
+            },
+            cts.Token);
+
+        Assert.Contains("System.Collections.Generic.List`1", result.Completion.Values);
     }
 
     [Fact]

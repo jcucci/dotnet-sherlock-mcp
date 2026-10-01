@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime.Completions;
+using Sherlock.MCP.Server.Prompts;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Completions;
@@ -13,12 +14,17 @@ public static class CompletionHandler
 
     public static CompleteResult Complete(ICompletionService completions, CompleteRequestParams? request)
     {
-        if (request?.Ref is not ResourceTemplateReference { Uri: { } templateUri } || request.Argument is null)
+        if (request?.Argument is null)
             return ToResult(CompletionValues.Empty);
 
         try
         {
-            return ToResult(Dispatch(completions, templateUri, request.Argument, request.Context?.Arguments));
+            return ToResult(request.Ref switch
+            {
+                ResourceTemplateReference { Uri: { } templateUri } => Dispatch(completions, templateUri, request.Argument, request.Context?.Arguments),
+                PromptReference { Name: { } promptName } => DispatchPrompt(completions, promptName, request.Argument, request.Context?.Arguments),
+                _ => CompletionValues.Empty
+            });
         }
         catch
         {
@@ -36,6 +42,19 @@ public static class CompletionHandler
             (ResourceUris.DocsTemplate, "memberId") when ContextValue(context, "path") is { } path => completions.CompleteMemberId(path, value),
             (ResourceUris.NuGetTemplate, "packageId") => completions.CompletePackageId(value),
             (ResourceUris.NuGetTemplate, "version") when ContextValue(context, "packageId") is { } packageId => completions.CompletePackageVersion(packageId, value),
+            _ => CompletionValues.Empty
+        };
+    }
+
+    private static CompletionValues DispatchPrompt(ICompletionService completions, string promptName, Argument argument, IDictionary<string, string>? context)
+    {
+        var value = argument.Value ?? "";
+        return (promptName, argument.Name) switch
+        {
+            (PromptNames.ExplorePackage, PromptNames.PackageIdArgument) => completions.CompletePackageId(value),
+            (PromptNames.ExplorePackage, PromptNames.VersionArgument) when ContextValue(context, PromptNames.PackageIdArgument) is { } packageId => completions.CompletePackageVersion(packageId, value),
+            (PromptNames.ExplainType or PromptNames.WhoCalls, PromptNames.AssemblyPathArgument) => completions.CompleteAssemblyPath(value),
+            (PromptNames.ExplainType or PromptNames.WhoCalls, PromptNames.TypeNameArgument) when ContextValue(context, PromptNames.AssemblyPathArgument) is { } path => completions.CompleteTypeName(path, value),
             _ => CompletionValues.Empty
         };
     }

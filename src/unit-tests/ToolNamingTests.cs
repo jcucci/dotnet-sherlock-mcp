@@ -51,6 +51,10 @@ public class ToolNamingTests
         AssertNoPascalCaseToolNames([(nameof(ServerInstructions), ServerInstructions.Text)]);
 
     [Fact]
+    public void PromptTexts_UseSnakeCaseToolNames() =>
+        AssertNoPascalCaseToolNames(WorkflowPromptsTests.RenderedPrompts().Select(p => (p.Name, (string?)p.Text)));
+
+    [Fact]
     public void StaticStringFields_UseSnakeCaseToolNames()
     {
         var fieldTexts = ServerAssembly.GetTypes()
