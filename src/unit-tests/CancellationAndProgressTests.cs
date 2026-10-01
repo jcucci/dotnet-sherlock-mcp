@@ -215,6 +215,7 @@ public class CancellationAndProgressTests
             new TypeAnalysisService(),
             new SharedInspectionContextProvider(new RuntimeOptions()),
             _reverseLookup,
+            TestMiddleware.Fresh,
             TestHandles.Registry,
             assemblyPath: TestAssemblyPath,
             typeName: typeof(CancellationAndProgressTests).FullName!,

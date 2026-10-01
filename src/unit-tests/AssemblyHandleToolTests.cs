@@ -54,8 +54,8 @@ public sealed class AssemblyHandleToolTests : IDisposable
         var handle = Open(TestAssemblyPath);
         var typeName = typeof(TestSampleClass).FullName!;
 
-        var viaPath = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: typeName, assemblyPath: TestAssemblyPath).Text();
-        var viaHandle = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: typeName, assemblyHandle: handle).Text();
+        var viaPath = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: typeName, assemblyPath: TestAssemblyPath).Text();
+        var viaHandle = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: typeName, assemblyHandle: handle).Text();
 
         Assert.Equal(viaPath, viaHandle);
     }
@@ -86,7 +86,7 @@ public sealed class AssemblyHandleToolTests : IDisposable
     [Fact]
     public void Tool_UnknownHandle_ReturnsGuidance()
     {
-        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: "X", assemblyHandle: "asm_000000000000").Text();
+        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: "X", assemblyHandle: "asm_000000000000").Text();
 
         using var doc = JsonDocument.Parse(result);
         Assert.Equal("UnknownAssemblyHandle", doc.RootElement.GetProperty("code").GetString());
@@ -101,7 +101,7 @@ public sealed class AssemblyHandleToolTests : IDisposable
         var handle = Open(primary, dependency);
         File.SetLastWriteTimeUtc(primary, File.GetLastWriteTimeUtc(primary).AddMinutes(1));
 
-        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: "X", assemblyHandle: handle).Text();
+        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: "X", assemblyHandle: handle).Text();
 
         using var doc = JsonDocument.Parse(result);
         Assert.Equal("StaleAssemblyHandle", doc.RootElement.GetProperty("code").GetString());
@@ -118,7 +118,7 @@ public sealed class AssemblyHandleToolTests : IDisposable
         var handle = Open(primary, dependency);
         File.Delete(dependency);
 
-        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, _handles, typeName: "X", assemblyHandle: handle).Text();
+        var result = TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: "X", assemblyHandle: handle).Text();
 
         using var doc = JsonDocument.Parse(result);
         Assert.Equal("StaleAssemblyHandle", doc.RootElement.GetProperty("code").GetString());
@@ -133,7 +133,7 @@ public sealed class AssemblyHandleToolTests : IDisposable
     [InlineData("/some/path.dll", "asm_000000000000")]
     public void Tool_NeitherOrBothTargets_ReturnsInvalidArgument(string? assemblyPath, string? assemblyHandle) =>
         Assert.Equal("InvalidArgument", Code(TypeAnalysisTools.GetTypeInfo(
-            new TypeAnalysisService(), Contexts, _handles, typeName: "X", assemblyPath: assemblyPath, assemblyHandle: assemblyHandle).Text()));
+            new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, _handles, typeName: "X", assemblyPath: assemblyPath, assemblyHandle: assemblyHandle).Text()));
 
     [Fact]
     public void FindImplementationsOf_HandlePlusExplicitAdditional_MergesScopes()

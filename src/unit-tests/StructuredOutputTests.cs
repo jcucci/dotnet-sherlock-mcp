@@ -135,7 +135,7 @@ public class StructuredOutputTests
     {
         var tool = ToolsByMethodName[nameof(TypeAnalysisTools.GetNestedTypes)];
         var result = StructuredOutput.Apply(
-            ToolResponse.Result(TypeAnalysisTools.GetNestedTypes(new TypeAnalysisService(), Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(Outer).FullName!)),
+            ToolResponse.Result(TypeAnalysisTools.GetNestedTypes(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(Outer).FullName!)),
             tool);
 
         Assert.Null(result.StructuredContent);
@@ -146,15 +146,15 @@ public class StructuredOutputTests
         nameof(SearchTools.SearchMembers) =>
             SearchTools.SearchMembers(new SearchService(), Middleware, Options, TestHandles.Registry, assemblyPath: TestAssemblyPath, nameContains: "Method", noCache: true),
         nameof(TypeAnalysisTools.GetTypesFromAssembly) =>
-            TypeAnalysisTools.GetTypesFromAssembly(new TypeAnalysisService(), TestHandles.Registry, assemblyPath: TestAssemblyPath, maxItems: 10, projection: projection),
+            TypeAnalysisTools.GetTypesFromAssembly(new TypeAnalysisService(), TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, maxItems: 10, projection: projection),
         nameof(TypeAnalysisTools.GetTypeInfo) =>
-            TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!),
+            TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!),
         nameof(MemberAnalysisTools.GetTypeMethods) =>
             MemberAnalysisTools.GetTypeMethods(new MemberAnalysisService(), Contexts, Middleware, Options, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!, projection: projection, noCache: true),
         nameof(MemberAnalysisTools.GetTypeMembers) =>
             MemberAnalysisTools.GetTypeMembers(new MemberAnalysisService(), Contexts, Middleware, Options, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!, projection: projection, noCache: true),
         nameof(ReflectionTools.GetAssemblyInfo) =>
-            ReflectionTools.GetAssemblyInfo(Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, projection: projection),
+            ReflectionTools.GetAssemblyInfo(Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, projection: projection),
         nameof(IlAnalysisTools.GetMethodCalls) =>
             IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, methodName: nameof(IlSampleSubject.DoWork), projection: projection, noCache: true),
         nameof(ReverseLookupTools.FindImplementationsOf) =>

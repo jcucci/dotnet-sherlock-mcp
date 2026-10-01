@@ -26,6 +26,17 @@ public static class CacheKeyHelper
         }
     }
 
+    public static string ScopeStamp(IEnumerable<string> paths) => string.Join(";", paths.Select(FileStamp));
+
+    public static string XmlDocStamp(string assemblyPath) =>
+        $"{FileStamp(assemblyPath)};{FileStamp(Path.ChangeExtension(assemblyPath, ".xml"))}";
+
+    public static string ProjectStamp(string projectFilePath)
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(projectFilePath)) ?? string.Empty;
+        return $"{FileStamp(projectFilePath)};{FileStamp(Path.Combine(directory, "obj", "project.assets.json"))}";
+    }
+
     public static string Sha256(string input)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));

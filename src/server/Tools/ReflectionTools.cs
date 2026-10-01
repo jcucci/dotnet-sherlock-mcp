@@ -8,6 +8,7 @@ using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
 using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
 
@@ -20,13 +21,15 @@ public static class ReflectionTools
     [Description("Lists all public types in an assembly with metadata summary. Returns totalTypeCount for pagination planning. Use maxItems=25 for large assemblies (100+ types). Follow with get_type_info for specific types.")]
     public static string AnalyzeAssembly(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
         IAssemblyHandleRegistry handles,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
-        [Description("Continuation token for paging")] string? continuationToken = null)
+        [Description("Continuation token for paging")] string? continuationToken = null,
+        [Description("Bypass cache for this request")] bool noCache = false)
     {
         try
         {
@@ -35,72 +38,76 @@ public static class ReflectionTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            using var lease = contexts.Acquire(assemblyPath);
-            var assembly = lease.Assembly;
-            Type[] allTypes;
-            try
-            {
-                allTypes = assembly.GetExportedTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                allTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
-            }
+            var pageSize = Math.Max(1, maxItems ?? runtimeOptions.GetMaxItemsForTool("analyze_assembly"));
+            var saltSeed = $"analyze_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}";
+            var cacheKey = CacheKeyHelper.Build(
+                "reflection.assembly",
+                CacheKeyHelper.FileStamp(assemblyPath), pageSize, skip, continuationToken);
 
-            // Pagination logic
-            var defaultPageSize = runtimeOptions.GetMaxItemsForTool("analyze_assembly");
-            var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
-            var offset = 0;
-
-            var cacheKey = $"analyze_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}";
-            var salt = TokenHelper.MakeSalt(cacheKey);
-
-            if (!string.IsNullOrWhiteSpace(continuationToken))
+            return middleware.Execute(cacheKey, () =>
             {
-                if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
-                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
-            }
-            else if (skip.HasValue && skip.Value > 0)
-            {
-                offset = skip.Value;
-            }
-
-            var types = allTypes.Skip(offset).Take(pageSize).ToArray();
-            string? nextToken = null;
-            var nextOffset = offset + types.Length;
-            if (nextOffset < allTypes.Length)
-                nextToken = TokenHelper.Make(nextOffset, salt);
-
-            var result = new
-            {
-                assemblyName = assembly.FullName,
-                location = assembly.Location,
-                totalTypeCount = allTypes.Length,
-                returnedTypeCount = types.Length,
-                nextToken,
-                types = types.Select(type => new
+                using var lease = contexts.Acquire(assemblyPath);
+                var assembly = lease.Assembly;
+                Type[] allTypes;
+                try
                 {
-                    name = type.Name,
-                    fullName = type.FullName,
-                    namespace_ = type.Namespace,
-                    isClass = type.IsClass,
-                    isInterface = type.IsInterface,
-                    isEnum = type.IsEnum,
-                    isAbstract = type.IsAbstract,
-                    isSealed = type.IsSealed,
-                    isGeneric = type.IsGenericType,
-                    baseType = type.BaseType?.FullName,
-                    interfaces = type.GetInterfaces().Select(i => i.FullName).ToArray(),
-                    memberCount = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).Length
-                }).ToArray()
-            };
+                    allTypes = assembly.GetExportedTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    allTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                }
 
-            // Check response size before returning
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_assembly");
-            if (sizeValidationError != null)
-                return sizeValidationError;
+                var offset = 0;
+                var salt = TokenHelper.MakeSalt(saltSeed);
 
-            return JsonHelpers.Envelope("reflection.assembly", result);
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                }
+                else if (skip.HasValue && skip.Value > 0)
+                {
+                    offset = skip.Value;
+                }
+
+                var types = allTypes.Skip(offset).Take(pageSize).ToArray();
+                string? nextToken = null;
+                var nextOffset = offset + types.Length;
+                if (nextOffset < allTypes.Length)
+                    nextToken = TokenHelper.Make(nextOffset, salt);
+
+                var result = new
+                {
+                    assemblyName = assembly.FullName,
+                    location = assembly.Location,
+                    totalTypeCount = allTypes.Length,
+                    returnedTypeCount = types.Length,
+                    nextToken,
+                    types = types.Select(type => new
+                    {
+                        name = type.Name,
+                        fullName = type.FullName,
+                        namespace_ = type.Namespace,
+                        isClass = type.IsClass,
+                        isInterface = type.IsInterface,
+                        isEnum = type.IsEnum,
+                        isAbstract = type.IsAbstract,
+                        isSealed = type.IsSealed,
+                        isGeneric = type.IsGenericType,
+                        baseType = type.BaseType?.FullName,
+                        interfaces = type.GetInterfaces().Select(i => i.FullName).ToArray(),
+                        memberCount = type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).Length
+                    }).ToArray()
+                };
+
+                // Check response size before returning
+                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_assembly");
+                if (sizeValidationError != null)
+                    return sizeValidationError;
+
+                return JsonHelpers.Envelope("reflection.assembly", result);
+            }, noCache);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -112,10 +119,12 @@ public static class ReflectionTools
     [Description("Gets assembly-level metadata: identity/version, target framework, and referenced assemblies. Lightweight orientation tool — call before deep type analysis. Use projection='full' for all assembly-level attributes structurally.")]
     public static CallToolResult GetAssemblyInfo(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
-        [Description("Detail level: 'summary' (default, lean) or 'full' (adds all assembly attributes)")] string projection = "summary")
+        [Description("Detail level: 'summary' (default, lean) or 'full' (adds all assembly attributes)")] string projection = "summary",
+        [Description("Bypass cache for this request")] bool noCache = false)
     {
         try
         {
@@ -128,45 +137,49 @@ public static class ReflectionTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
-            using var lease = contexts.Acquire(assemblyPath);
-            var assembly = lease.Assembly;
-            var name = assembly.GetName();
+            var cacheKey = CacheKeyHelper.Build("reflection.assemblyInfo", CacheKeyHelper.FileStamp(assemblyPath), normalizedProjection);
+            return ToolResponse.Result(middleware.Execute(cacheKey, () =>
+            {
+                using var lease = contexts.Acquire(assemblyPath);
+                var assembly = lease.Assembly;
+                var name = assembly.GetName();
 
-            var referencedAssemblies = assembly.GetReferencedAssemblies()
-                .Select(r => $"{r.Name}@{r.Version}")
-                .OrderBy(r => r, StringComparer.Ordinal)
-                .ToArray();
+                var referencedAssemblies = assembly.GetReferencedAssemblies()
+                    .Select(r => $"{r.Name}@{r.Version}")
+                    .OrderBy(r => r, StringComparer.Ordinal)
+                    .ToArray();
 
-            var isFull = normalizedProjection == "full";
+                var isFull = normalizedProjection == "full";
 
-            object result = isFull
-                ? new
-                {
-                    projection = "full",
-                    name = name.Name,
-                    version = name.Version?.ToString(),
-                    fullName = assembly.FullName,
-                    location = assembly.Location,
-                    targetFramework = ReadTargetFramework(assembly),
-                    referencedAssemblies,
-                    attributes = assembly.GetCustomAttributesData().Select(AttributeUtils.Convert).ToArray()
-                }
-                : new
-                {
-                    projection = "summary",
-                    name = name.Name,
-                    version = name.Version?.ToString(),
-                    fullName = assembly.FullName,
-                    location = assembly.Location,
-                    targetFramework = ReadTargetFramework(assembly),
-                    referencedAssemblies
-                };
+                object result = isFull
+                    ? new
+                    {
+                        projection = "full",
+                        name = name.Name,
+                        version = name.Version?.ToString(),
+                        fullName = assembly.FullName,
+                        location = assembly.Location,
+                        targetFramework = ReadTargetFramework(assembly),
+                        referencedAssemblies,
+                        attributes = assembly.GetCustomAttributesData().Select(AttributeUtils.Convert).ToArray()
+                    }
+                    : new
+                    {
+                        projection = "summary",
+                        name = name.Name,
+                        version = name.Version?.ToString(),
+                        fullName = assembly.FullName,
+                        location = assembly.Location,
+                        targetFramework = ReadTargetFramework(assembly),
+                        referencedAssemblies
+                    };
 
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "get_assembly_info");
-            if (sizeValidationError != null)
-                return ToolResponse.Result(sizeValidationError);
+                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "get_assembly_info");
+                if (sizeValidationError != null)
+                    return sizeValidationError;
 
-            return ToolResponse.Result(JsonHelpers.Envelope("reflection.assemblyInfo", result));
+                return JsonHelpers.Envelope("reflection.assemblyInfo", result);
+            }, noCache));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -215,7 +228,7 @@ public static class ReflectionTools
                         name = p.Name,
                         type = p.ParameterType.FullName,
                         hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                        defaultValue = p.HasDefaultValue ? SafeRawDefault(p)?.ToString() : null
                     }).ToArray()
                 });
             }
@@ -238,7 +251,7 @@ public static class ReflectionTools
                         name = p.Name,
                         type = p.ParameterType.FullName,
                         hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                        defaultValue = p.HasDefaultValue ? SafeRawDefault(p)?.ToString() : null
                     }).ToArray()
                 });
             }
@@ -290,6 +303,7 @@ public static class ReflectionTools
     [Description("Deprecated: use get_type_info for type metadata plus get_type_members with projection='full' for members. Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories.")]
     public static string AnalyzeType(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
@@ -301,6 +315,7 @@ public static class ReflectionTools
         [Description("Include methods in results (default: true)")] bool includeMethods = true,
         [Description("Include properties in results (default: true)")] bool includeProperties = true,
         [Description("Include fields in results (default: true)")] bool includeFields = true,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -312,111 +327,116 @@ public static class ReflectionTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            using var lease = contexts.Acquire(assemblyPath);
-            var assembly = lease.Assembly;
-            Type[] exportedTypes;
-            try
-            {
-                exportedTypes = assembly.GetExportedTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
-            }
-
-            var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
-
-            if (type == null)
-                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
-
-            // Pagination logic
-            var defaultPageSize = 25;
-            var pageSize = Math.Max(1, maxItems ?? defaultPageSize);
-            var offset = 0;
-
-            var cacheKey = $"analyze_type_{CacheKeyHelper.FileStamp(assemblyPath)}_{typeName}_{pageSize}";
-            var salt = TokenHelper.MakeSalt(cacheKey);
-
-            if (!string.IsNullOrWhiteSpace(continuationToken))
-            {
-                if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
-                    return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
-            }
-            else if (skip.HasValue && skip.Value > 0)
-            {
-                offset = skip.Value;
-            }
-
-            // Get all constructors if requested
-            var allConstructors = includeConstructors ?
-                type.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToArray() :
-                [];
-
-            // Get all methods if requested
-            var allMethods = includeMethods ?
-                type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
-                    .Where(m => !m.IsSpecialName).ToArray() :
-                [];
-
-            // Get all properties if requested
-            var allProperties = includeProperties ?
-                type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
-                [];
-
-            // Get all fields if requested
-            var allFields = includeFields ?
-                type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
-                [];
-
-            // Apply pagination across all member types
-            var allMembers = CollectAllMembers(allConstructors, allMethods, allProperties, allFields,
+            var pageSize = Math.Max(1, maxItems ?? 25);
+            var saltSeed = $"analyze_type_{CacheKeyHelper.FileStamp(assemblyPath)}_{typeName}_{pageSize}";
+            var cacheKey = CacheKeyHelper.Build(
+                "reflection.type",
+                CacheKeyHelper.FileStamp(assemblyPath), typeName, pageSize, skip, continuationToken,
                 includeConstructors, includeMethods, includeProperties, includeFields);
 
-            var totalMembers = allMembers.Count;
-            var pagedMembers = allMembers.Skip(offset).Take(pageSize).ToArray();
-
-            // Calculate next token
-            var nextOffset = offset + pagedMembers.Length;
-            string? nextToken = null;
-            if (nextOffset < totalMembers)
-                nextToken = TokenHelper.Make(nextOffset, salt);
-
-            // Separate members by type for response
-            var constructors = pagedMembers.Where(m => m.memberType == "constructor").ToArray();
-            var methods = pagedMembers.Where(m => m.memberType == "method").ToArray();
-            var properties = pagedMembers.Where(m => m.memberType == "property").ToArray();
-            var fields = pagedMembers.Where(m => m.memberType == "field").ToArray();
-
-            var result = new
+            return middleware.Execute(cacheKey, () =>
             {
-                typeName = type.FullName,
-                namespace_ = type.Namespace,
-                assemblyName = type.Assembly.FullName,
-                isClass = type.IsClass,
-                isInterface = type.IsInterface,
-                isEnum = type.IsEnum,
-                isAbstract = type.IsAbstract,
-                isSealed = type.IsSealed,
-                isGeneric = type.IsGenericType,
-                baseType = type.BaseType?.FullName,
-                interfaces = type.GetInterfaces().Select(i => i.FullName).ToArray(),
-                totalConstructors = allConstructors.Length,
-                totalMethods = allMethods.Length,
-                totalProperties = allProperties.Length,
-                totalFields = allFields.Length,
-                nextToken,
-                constructors,
-                methods,
-                properties,
-                fields
-            };
+                using var lease = contexts.Acquire(assemblyPath);
+                var assembly = lease.Assembly;
+                Type[] exportedTypes;
+                try
+                {
+                    exportedTypes = assembly.GetExportedTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                }
 
-            // Check response size before returning
-            var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_type");
-            if (sizeValidationError != null)
-                return sizeValidationError;
+                var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
 
-            return JsonHelpers.Envelope("reflection.type", result);
+                if (type == null)
+                    return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
+
+                var offset = 0;
+                var salt = TokenHelper.MakeSalt(saltSeed);
+
+                if (!string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    if (!TokenHelper.TryParse(continuationToken, out offset, out var parsedSalt) || parsedSalt != salt)
+                        return JsonHelpers.Error("InvalidContinuationToken", "The continuation token is invalid or expired.");
+                }
+                else if (skip.HasValue && skip.Value > 0)
+                {
+                    offset = skip.Value;
+                }
+
+                // Get all constructors if requested
+                var allConstructors = includeConstructors ?
+                    type.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToArray() :
+                    [];
+
+                // Get all methods if requested
+                var allMethods = includeMethods ?
+                    type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+                        .Where(m => !m.IsSpecialName).ToArray() :
+                    [];
+
+                // Get all properties if requested
+                var allProperties = includeProperties ?
+                    type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
+                    [];
+
+                // Get all fields if requested
+                var allFields = includeFields ?
+                    type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static).ToArray() :
+                    [];
+
+                // Apply pagination across all member types
+                var allMembers = CollectAllMembers(allConstructors, allMethods, allProperties, allFields,
+                    includeConstructors, includeMethods, includeProperties, includeFields);
+
+                var totalMembers = allMembers.Count;
+                var pagedMembers = allMembers.Skip(offset).Take(pageSize).ToArray();
+
+                // Calculate next token
+                var nextOffset = offset + pagedMembers.Length;
+                string? nextToken = null;
+                if (nextOffset < totalMembers)
+                    nextToken = TokenHelper.Make(nextOffset, salt);
+
+                // Separate members by type for response
+                var constructors = pagedMembers.Where(m => m.memberType == "constructor").ToArray();
+                var methods = pagedMembers.Where(m => m.memberType == "method").ToArray();
+                var properties = pagedMembers.Where(m => m.memberType == "property").ToArray();
+                var fields = pagedMembers.Where(m => m.memberType == "field").ToArray();
+
+                var result = new
+                {
+                    typeName = type.FullName,
+                    namespace_ = type.Namespace,
+                    assemblyName = type.Assembly.FullName,
+                    isClass = type.IsClass,
+                    isInterface = type.IsInterface,
+                    isEnum = type.IsEnum,
+                    isAbstract = type.IsAbstract,
+                    isSealed = type.IsSealed,
+                    isGeneric = type.IsGenericType,
+                    baseType = type.BaseType?.FullName,
+                    interfaces = type.GetInterfaces().Select(i => i.FullName).ToArray(),
+                    totalConstructors = allConstructors.Length,
+                    totalMethods = allMethods.Length,
+                    totalProperties = allProperties.Length,
+                    totalFields = allFields.Length,
+                    nextToken,
+                    constructors,
+                    methods,
+                    properties,
+                    fields
+                };
+
+                // Check response size before returning
+                var sizeValidationError = ResponseSizeHelper.ValidateResponseSize(result, "analyze_type");
+                if (sizeValidationError != null)
+                    return sizeValidationError;
+
+                return JsonHelpers.Envelope("reflection.type", result);
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {
@@ -553,11 +573,13 @@ public static class ReflectionTools
     [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding the method via get_type_members or search_members. Lightweight response.")]
     public static string AnalyzeMethod(
         IInspectionContextProvider contexts,
+        ToolMiddleware middleware,
         IAssemblyHandleRegistry handles,
         [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Name of the method to analyze")] string methodName,
         [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
         [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
+        [Description("Bypass cache for this request")] bool noCache = false,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
@@ -569,67 +591,72 @@ public static class ReflectionTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            using var lease = contexts.Acquire(assemblyPath);
-            var assembly = lease.Assembly;
-            Type[] exportedTypes;
-            try
+            var cacheKey = CacheKeyHelper.Build("reflection.method", CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName);
+
+            return middleware.Execute(cacheKey, () =>
             {
-                exportedTypes = assembly.GetExportedTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
-            }
-
-            var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
-            if (type == null)
-                return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
-
-            const BindingFlags searchedMethods = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
-            var methods = type.GetMethods(searchedMethods)
-                .Where(m => m.Name == methodName)
-                .ToArray();
-
-            if (methods.Length == 0)
-                return ToolErrors.MemberNotFound(
-                    type,
-                    methodName,
-                    "method",
-                    message: $"Method '{methodName}' not found in type '{typeName}'",
-                    bindingFlags: searchedMethods);
-
-            var result = new
-            {
-                typeName = type.FullName,
-                methodName,
-                overloads = methods.Select(method => new
+                using var lease = contexts.Acquire(assemblyPath);
+                var assembly = lease.Assembly;
+                Type[] exportedTypes;
+                try
                 {
-                    signature = method.ToString(),
-                    isStatic = method.IsStatic,
-                    isAbstract = method.IsAbstract,
-                    isVirtual = method.IsVirtual,
-                    isGeneric = method.IsGenericMethod,
-                    returnType = method.ReturnType.FullName,
-                    parameters = method.GetParameters().Select(p => new
-                    {
-                        name = p.Name,
-                        type = p.ParameterType.FullName,
-                        position = p.Position,
-                        hasDefaultValue = p.HasDefaultValue,
-                        defaultValue = p.HasDefaultValue ? SafeRawDefault(p)?.ToString() : null,
-                        isIn = p.IsIn,
-                        isOut = p.IsOut,
-                        isParams = p.CustomAttributes.Any(a => a.AttributeType.FullName == "System.ParamArrayAttribute")
-                    }).ToArray(),
-                    attributes = method.GetCustomAttributesData().Select(attr => new
-                    {
-                        type = attr.AttributeType.FullName,
-                        toString = attr.ToString()
-                    }).ToArray()
-                }).ToArray()
-            };
+                    exportedTypes = assembly.GetExportedTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    exportedTypes = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                }
 
-            return JsonHelpers.Envelope("reflection.method", result);
+                var type = TypeNameResolver.Resolve(assembly, () => exportedTypes, typeName).OrThrowIfAmbiguous(typeName);
+                if (type == null)
+                    return ToolErrors.TypeNotFound(lease.Context, typeName, searchedTypes: exportedTypes);
+
+                const BindingFlags searchedMethods = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static;
+                var methods = type.GetMethods(searchedMethods)
+                    .Where(m => m.Name == methodName)
+                    .ToArray();
+
+                if (methods.Length == 0)
+                    return ToolErrors.MemberNotFound(
+                        type,
+                        methodName,
+                        "method",
+                        message: $"Method '{methodName}' not found in type '{typeName}'",
+                        bindingFlags: searchedMethods);
+
+                var result = new
+                {
+                    typeName = type.FullName,
+                    methodName,
+                    overloads = methods.Select(method => new
+                    {
+                        signature = method.ToString(),
+                        isStatic = method.IsStatic,
+                        isAbstract = method.IsAbstract,
+                        isVirtual = method.IsVirtual,
+                        isGeneric = method.IsGenericMethod,
+                        returnType = method.ReturnType.FullName,
+                        parameters = method.GetParameters().Select(p => new
+                        {
+                            name = p.Name,
+                            type = p.ParameterType.FullName,
+                            position = p.Position,
+                            hasDefaultValue = p.HasDefaultValue,
+                            defaultValue = p.HasDefaultValue ? SafeRawDefault(p)?.ToString() : null,
+                            isIn = p.IsIn,
+                            isOut = p.IsOut,
+                            isParams = p.CustomAttributes.Any(a => a.AttributeType.FullName == "System.ParamArrayAttribute")
+                        }).ToArray(),
+                        attributes = method.GetCustomAttributesData().Select(attr => new
+                        {
+                            type = attr.AttributeType.FullName,
+                            toString = attr.ToString()
+                        }).ToArray()
+                    }).ToArray()
+                };
+
+                return JsonHelpers.Envelope("reflection.method", result);
+            }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
         {

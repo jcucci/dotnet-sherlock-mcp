@@ -31,7 +31,7 @@ public class PaginationTests
     public void AnalyzeAssembly_WithPagination_ReturnsCorrectPageSize()
     {
         // Act
-        var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5);
+        var result = ReflectionTools.AnalyzeAssembly(_contexts, TestMiddleware.Fresh, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5);
 
         // Assert
         Assert.NotNull(result);
@@ -55,7 +55,7 @@ public class PaginationTests
     public void GetTypesFromAssembly_WithPagination_ReturnsCorrectPageSize()
     {
         // Act
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3).Text();
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3).Text();
 
         // Assert
         Assert.NotNull(result);
@@ -117,7 +117,7 @@ public class PaginationTests
     public void ContinuationToken_WithInvalidToken_ReturnsError()
     {
         // Act
-        var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5, continuationToken: "invalid-token");
+        var result = ReflectionTools.AnalyzeAssembly(_contexts, TestMiddleware.Fresh, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 5, continuationToken: "invalid-token");
 
         // Assert
         Assert.NotNull(result);
@@ -127,7 +127,7 @@ public class PaginationTests
     [Fact]
     public void GetTypesFromAssembly_DefaultProjection_IsSummary()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3).Text();
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var jsonDoc = JsonDocument.Parse(result);
@@ -152,7 +152,7 @@ public class PaginationTests
     [Fact]
     public void GetTypesFromAssembly_FullProjection_IncludesHeavyFields()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3, projection: "full").Text();
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, maxItems: 3, projection: "full").Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var jsonDoc = JsonDocument.Parse(result);
@@ -172,7 +172,7 @@ public class PaginationTests
     [Fact]
     public void GetTypesFromAssembly_InvalidProjection_ReturnsError()
     {
-        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestHandles.Registry, assemblyPath: _testAssemblyPath, projection: "partial").Text();
+        var result = TypeAnalysisTools.GetTypesFromAssembly(_typeAnalysisService, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, projection: "partial").Text();
 
         Assert.Contains("InvalidProjection", result);
     }
@@ -354,7 +354,7 @@ public class PaginationTests
         try
         {
             // Act - don't specify maxItems to test default
-            var result = ReflectionTools.AnalyzeAssembly(_contexts, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath);
+            var result = ReflectionTools.AnalyzeAssembly(_contexts, TestMiddleware.Fresh, _runtimeOptions, TestHandles.Registry, assemblyPath: _testAssemblyPath);
 
             // Assert
             Assert.NotNull(result);

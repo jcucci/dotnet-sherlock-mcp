@@ -50,7 +50,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
-            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
+            var scopeKey = CacheKeyHelper.ScopeStamp(scope.Paths);
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.implementations.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);
@@ -151,7 +151,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
-            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
+            var scopeKey = CacheKeyHelper.ScopeStamp(scope.Paths);
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.returning.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);
@@ -258,7 +258,7 @@ public static class ReverseLookupTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
-            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
+            var scopeKey = CacheKeyHelper.ScopeStamp(scope.Paths);
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.extensions.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic);
@@ -370,7 +370,7 @@ public static class ReverseLookupTools
             if (normalizedDepth != "signatures" && normalizedDepth != "il")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidAnalysisDepth", "analysisDepth must be 'signatures' or 'il'"));
 
-            var scopeKey = string.Join(";", scope.Paths.Select(CacheKeyHelper.FileStamp));
+            var scopeKey = CacheKeyHelper.ScopeStamp(scope.Paths);
             var saltSeed = CacheKeyHelper.Build(
                 "reverselookup.references.salt",
                 scopeKey, typeName, caseSensitive, includeNonPublic, normalizedDepth);

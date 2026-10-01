@@ -207,7 +207,7 @@ public sealed class ToolErrorsTests : IDisposable
     [Fact]
     public void GetTypeInfo_MisspelledType_SuggestsClosestType()
     {
-        var error = Parse(TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "TestSampleClas").Text());
+        var error = Parse(TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(), Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "TestSampleClas").Text());
 
         Assert.Equal("TypeNotFound", error.GetProperty("code").GetString());
         Assert.Contains(typeof(TestSampleClass).FullName, Candidates(error));
@@ -217,7 +217,7 @@ public sealed class ToolErrorsTests : IDisposable
     [Fact]
     public void AnalyzeMethod_MisspelledMethod_SuggestsClosestMember()
     {
-        var error = Parse(ReflectionTools.AnalyzeMethod(Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!, methodName: "VirtualMetod"));
+        var error = Parse(ReflectionTools.AnalyzeMethod(Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(TestSampleClass).FullName!, methodName: "VirtualMetod"));
 
         Assert.Equal("MemberNotFound", error.GetProperty("code").GetString());
         Assert.Contains("VirtualMethod", Candidates(error));
@@ -226,7 +226,7 @@ public sealed class ToolErrorsTests : IDisposable
     [Fact]
     public void AnalyzeMethod_MisspelledPrivateMethod_DoesNotSuggestUnreachableName()
     {
-        var error = Parse(ReflectionTools.AnalyzeMethod(Contexts, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(SuggestionFixture).FullName!, methodName: "ParseCor"));
+        var error = Parse(ReflectionTools.AnalyzeMethod(Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(SuggestionFixture).FullName!, methodName: "ParseCor"));
 
         Assert.Equal("MemberNotFound", error.GetProperty("code").GetString());
         Assert.DoesNotContain("ParseCore", Candidates(error));
