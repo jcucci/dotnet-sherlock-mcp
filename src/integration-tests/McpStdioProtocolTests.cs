@@ -10,7 +10,7 @@ namespace Sherlock.MCP.IntegrationTests;
 
 public class McpStdioProtocolTests
 {
-    private const int ExpectedToolCount = 38;
+    private const int ExpectedToolCount = 40;
 
     private const string CurrentProtocolVersion = "2026-07-28";
 
@@ -314,6 +314,32 @@ public class McpStdioProtocolTests
         Assert.True(count <= total, $"count ({count}) should not exceed total ({total}).");
         Assert.Equal(JsonValueKind.Array, data.GetProperty("methods").ValueKind);
         Assert.Equal(count, data.GetProperty("methods").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Call_decompile_member_returns_structured_source()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.CallToolAsync(
+            "decompile_member",
+            new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(string).Assembly.Location,
+                ["typeName"] = "System.String",
+                ["memberName"] = "IsNullOrEmpty"
+            },
+            cancellationToken: cts.Token);
+
+        Assert.NotEqual(true, result.IsError);
+        Assert.NotNull(result.StructuredContent);
+
+        var envelope = Envelope(result);
+        Assert.Equal("decompile.member", envelope.GetProperty("kind").GetString());
+        var data = envelope.GetProperty("data");
+        Assert.Contains("IsNullOrEmpty", data.GetProperty("source").GetString());
+        Assert.Equal(1, data.GetProperty("startLine").GetInt32());
     }
 
     [Fact]

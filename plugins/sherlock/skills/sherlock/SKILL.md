@@ -44,6 +44,7 @@ Start with a small `maxItems` and page with `continuationToken` instead of fetch
 - `find_extension_methods_for` - extension methods targeting a type.
 - `find_references_to` - where a type is used; add `analysisDepth='il'` to include callers found in method bodies.
 - `get_method_calls` - what a method body calls and which fields it touches (use `.ctor` / `.cctor` for constructors).
+- `decompile_member` - a member's body as C# source. Returns every overload unless `parameterTypes` (e.g. `string,int`) narrows it; long output is paged by line, so follow `continuationToken` while `truncated` is true.
 
 Pass `additionalAssemblies` to search across several DLLs.
 

@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 38 specialized tools for .NET assembly analysis, with an optional 19-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 40 specialized tools for .NET assembly analysis, with an optional 20-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -28,7 +28,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 ## What's New in 2.14.0
 
 - **Claude Code plugin**: `/plugin marketplace add jcucci/dotnet-sherlock-mcp` and `/plugin install sherlock@dotnet-sherlock-mcp` install the server plus a skill that teaches agents the Sherlock workflow. See [Claude Code plugin](#claude-code-plugin).
-- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to 18 essential tools. The per-kind member tools are deprecated.
+- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to the essential tools. The per-kind member tools are deprecated.
 - **Structured output and error guidance**: the core browsing tools publish an `outputSchema` and return `structuredContent`, and failed calls carry `isError: true` with did-you-mean candidates and fix-it suggestions.
 - **Cancellation, progress and elicitation**: long scans can be cancelled and report progress, and an ambiguous simple type name prompts the client to choose. See `CHANGELOG.md` for full details.
 
@@ -142,8 +142,8 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 38 | Every tool, including the deprecated per-kind member tools |
-| `core` | 19 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) |
+| `full` (default) | 40 | Every tool, including the deprecated per-kind member tools |
+| `core` | 20 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) and decompilation (`decompile_member`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -295,6 +295,12 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 ### IL Analysis
 - **`GetMethodCalls`**: Read a method's IL body to list what it calls and which fields it touches — the "what does this method do?" question signature-level tools can't answer (aggregates across overloads; use `.ctor`/`.cctor` for constructors)
 
+### Decompilation
+- **`DecompileMember`**: Decompile one member (method, property, field, event or constructor) to C# with ICSharpCode.Decompiler. Returns every overload of the name, or one overload when `parameterTypes` is given (e.g. `string,int`; an empty string selects the parameterless overload). Use `.ctor`/`.cctor` for constructors
+- **`DecompileType`**: Decompile a whole type to C#. Not in the `core` profile; prefer `DecompileMember`
+
+Both tools page their source by line: `maxLines` (default 400, max 5000) sets the page size, and each page reports `startLine`, `lineCount`, `totalLines`, `truncated` and a `continuationToken` for the next page. Lines over 2,000 characters are clipped with a `/* … more characters clipped */` marker and counted in `clippedLines`. The full decompilation is cached by file stamp, so later pages are cheap. A type the assembly only forwards (e.g. `System.String` in a `System.Runtime.dll` facade) returns `TypeForwarded` with the defining assembly in `recommendedParams`.
+
 ### Attributes & Metadata
 - **`GetMemberAttributes`**: Attributes for specific members
 - **`GetParameterAttributes`**: Parameter-level attribute information
@@ -376,7 +382,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
 
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 

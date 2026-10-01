@@ -32,18 +32,19 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 This MCP server provides LLMs with comprehensive .NET reflection capabilities through several key architectural principles:
 
 ### Assembly-First Discovery
-Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 38 specialized tools for clients to:
+Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 40 specialized tools for clients to:
 1. **Discover assemblies** using multiple strategies (project analysis, class name search, file system scanning)
 2. **Load and analyze** specific assemblies by path with efficient caching
 3. **Deep introspection** of types, members, attributes, and XML documentation
 4. **Performance optimization** through pagination, caching, and response size validation
 
-### Tool Categories (38 Available)
+### Tool Categories (40 Available)
 - **Assembly Discovery & Analysis** (6 tools): `OpenAssembly`, `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`, `FindAssemblyByNugetPackage`
 - **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, `AnalyzeType` (deprecated), etc.
 - **Member Analysis** (8 tools): `GetTypeMembers` (one tool for every member kind, filtered by `kinds`), `AnalyzeMethod`, and the deprecated `GetTypeMethods` / `GetTypeProperties` / `GetTypeFields` / `GetTypeEvents` / `GetTypeConstructors` / `GetAllTypeMembers`
 - **Member Search** (1 tool): `SearchMembers`
 - **Reverse Lookup & IL Analysis** (5 tools): `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo` (supports `analysisDepth='il'` for inbound callers), `GetMethodCalls` (outbound IL call/field analysis)
+- **Decompilation** (2 tools): `DecompileMember` (core; every overload unless `parameterTypes` narrows it), `DecompileType` (full profile only); both page source by line via `maxLines`/`continuationToken`
 - **Attributes & Metadata** (2 tools): `GetMemberAttributes`, `GetParameterAttributes`
 - **XML Documentation** (2 tools): `GetXmlDocsForType`, `GetXmlDocsForMember`
 - **Project Analysis** (5 tools): `AnalyzeSolution`, `AnalyzeProject`, `ResolvePackageReferences`, etc.
@@ -89,6 +90,7 @@ The enumerating tools return a lean **`summary`** payload by default (e.g. `GetT
 - **Extension methods for a type**: `FindExtensionMethodsFor`.
 - **Where a type is used**: `FindReferencesTo`; add `analysisDepth='il'` to also resolve inbound callers from method bodies.
 - **What a method calls**: `GetMethodCalls` reads the IL body to list calls and field accesses (use `.ctor`/`.cctor` for constructors).
+- **Read a body as C#**: `DecompileMember` decompiles one member (narrow overloads with `parameterTypes`, e.g. `string,int`); `DecompileType` decompiles a whole type. Follow `continuationToken` while `truncated` is true.
 - Reverse-lookup tools accept `additionalAssemblies` to widen the search scope across multiple DLLs.
 
 ### Automatic Type Analysis

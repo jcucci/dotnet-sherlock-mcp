@@ -10,7 +10,7 @@ public static class ServerInstructions
 
         Work narrow-to-wide and stay token-lean: use search_members when you know a member name but not its declaring type, or get_types_from_assembly to browse; then get_type_info; then filtered get_type_members (kinds, nameContains, hasAttributeContains). get_type_members returns a lean 'summary' ({ kind, name, signature }) by default - pass projection='full' only when you need parameters, attributes, or modifiers.
 
-        For relationships use find_implementations_of, find_methods_returning, find_extension_methods_for, and find_references_to (set analysisDepth='il' to resolve inbound callers); use get_method_calls to see what a method body invokes.
+        For relationships use find_implementations_of, find_methods_returning, find_extension_methods_for, and find_references_to (set analysisDepth='il' to resolve inbound callers); use get_method_calls to see what a method body invokes, and decompile_member to read a member's body as C# (paged by line; follow continuationToken while truncated is true).
 
         search_members, get_types_from_assembly and the find_* tools also return resource_link blocks (sherlock://assembly/{path}/type/{fullName}); read one to get a type's get_type_info payload without another tool call. sherlock://nuget/{packageId}/{version} resolves a cached package to its assembly path. Resource template variables (path, fullName, memberId, packageId, version) support completion/complete.
 

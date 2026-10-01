@@ -25,7 +25,8 @@ public sealed class ToolProfile
         "find_methods_returning",
         "find_extension_methods_for",
         "find_references_to",
-        "get_method_calls"
+        "get_method_calls",
+        "decompile_member"
     ];
 
     public static readonly ToolProfile Full = new("full", allowedTools: null);

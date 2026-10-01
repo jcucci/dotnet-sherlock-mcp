@@ -6,6 +6,7 @@ using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Completions;
+using Sherlock.MCP.Runtime.Decompilation;
 using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
@@ -73,6 +74,7 @@ builder.Services
     .AddSingleton<IProjectAnalysisService, ProjectAnalysisService>()
     .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
+    .AddSingleton<IDecompilerService, DecompilerService>()
     .AddSingleton<ISearchService, SearchService>()
     .AddSingleton<ICompletionService, CompletionService>()
     .AddSingleton<IAssemblyHandleRegistry, AssemblyHandleRegistry>()
