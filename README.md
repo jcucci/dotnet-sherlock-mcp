@@ -21,6 +21,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **Stable JSON API**: Consistent envelopes with versioning and structured error codes
 *   **.NET 9.0 Native**: Built on the latest .NET platform with modern C# features
 *   **Project Integration**: Solution and project file analysis with dependency resolution
+*   **Workflow Prompts**: `explore_package`, `explain_type` and `who_calls` prompts give one-click entry points into common analysis workflows
 *   **Current MCP SDK**: Built on `ModelContextProtocol` 2.1.0 (GA)
 *   **Current MCP Specification**: Speaks protocol revision `2026-07-28`, and negotiates down automatically for clients on earlier revisions
 
@@ -326,6 +327,14 @@ Template variables support `completion/complete`, returning at most 100 values:
 - `fullName`: type names (metadata form, e.g. ``List`1``) from the assembly in the `path` context argument
 - `memberId`: documentation ids from the XML file next to the `path` assembly
 - `packageId` / `version`: package folders and their versions (newest first) in the local NuGet cache
+
+### Prompts
+Three prompts encode common tool sequences as one-click entry points (Claude Code lists them as `/mcp__sherlock__<name>` slash commands). Each returns a single user message that walks the agent through the tools; they only call tools in the `core` profile, so they work under either profile.
+- **`explore_package`** (`packageId`, `version?`): Resolves the package from the local NuGet cache (highest cached version when `version` is omitted), orients on the assembly, and summarizes its main types and entry points
+- **`explain_type`** (`assemblyPath`, `typeName`): Hierarchy, members, XML docs and usages of one type
+- **`who_calls`** (`assemblyPath`, `typeName`, `memberName`, `additionalAssemblies?`): Inbound callers of a member from IL, optionally across a comma-separated list of other assemblies
+
+`assemblyPath`, `typeName` (with `assemblyPath` in the completion context), `packageId` and `version` (with `packageId` in the context) support `completion/complete` the same way as the resource template variables. `prompts/list` carries the same public caching hints as `tools/list`.
 
 ### Advanced Filtering & Pagination
 

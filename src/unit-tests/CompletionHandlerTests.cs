@@ -1,6 +1,7 @@
 using ModelContextProtocol.Protocol;
 using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Server.Completions;
+using Sherlock.MCP.Server.Prompts;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Tests;
@@ -45,16 +46,41 @@ public class CompletionHandlerTests
         Assert.Empty(result.Completion.Values);
     }
 
-    [Fact]
-    public void Complete_PromptReference_ReturnsEmpty()
+    [Theory]
+    [InlineData(PromptNames.ExplorePackage, "packageId", "package:x")]
+    [InlineData(PromptNames.ExplorePackage, "version", "version:pkg:x")]
+    [InlineData(PromptNames.ExplainType, "assemblyPath", "path:x")]
+    [InlineData(PromptNames.ExplainType, "typeName", "type:/a.dll:x")]
+    [InlineData(PromptNames.WhoCalls, "assemblyPath", "path:x")]
+    [InlineData(PromptNames.WhoCalls, "typeName", "type:/a.dll:x")]
+    public void Complete_DispatchesByPromptAndArgument(string prompt, string argument, string expected)
     {
-        var request = new CompleteRequestParams
-        {
-            Ref = new PromptReference { Name = "anything" },
-            Argument = new Argument { Name = "path", Value = "x" }
-        };
+        var context = new Dictionary<string, string> { ["assemblyPath"] = "/a.dll", ["packageId"] = "pkg" };
 
-        Assert.Empty(CompletionHandler.Complete(_completions, request).Completion.Values);
+        var result = CompletionHandler.Complete(_completions, PromptRequest(prompt, argument, "x", context));
+
+        Assert.Equal([expected], result.Completion.Values);
+    }
+
+    [Theory]
+    [InlineData(PromptNames.ExplorePackage, "version")]
+    [InlineData(PromptNames.ExplainType, "typeName")]
+    [InlineData(PromptNames.WhoCalls, "typeName")]
+    public void Complete_PromptMissingDependentArgument_ReturnsEmpty(string prompt, string argument)
+    {
+        var result = CompletionHandler.Complete(_completions, PromptRequest(prompt, argument, "x", context: null));
+
+        Assert.Empty(result.Completion.Values);
+    }
+
+    [Theory]
+    [InlineData("anything", "assemblyPath")]
+    [InlineData(PromptNames.WhoCalls, "memberName")]
+    public void Complete_UnknownPromptOrArgument_ReturnsEmpty(string prompt, string argument)
+    {
+        var context = new Dictionary<string, string> { ["assemblyPath"] = "/a.dll" };
+
+        Assert.Empty(CompletionHandler.Complete(_completions, PromptRequest(prompt, argument, "x", context)).Completion.Values);
     }
 
     [Fact]
@@ -70,6 +96,13 @@ public class CompletionHandlerTests
     private static CompleteRequestParams Request(string template, string argument, string value, IDictionary<string, string>? context) => new()
     {
         Ref = new ResourceTemplateReference { Uri = template },
+        Argument = new Argument { Name = argument, Value = value },
+        Context = context is null ? null : new CompleteContext { Arguments = context }
+    };
+
+    private static CompleteRequestParams PromptRequest(string prompt, string argument, string value, IDictionary<string, string>? context) => new()
+    {
+        Ref = new PromptReference { Name = prompt },
         Argument = new Argument { Name = argument, Value = value },
         Context = context is null ? null : new CompleteContext { Arguments = context }
     };

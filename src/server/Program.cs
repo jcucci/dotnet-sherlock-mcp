@@ -81,6 +81,7 @@ builder.Services
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly()
+    .WithPromptsFromAssembly()
     .WithCompleteHandler(CompletionHandler.HandleAsync)
     .WithRequestFilters(filters => filters
         .AddCallToolFilter(next => async (request, cancellationToken) =>
@@ -103,6 +104,18 @@ builder.Services
             return result;
         })
         .AddListResourceTemplatesFilter(next => async (request, cancellationToken) =>
+        {
+            var result = await next(request, cancellationToken);
+
+            if (SupportsCachingHints(request))
+            {
+                result.TimeToLive = toolListTimeToLive;
+                result.CacheScope = CacheScope.Public;
+            }
+
+            return result;
+        })
+        .AddListPromptsFilter(next => async (request, cancellationToken) =>
         {
             var result = await next(request, cancellationToken);
 
