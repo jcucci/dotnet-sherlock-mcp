@@ -10,6 +10,8 @@ public class RuntimeOptions
         IncludeNonPublicByDefault = false;
         MaxLoadedAssemblies = 64;
         MaxCachedResponses = 256;
+        MaxAssemblyHandles = 256;
+        StateDirectory = DefaultStateDirectory();
 
         ToolSpecificMaxItems = new Dictionary<string, int>(ToolNameComparer.Instance)
         {
@@ -42,6 +44,10 @@ public class RuntimeOptions
 
     public int MaxCachedResponses { get; set; }
 
+    public int MaxAssemblyHandles { get; set; }
+
+    public string StateDirectory { get; set; }
+
     public Dictionary<string, int> ToolSpecificMaxItems { get; }
 
     public int GetMaxItemsForTool(string toolName)
@@ -52,5 +58,14 @@ public class RuntimeOptions
 
         return DefaultMaxItems;
     }
-}
 
+    private static string DefaultStateDirectory() =>
+        Environment.GetEnvironmentVariable("SHERLOCK_STATE_DIR") is { Length: > 0 } configured
+            ? configured
+            : Path.Combine(LocalApplicationDataOrTemp(), "sherlock");
+
+    private static string LocalApplicationDataOrTemp() =>
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) is { Length: > 0 } localData
+            ? localData
+            : Path.GetTempPath();
+}

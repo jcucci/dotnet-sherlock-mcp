@@ -2,6 +2,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Search;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
@@ -24,8 +25,10 @@ public static class SearchTools
         ISearchService searchService,
         ToolMiddleware middleware,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Substring to match against member names (required). Case-insensitive unless caseSensitive=true.")] string nameContains,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Member kinds to include, csv from: method|property|field|event|type. Default: all kinds.")] string? memberKinds = null,
         [Description("Include non-public members and types (default: false)")] bool includeNonPublic = false,
         [Description("Case sensitive name matching (default: false)")] bool caseSensitive = false,
@@ -37,10 +40,10 @@ public static class SearchTools
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(assemblyPath))
-                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "assemblyPath is required"));
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
             if (string.IsNullOrWhiteSpace(nameContains))
                 return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "nameContains is required"));
 

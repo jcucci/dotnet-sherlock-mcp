@@ -79,7 +79,12 @@ public class ToolNamingTests
     public void GetTypeHierarchyNote_UsesSnakeCaseToolNames()
     {
         var result = TypeAnalysisTools.GetTypeHierarchy(
-            new TypeAnalysisService(), new SharedInspectionContextProvider(new RuntimeOptions()), new ReverseLookupService(), TestAssemblyPath, "BaseSample");
+            new TypeAnalysisService(),
+            new SharedInspectionContextProvider(new RuntimeOptions()),
+            new ReverseLookupService(),
+            TestHandles.Registry,
+            assemblyPath: TestAssemblyPath,
+            typeName: "BaseSample");
 
         var note = JsonDocument.Parse(result).RootElement.GetProperty("data").GetProperty("Note").GetString();
         Assert.False(string.IsNullOrWhiteSpace(note));
@@ -92,7 +97,12 @@ public class ToolNamingTests
         var middleware = new ToolMiddleware(new InMemoryToolResponseCache(), new NoopTelemetry(), new RuntimeOptions());
 
         var result = IlAnalysisTools.GetMethodCalls(
-            new IlAnalysisService(), middleware, TestAssemblyPath, nameof(ToolNamingTests), "NoSuchMethod").Text();
+            new IlAnalysisService(),
+            middleware,
+            TestHandles.Registry,
+            assemblyPath: TestAssemblyPath,
+            typeName: nameof(ToolNamingTests),
+            methodName: "NoSuchMethod").Text();
 
         Assert.Equal("MethodNotFound", JsonDocument.Parse(result).RootElement.GetProperty("code").GetString());
         AssertGuidanceUsesWireNames(nameof(IlAnalysisTools.GetMethodCalls), result);

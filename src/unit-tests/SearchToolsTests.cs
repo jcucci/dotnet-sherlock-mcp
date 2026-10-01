@@ -26,8 +26,13 @@ public class SearchToolsTests
     public void SearchMembers_Envelope_AndHitShape()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Method", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var doc = JsonDocument.Parse(result);
@@ -51,8 +56,14 @@ public class SearchToolsTests
     public void SearchMembers_MemberKindsFilter_RestrictsKinds()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Property", memberKinds: "property", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Property",
+            memberKinds: "property",
+            noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", result);
         var results = JsonDocument.Parse(result).RootElement.GetProperty("data").GetProperty("results");
@@ -65,8 +76,14 @@ public class SearchToolsTests
     public void SearchMembers_InvalidMemberKinds_ReturnsError()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Method", memberKinds: "method,bogus", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            memberKinds: "method,bogus",
+            noCache: true).Text();
 
         Assert.Contains("InvalidArgument", result);
         Assert.Contains("bogus", result);
@@ -76,8 +93,13 @@ public class SearchToolsTests
     public void SearchMembers_MissingNameContains_ReturnsError()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "  ", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "  ",
+            noCache: true).Text();
 
         Assert.Contains("InvalidArgument", result);
     }
@@ -86,8 +108,13 @@ public class SearchToolsTests
     public void SearchMembers_AssemblyNotFound_ReturnsError()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            "/tmp/does-not-exist.dll", "Method", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: "/tmp/does-not-exist.dll",
+            nameContains: "Method",
+            noCache: true).Text();
 
         Assert.Contains("AssemblyNotFound", result);
     }
@@ -96,8 +123,14 @@ public class SearchToolsTests
     public void SearchMembers_ContinuationToken_RoundTrips()
     {
         var page1 = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Method", maxItems: 1, noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            maxItems: 1,
+            noCache: true).Text();
 
         Assert.DoesNotContain("\"error\"", page1);
         var page1Data = JsonDocument.Parse(page1).RootElement.GetProperty("data");
@@ -107,9 +140,15 @@ public class SearchToolsTests
         Assert.False(string.IsNullOrEmpty(nextToken));
 
         var page2 = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Method",
-            maxItems: 1, continuationToken: nextToken, noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            maxItems: 1,
+            continuationToken: nextToken,
+            noCache: true).Text();
 
         Assert.DoesNotContain("InvalidContinuationToken", page2);
         Assert.DoesNotContain("\"error\"", page2);
@@ -120,9 +159,14 @@ public class SearchToolsTests
     public void SearchMembers_InvalidContinuationToken_ReturnsError()
     {
         var result = SearchTools.SearchMembers(
-            _svc, _middleware, _runtimeOptions,
-            _testAssemblyPath, "Method",
-            continuationToken: "not-a-real-token", noCache: true).Text();
+            _svc,
+            _middleware,
+            _runtimeOptions,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            nameContains: "Method",
+            continuationToken: "not-a-real-token",
+            noCache: true).Text();
 
         Assert.Contains("InvalidContinuationToken", result);
     }

@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
@@ -20,15 +21,19 @@ public static class ReflectionTools
     public static string AnalyzeAssembly(
         IInspectionContextProvider contexts,
         RuntimeOptions runtimeOptions,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Maximum number of types to return (default: 50)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null)
     {
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -107,13 +112,17 @@ public static class ReflectionTools
     [Description("Gets assembly-level metadata: identity/version, target framework, and referenced assemblies. Lightweight orientation tool — call before deep type analysis. Use projection='full' for all assembly-level attributes structurally.")]
     public static CallToolResult GetAssemblyInfo(
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Detail level: 'summary' (default, lean) or 'full' (adds all assembly attributes)")] string projection = "summary")
     {
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
 
             var normalizedProjection = (projection ?? "summary").Trim().ToLowerInvariant();
             if (normalizedProjection != "summary" && normalizedProjection != "full")
@@ -165,7 +174,7 @@ public static class ReflectionTools
         }
     }
 
-    private static string? ReadTargetFramework(Assembly assembly)
+    internal static string? ReadTargetFramework(Assembly assembly)
     {
         try
         {
@@ -281,8 +290,10 @@ public static class ReflectionTools
     [Description("Deprecated: use get_type_info for type metadata plus get_type_members with projection='full' for members. Gets type metadata with paginated members (constructors, methods, properties, fields). Returns member totals for pagination planning. Use include* flags to filter member categories.")]
     public static string AnalyzeType(
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name to analyze. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Maximum number of members to return per category (default: 25)")] int? maxItems = null,
         [Description("Items to skip (paging)")] int? skip = null,
         [Description("Continuation token for paging")] string? continuationToken = null,
@@ -296,8 +307,10 @@ public static class ReflectionTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;
@@ -540,17 +553,21 @@ public static class ReflectionTools
     [Description("Gets detailed info about a specific method including all overloads, parameters, attributes, and return types. Use after finding the method via get_type_members or search_members. Lightweight response.")]
     public static string AnalyzeMethod(
         IInspectionContextProvider contexts,
-        [Description("Path to the .NET assembly file (.dll or .exe)")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type name containing the method. Prefer full name (e.g., 'System.String'); simple names are also accepted")] string typeName,
         [Description("Name of the method to analyze")] string methodName,
+        [Description("Path to the .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         RequestContext<CallToolRequestParams>? context = null)
     {
         var elicitation = ElicitationContext.From(context);
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (!File.Exists(assemblyPath))
-                return ToolErrors.AssemblyNotFound(assemblyPath);
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return target.Error;
+            assemblyPath = target.Path;
 
             using var lease = contexts.Acquire(assemblyPath);
             var assembly = lease.Assembly;

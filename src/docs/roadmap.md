@@ -27,6 +27,7 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Elicitation for ambiguous inputs**: ambiguous type names and multi-TFM packages are resolved by asking the client ([#67](https://github.com/jcucci/dotnet-sherlock-mcp/issues/67)).
 - **Structured tool output**: core tools publish an `outputSchema` and return `structuredContent` alongside the text block, and every response is compact JSON ([#58](https://github.com/jcucci/dotnet-sherlock-mcp/issues/58)).
 - **Consolidated member listing**: `get_type_members` with a `kinds` filter replaces the per-kind member tools, and a `core` tool profile (`--profile core` / `SHERLOCK_TOOL_PROFILE`) exposes 18 tools ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60)).
+- **Assembly handles**: `open_assembly` returns a short `asm_…` handle that any tool accepts as `assemblyHandle` instead of `assemblyPath`, carries `additionalAssemblies`, and survives server restarts ([#68](https://github.com/jcucci/dotnet-sherlock-mcp/issues/68)).
 
 ## Planned
 
@@ -37,7 +38,6 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - NuGet `McpServer` package type and `dnx` launch ([#63](https://github.com/jcucci/dotnet-sherlock-mcp/issues/63))
 - Completions for type names, assembly paths, and package IDs ([#65](https://github.com/jcucci/dotnet-sherlock-mcp/issues/65))
 - Cancellation and progress notifications for long scans ([#66](https://github.com/jcucci/dotnet-sherlock-mcp/issues/66))
-- Assembly handles for stateless cross-call context ([#68](https://github.com/jcucci/dotnet-sherlock-mcp/issues/68))
 - MCP prompts for common workflows ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69))
 
 ### New capabilities

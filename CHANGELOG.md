@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Assembly handles. `open_assembly(assemblyPath, additionalAssemblies?)` returns `{ handle, name, version, targetFramework, assemblyPath, additionalAssemblies }`, where `handle` is a short `asm_…` id, and every tool that took `assemblyPath` now also accepts `assemblyHandle` instead (pass exactly one; explicit `additionalAssemblies` are added to the handle's). The id is derived from the paths and file stamps of the assembly and its additional assemblies, so reopening the same build returns the same handle, and handles are persisted to `handles.json` under `SHERLOCK_STATE_DIR` (default: the user's local app-data `sherlock` folder) so they survive server restarts. A handle whose files were rebuilt, moved or deleted fails with `StaleAssemblyHandle`, and one that was never issued or has been evicted fails with `UnknownAssemblyHandle`; both point back at `open_assembly`, and when the files were rebuilt in place the stale error's `recommendedParams` carry the paths to reopen; when a file was moved or deleted it lists `details.missingFiles` and points at the assembly-discovery tools instead. The registry keeps the 256 most recently used handles (`maxAssemblyHandles` in `update_runtime_options`). `open_assembly` is in the `core` profile, which now has 19 tools, and publishes an `outputSchema`. (#68)
+
+### Changed
+
+- `assemblyPath` is no longer a required argument on the 27 tools that take it, because `assemblyHandle` can be passed instead; calling with neither returns `InvalidArgument`. In the C# tool methods, `assemblyPath` and `assemblyHandle` now follow the required parameters such as `typeName`, so code that calls the methods with positional arguments has to switch to named ones. MCP clients pass arguments by name and are unaffected.
+
+### Removed
+
+- The unused `AssemblyValidator` helper.
+
 ### Fixed
 
 - The first launch of a new version through the Claude Code plugin no longer fails to connect. On a fresh download `dnx` printed "Skipping NuGet package signature verification." to stdout, corrupting the MCP stream, so the client dropped the connection until a manual reconnect. The plugin now runs `dnx -v q --yes Sherlock.MCP.Server@<version>` (options before the package id, since later arguments are forwarded to the server), and the README's `dnx` examples do the same.

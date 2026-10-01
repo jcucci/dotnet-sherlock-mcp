@@ -2,6 +2,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Contracts.Il;
+using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Server.Middleware;
 using Sherlock.MCP.Server.Schemas;
 using Sherlock.MCP.Server.Shared;
@@ -19,9 +20,11 @@ public static class IlAnalysisTools
     public static CallToolResult GetMethodCalls(
         IIlAnalysisService ilAnalysis,
         ToolMiddleware middleware,
-        [Description("Path to the .NET assembly file (.dll or .exe) that declares the method")] string assemblyPath,
+        IAssemblyHandleRegistry handles,
         [Description("Type that declares the method. Simple name, full name, or open-generic form accepted.")] string typeName,
         [Description("Method name to analyze. Use '.ctor' for instance constructors or '.cctor' for the static constructor. All overloads with this name are aggregated.")] string methodName,
+        [Description("Path to the .NET assembly file (.dll or .exe) that declares the method. Omit when passing assemblyHandle.")] string? assemblyPath = null,
+        [Description("Handle returned by open_assembly; pass instead of assemblyPath")] string? assemblyHandle = null,
         [Description("Case sensitive type-name matching (default: false)")] bool caseSensitive = false,
         [Description("Include non-public methods and the non-public declaring type (default: false)")] bool includeNonPublic = false,
         [Description("Response shape. 'summary' (default, token-lean): distinct target names only. 'full': adds { target, kind, sourceMethod } per call and { target, access, sourceMethod } per field access.")] string projection = "summary",
@@ -33,10 +36,10 @@ public static class IlAnalysisTools
         typeName = Elicitation.ApplyTypeChoice(elicitation, typeName);
         try
         {
-            if (string.IsNullOrWhiteSpace(assemblyPath))
-                return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "assemblyPath is required"));
-            if (!File.Exists(assemblyPath))
-                return ToolResponse.Result(ToolErrors.AssemblyNotFound(assemblyPath));
+            var target = AssemblyScope.ResolveTarget(handles, assemblyPath, assemblyHandle);
+            if (target.Error != null)
+                return ToolResponse.Result(target.Error);
+            assemblyPath = target.Path;
             if (string.IsNullOrWhiteSpace(typeName))
                 return ToolResponse.Result(JsonHelpers.Error("InvalidArgument", "typeName is required"));
             if (string.IsNullOrWhiteSpace(methodName))
