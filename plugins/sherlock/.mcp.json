@@ -1,0 +1,9 @@
+{
+  "sherlock": {
+    "command": "dnx",
+    "args": ["Sherlock.MCP.Server@2.14.0", "--yes"],
+    "env": {
+      "SHERLOCK_TOOL_PROFILE": "${SHERLOCK_TOOL_PROFILE:-core}"
+    }
+  }
+}

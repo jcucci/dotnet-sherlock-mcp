@@ -24,11 +24,12 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **Current MCP SDK**: Built on `ModelContextProtocol` 2.1.0 (GA)
 *   **Current MCP Specification**: Speaks protocol revision `2026-07-28`, and negotiates down automatically for clients on earlier revisions
 
-## What's New in 2.13.0
+## What's New in 2.14.0
 
-- **MCP 2026-07-28**: upgraded to `ModelContextProtocol` 2.1.0, so clients negotiate the current specification revision instead of falling back. The handshake-less request flow is supported, and clients on earlier revisions keep working unchanged.
-- **Tool annotations**: all 36 tools now advertise a title plus accurate behavioural hints (`readOnlyHint`, `destructiveHint`, `openWorldHint`, `idempotentHint`), so clients can tell at a glance that 35 of them only read metadata.
-- **Cacheable tool list**: `tools/list` advertises `ttlMs` and `cacheScope` and returns tools in a deterministic order, letting clients skip redundant re-fetches. See `CHANGELOG.md` for full details.
+- **Claude Code plugin**: `/plugin marketplace add jcucci/dotnet-sherlock-mcp` and `/plugin install sherlock@dotnet-sherlock-mcp` install the server plus a skill that teaches agents the Sherlock workflow. See [Claude Code plugin](#claude-code-plugin).
+- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to 18 essential tools. The per-kind member tools are deprecated.
+- **Structured output and error guidance**: the core browsing tools publish an `outputSchema` and return `structuredContent`, and failed calls carry `isError: true` with did-you-mean candidates and fix-it suggestions.
+- **Cancellation, progress and elicitation**: long scans can be cancelled and report progress, and an ambiguous simple type name prompts the client to choose. See `CHANGELOG.md` for full details.
 
 ## Installation
 
@@ -37,7 +38,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 With the .NET 10 SDK, `dnx` downloads the package from NuGet and runs it directly — no install step:
 
 ```bash
-dnx Sherlock.MCP.Server@2.13.0 --yes
+dnx Sherlock.MCP.Server@2.14.0 --yes
 ```
 
 `--yes` skips the interactive confirmation prompt, which an MCP client launching the server over stdio can't answer. Pinning the version keeps launches reproducible; bump it when you want to upgrade. The package is published with the `McpServer` package type, so it is also listed as an MCP server on NuGet.org.
@@ -60,12 +61,47 @@ dotnet run --project src/server/Sherlock.MCP.Server.csproj
 
 Sherlock runs as a standard MCP server that communicates over stdio.
 
+### Claude Code plugin
+
+This repository is also a Claude Code plugin marketplace. The `sherlock` plugin bundles the server (launched with `dnx`, so it needs the .NET 10 SDK) and a skill that teaches the agent the locate → orient → drill-in → relationships workflow:
+
+```text
+/plugin marketplace add jcucci/dotnet-sherlock-mcp
+/plugin install sherlock@dotnet-sherlock-mcp
+```
+
+The plugin starts the server with the `core` [tool profile](#tool-profiles), which matches the tools the skill covers. To expose every tool, set `SHERLOCK_TOOL_PROFILE=full` in the environment Claude Code is launched from.
+
+Each user runs these commands once; restart Claude Code (or run `/reload-plugins`) afterwards. To pick up a new release, run `/plugin marketplace update dotnet-sherlock-mcp`. If you previously registered Sherlock with `claude mcp add`, remove that entry (`claude mcp remove sherlock`) so the tools aren't loaded twice.
+
+#### Team setup
+
+To offer the plugin to everyone working in a repository, commit the following to that repository's `.claude/settings.json`. Claude Code prompts each teammate to install it when they trust the folder, so nobody has to type the commands above:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "dotnet-sherlock-mcp": {
+      "source": {
+        "source": "github",
+        "repo": "jcucci/dotnet-sherlock-mcp"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "sherlock@dotnet-sherlock-mcp": true
+  }
+}
+```
+
+Teammates still need the .NET 10 SDK on their `PATH` for `dnx`.
+
 ### Using dnx
 
 - Claude Code:
 
 ```bash
-claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.13.0 --yes
+claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.14.0 --yes
 ```
 
 - VS Code (`.vscode/mcp.json`):
@@ -76,7 +112,7 @@ claude mcp add sherlock -- dnx Sherlock.MCP.Server@2.13.0 --yes
     "sherlock": {
       "type": "stdio",
       "command": "dnx",
-      "args": ["Sherlock.MCP.Server@2.13.0", "--yes"]
+      "args": ["Sherlock.MCP.Server@2.14.0", "--yes"]
     }
   }
 }
@@ -132,7 +168,7 @@ The snippets below are **optional reinforcement**. Keep them short and principle
 
 ### Claude Code (CLAUDE.md)
 
-Optional — a short pointer in your project's `CLAUDE.md`:
+If you installed the [Claude Code plugin](#claude-code-plugin), its skill already covers this. Otherwise, you can add a short, optional pointer to your project's `CLAUDE.md`:
 
 ```markdown
 ## .NET Assembly Analysis
@@ -421,10 +457,10 @@ dotnet versionize
 git push --follow-tags
 ```
 
-`versionize` only bumps the project version. Before pushing, bump both `version` fields in `server.json` (and the pinned `dnx` version in this README) in the same release commit, then re-point the tag at it. `server.json` is packed into the NuGet package as `.mcp/server.json`.
+`versionize` only bumps the project version. Before pushing, bump both `version` fields in `server.json`, the Claude Code plugin's `version` in `plugins/sherlock/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, and the pinned `dnx` version in `plugins/sherlock/.mcp.json` (and in this README) in the same release commit, then re-point the tag at it. `server.json` is packed into the NuGet package as `.mcp/server.json`.
 
 The release workflow will automatically:
-1. Verify that the tag, `server.json` and the project version all match
+1. Verify that the tag, `server.json`, the project version and the Claude Code plugin versions all match
 2. Build and test the project
 3. Create a GitHub Release with changelog notes
 4. Publish the NuGet package and the MCP Registry entry
