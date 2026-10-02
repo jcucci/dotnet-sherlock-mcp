@@ -9,13 +9,15 @@ public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
 
     public MetadataOnlyInspectionContext(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
     {
-        var resolver = MetadataResolverFactory.Create(assemblyPath, additionalSearchDirectories);
-        var coreAssemblyName = typeof(object).Assembly.GetName().Name;
-        _mlc = new MetadataLoadContext(resolver, coreAssemblyName);
+        var (resolver, framework) = MetadataResolverFactory.Create(assemblyPath, additionalSearchDirectories);
+        Framework = framework;
+        _mlc = new MetadataLoadContext(resolver, framework.CoreAssemblyName);
         Assembly = _mlc.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
     }
 
     public Assembly Assembly { get; }
+
+    public FrameworkResolution Framework { get; }
 
     public IReadOnlyList<string> UnresolvedDependencies => _unresolvedDependencies;
 

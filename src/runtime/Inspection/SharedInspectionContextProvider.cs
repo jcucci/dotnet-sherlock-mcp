@@ -11,8 +11,9 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         private int _refCount;
         private bool _retired;
 
-        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength, string assetsStamp)
+        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength, string assetsStamp, string runtimeConfigStamp)
         {
+            RuntimeConfigStamp = runtimeConfigStamp;
             Context = context;
             FileStampTicks = fileStampTicks;
             FileLength = fileLength;
@@ -26,6 +27,8 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         public long FileLength { get; }
 
         public string AssetsStamp { get; }
+
+        public string RuntimeConfigStamp { get; }
 
         public long LastAccess;
 
@@ -99,11 +102,12 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         var stampTicks = fileInfo.LastWriteTimeUtc.Ticks;
         var length = fileInfo.Length;
         var assetsStamp = ProjectAssetsLocator.AssetsStamp(fullPath);
+        var runtimeConfigStamp = FrameworkReferenceResolver.RuntimeConfigStamp(fullPath);
 
         while (true)
         {
             var lazy = _entries.GetOrAdd(key, _ => new Lazy<Entry>(
-                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length, assetsStamp),
+                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length, assetsStamp, runtimeConfigStamp),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
             Entry entry;
@@ -117,7 +121,8 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
                 throw;
             }
 
-            if (entry.FileStampTicks != stampTicks || entry.FileLength != length || entry.AssetsStamp != assetsStamp)
+            if (entry.FileStampTicks != stampTicks || entry.FileLength != length || entry.AssetsStamp != assetsStamp
+                || entry.RuntimeConfigStamp != runtimeConfigStamp || FrameworkReferenceResolver.PacksChanged(fullPath, entry.Context.Framework))
             {
                 if (_entries.TryRemove(new KeyValuePair<string, Lazy<Entry>>(key, lazy)))
                     entry.Retire();

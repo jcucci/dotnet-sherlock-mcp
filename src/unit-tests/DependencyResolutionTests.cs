@@ -88,7 +88,10 @@ public class DependencyResolutionTests
 
     private sealed class StubContext(string[] unresolved) : IAssemblyInspectionContext
     {
-        public Assembly Assembly => typeof(StubContext).Assembly;
+            public Assembly Assembly => typeof(StubContext).Assembly;
+
+        public FrameworkResolution Framework { get; } =
+            new(FrameworkResolutionKind.HostRuntime, null, "System.Private.CoreLib", [], [], []);
 
         public IReadOnlyList<string> UnresolvedDependencies => unresolved;
 

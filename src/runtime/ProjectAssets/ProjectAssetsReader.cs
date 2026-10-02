@@ -82,6 +82,10 @@ public static class ProjectAssetsReader
             DirectDependencies: Objects(frameworks).ToDictionary(
                 framework => AliasOf(framework.Name, framework.Value),
                 framework => (IReadOnlyList<AssetsDependency>)ParseDirectDependencies(framework.Value),
+                StringComparer.OrdinalIgnoreCase),
+            Frameworks: Objects(frameworks).ToDictionary(
+                framework => AliasOf(framework.Name, framework.Value),
+                framework => ParseFramework(framework.Value),
                 StringComparer.OrdinalIgnoreCase));
     }
 
@@ -130,6 +134,15 @@ public static class ProjectAssetsReader
             .Select(dependency => new AssetsDependency(dependency.Name, Text(dependency.Value, "version") ?? ""))
             .ToArray();
 
+    private static AssetsFramework ParseFramework(JsonElement framework) =>
+        new(
+            FrameworkReferences: Names(Property(framework, "frameworkReferences")),
+            DownloadDependencies: Items(Property(framework, "downloadDependencies"))
+                .Select(dependency => (Name: Text(dependency, "name"), Version: Text(dependency, "version")))
+                .Where(dependency => dependency.Name != null)
+                .Select(dependency => new AssetsDependency(dependency.Name!, dependency.Version ?? ""))
+                .ToArray());
+
     private static Dictionary<string, string> AliasesByShortName(JsonElement frameworks)
     {
         var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -158,6 +171,9 @@ public static class ProjectAssetsReader
 
     private static JsonProperty[] Objects(JsonElement element) =>
         element.ValueKind == JsonValueKind.Object ? element.EnumerateObject().ToArray() : [];
+
+    private static JsonElement[] Items(JsonElement element) =>
+        element.ValueKind == JsonValueKind.Array ? element.EnumerateArray().ToArray() : [];
 
     private static JsonElement Property(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) ? value : default;

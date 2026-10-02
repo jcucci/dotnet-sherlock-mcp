@@ -1,9 +1,10 @@
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.Metadata;
+using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Runtime.Decompilation;
 
@@ -50,7 +51,9 @@ public sealed class DecompilerService : IDecompilerService
             streamOptions: PEStreamOptions.PrefetchMetadata);
         foreach (var directory in searchDirectories ?? [])
             resolver.AddSearchDirectory(directory);
-        resolver.AddSearchDirectory(RuntimeEnvironment.GetRuntimeDirectory());
+        foreach (var directory in FrameworkReferenceResolver.Resolve(assemblyPath, ProjectAssetsLocator.Locate(assemblyPath)).SearchDirectories)
+            resolver.AddSearchDirectory(directory);
+        resolver.AddSearchDirectory(FrameworkReferenceResolver.HostRuntimeDirectory());
         return resolver;
     }
 

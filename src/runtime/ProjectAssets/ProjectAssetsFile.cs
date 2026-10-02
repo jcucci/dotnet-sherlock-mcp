@@ -17,6 +17,8 @@ public sealed record AssetsLibrary(
     public bool IsProject => Type.Equals("project", StringComparison.OrdinalIgnoreCase);
 }
 
+public sealed record AssetsFramework(IReadOnlyList<string> FrameworkReferences, IReadOnlyList<AssetsDependency> DownloadDependencies);
+
 public sealed record AssetsTarget(string Alias, string? RuntimeIdentifier, IReadOnlyList<AssetsLibrary> Libraries)
 {
     public string Key => RuntimeIdentifier is null ? Alias : $"{Alias}/{RuntimeIdentifier}";
@@ -28,7 +30,8 @@ public sealed record ProjectAssetsFile(
     string? ProjectPath,
     IReadOnlyList<string> PackageFolders,
     IReadOnlyList<AssetsTarget> Targets,
-    IReadOnlyDictionary<string, IReadOnlyList<AssetsDependency>> DirectDependencies)
+    IReadOnlyDictionary<string, IReadOnlyList<AssetsDependency>> DirectDependencies,
+    IReadOnlyDictionary<string, AssetsFramework>? Frameworks = null)
 {
     public IReadOnlyList<string> Aliases =>
         Targets.Select(target => target.Alias).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -40,6 +43,9 @@ public sealed record ProjectAssetsFile(
 
     public IReadOnlyList<AssetsDependency> DirectDependenciesFor(string alias) =>
         DirectDependencies.TryGetValue(alias, out var dependencies) ? dependencies : [];
+
+    public AssetsFramework? FrameworkFor(string alias) =>
+        Frameworks != null && Frameworks.TryGetValue(alias, out var framework) ? framework : null;
 
     public IReadOnlyList<string> ResolvePackageAssets(AssetsLibrary library, IEnumerable<string> assets)
     {

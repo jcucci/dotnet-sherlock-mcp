@@ -6,6 +6,8 @@ public interface IAssemblyInspectionContext : IDisposable
 {
     Assembly Assembly { get; }
 
+    FrameworkResolution Framework { get; }
+
     IReadOnlyList<string> UnresolvedDependencies { get; }
 
     IEnumerable<Type> GetTypes();
