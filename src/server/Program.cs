@@ -67,7 +67,9 @@ static bool SupportsCachingHints<TParams>(ModelContextProtocol.Server.RequestCon
 builder.Services
     .AddSingleton<RuntimeOptions>()
     .AddSingleton<IRecentAssemblyRegistry, RecentAssemblyRegistry>()
-    .AddSingleton<IInspectionContextProvider, SharedInspectionContextProvider>()
+    .AddSingleton<SharedInspectionContextProvider>()
+    .AddSingleton<IInspectionContextProvider>(services => services.GetRequiredService<SharedInspectionContextProvider>())
+    .AddSingleton<IMetadataReaderProvider>(services => services.GetRequiredService<SharedInspectionContextProvider>())
     .AddSingleton<IToolResponseCache, InMemoryToolResponseCache>()
     .AddSingleton<ITelemetry, NoopTelemetry>()
     .AddSingleton<IMemberAnalysisService, MemberAnalysisService>()

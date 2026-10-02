@@ -1,34 +1,28 @@
 using System.Collections.Concurrent;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using Sherlock.MCP.Runtime.Il;
 using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
-public sealed class SharedInspectionContextProvider : IInspectionContextProvider, IDisposable
+public sealed class SharedInspectionContextProvider : IInspectionContextProvider, IMetadataReaderProvider, IDisposable
 {
-    private sealed class Entry
+    private abstract class LeasedEntry
     {
         private readonly object _gate = new();
         private int _refCount;
         private bool _retired;
 
-        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength, string assetsStamp, string runtimeConfigStamp)
+        protected LeasedEntry(long fileStampTicks, long fileLength)
         {
-            RuntimeConfigStamp = runtimeConfigStamp;
-            Context = context;
             FileStampTicks = fileStampTicks;
             FileLength = fileLength;
-            AssetsStamp = assetsStamp;
         }
-
-        public IAssemblyInspectionContext Context { get; }
 
         public long FileStampTicks { get; }
 
         public long FileLength { get; }
-
-        public string AssetsStamp { get; }
-
-        public string RuntimeConfigStamp { get; }
 
         public long LastAccess;
 
@@ -70,13 +64,53 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
             get { lock (_gate) return !_retired && _refCount == 0; }
         }
 
+        protected abstract void DisposeResource();
+
         private void SafeDispose()
         {
-            try { Context.Dispose(); } catch { }
+            try { DisposeResource(); } catch { }
         }
     }
 
+    private sealed class Entry : LeasedEntry
+    {
+        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength, string assetsStamp, string runtimeConfigStamp)
+            : base(fileStampTicks, fileLength)
+        {
+            Context = context;
+            AssetsStamp = assetsStamp;
+            RuntimeConfigStamp = runtimeConfigStamp;
+        }
+
+        public IAssemblyInspectionContext Context { get; }
+
+        public string AssetsStamp { get; }
+
+        public string RuntimeConfigStamp { get; }
+
+        protected override void DisposeResource() => Context.Dispose();
+    }
+
+    private sealed class MetadataEntry : LeasedEntry
+    {
+        public MetadataEntry(PEReader peReader, long fileStampTicks, long fileLength) : base(fileStampTicks, fileLength)
+        {
+            PEReader = peReader;
+            Reader = peReader.GetMetadataReader();
+            Resolver = new MetadataTokenResolver(Reader);
+        }
+
+        public PEReader PEReader { get; }
+
+        public MetadataReader Reader { get; }
+
+        public MetadataTokenResolver Resolver { get; }
+
+        protected override void DisposeResource() => PEReader.Dispose();
+    }
+
     private readonly ConcurrentDictionary<string, Lazy<Entry>> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Lazy<MetadataEntry>> _metadataEntries = new(StringComparer.OrdinalIgnoreCase);
     private readonly RuntimeOptions _options;
     private readonly IRecentAssemblyRegistry? _recentAssemblies;
     private long _accessCounter;
@@ -95,58 +129,112 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
     {
         var fullPath = Path.GetFullPath(assemblyPath);
         var key = fullPath + BuildDepsKey(additionalSearchDirectories);
-        var fileInfo = new FileInfo(fullPath);
-        if (!fileInfo.Exists)
-            throw new FileNotFoundException($"Assembly file not found: {fullPath}", fullPath);
-
+        var fileInfo = RequireFile(fullPath);
         var stampTicks = fileInfo.LastWriteTimeUtc.Ticks;
         var length = fileInfo.Length;
         var assetsStamp = ProjectAssetsLocator.AssetsStamp(fullPath);
         var runtimeConfigStamp = FrameworkReferenceResolver.RuntimeConfigStamp(fullPath);
 
+        var entry = AcquireEntry(
+            _entries,
+            key,
+            () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length, assetsStamp, runtimeConfigStamp),
+            e => e.FileStampTicks == stampTicks && e.FileLength == length && e.AssetsStamp == assetsStamp
+                && e.RuntimeConfigStamp == runtimeConfigStamp && !FrameworkReferenceResolver.PacksChanged(fullPath, e.Context.Framework));
+
+        _recentAssemblies?.Record(fullPath);
+        return new InspectionContextLease(entry.Context, entry.Release);
+    }
+
+    public MetadataReaderLease AcquireMetadata(string assemblyPath)
+    {
+        var fullPath = Path.GetFullPath(assemblyPath);
+        var fileInfo = RequireFile(fullPath);
+        var stampTicks = fileInfo.LastWriteTimeUtc.Ticks;
+        var length = fileInfo.Length;
+
+        var entry = AcquireEntry(
+            _metadataEntries,
+            fullPath,
+            () => CreateMetadataEntry(fullPath, stampTicks, length),
+            e => e.FileStampTicks == stampTicks && e.FileLength == length);
+
+        return new MetadataReaderLease(entry.PEReader, entry.Reader, entry.Resolver, entry.Release);
+    }
+
+    public void Dispose()
+    {
+        RetireAll(_entries);
+        RetireAll(_metadataEntries);
+    }
+
+    private TEntry AcquireEntry<TEntry>(
+        ConcurrentDictionary<string, Lazy<TEntry>> entries, string key, Func<TEntry> create, Func<TEntry, bool> isCurrent)
+        where TEntry : LeasedEntry
+    {
         while (true)
         {
-            var lazy = _entries.GetOrAdd(key, _ => new Lazy<Entry>(
-                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length, assetsStamp, runtimeConfigStamp),
-                LazyThreadSafetyMode.ExecutionAndPublication));
+            var lazy = entries.GetOrAdd(key, _ => new Lazy<TEntry>(create, LazyThreadSafetyMode.ExecutionAndPublication));
 
-            Entry entry;
+            TEntry entry;
             try
             {
                 entry = lazy.Value;
             }
             catch
             {
-                _entries.TryRemove(new KeyValuePair<string, Lazy<Entry>>(key, lazy));
+                entries.TryRemove(new KeyValuePair<string, Lazy<TEntry>>(key, lazy));
                 throw;
             }
 
-            if (entry.FileStampTicks != stampTicks || entry.FileLength != length || entry.AssetsStamp != assetsStamp
-                || entry.RuntimeConfigStamp != runtimeConfigStamp || FrameworkReferenceResolver.PacksChanged(fullPath, entry.Context.Framework))
+            if (!isCurrent(entry))
             {
-                if (_entries.TryRemove(new KeyValuePair<string, Lazy<Entry>>(key, lazy)))
+                if (entries.TryRemove(new KeyValuePair<string, Lazy<TEntry>>(key, lazy)))
                     entry.Retire();
                 continue;
             }
 
             if (!entry.TryAcquire())
             {
-                _entries.TryRemove(new KeyValuePair<string, Lazy<Entry>>(key, lazy));
+                entries.TryRemove(new KeyValuePair<string, Lazy<TEntry>>(key, lazy));
                 continue;
             }
 
             Interlocked.Exchange(ref entry.LastAccess, Interlocked.Increment(ref _accessCounter));
-            EvictOverflow();
-            _recentAssemblies?.Record(fullPath);
-            return new InspectionContextLease(entry.Context, entry.Release);
+            EvictOverflow(entries);
+            return entry;
         }
     }
 
-    public void Dispose()
+    private static FileInfo RequireFile(string fullPath)
     {
-        foreach (var pair in _entries.ToArray())
+        var fileInfo = new FileInfo(fullPath);
+        if (!fileInfo.Exists)
+            throw new FileNotFoundException($"Assembly file not found: {fullPath}", fullPath);
+        return fileInfo;
+    }
+
+    private static MetadataEntry CreateMetadataEntry(string fullPath, long fileStampTicks, long fileLength)
+    {
+        var peReader = new PEReader(File.OpenRead(fullPath));
+        try
         {
-            if (!_entries.TryRemove(pair)) continue;
+            if (!peReader.HasMetadata)
+                throw new BadImageFormatException($"File has no .NET metadata: {fullPath}", fullPath);
+            return new MetadataEntry(peReader, fileStampTicks, fileLength);
+        }
+        catch
+        {
+            peReader.Dispose();
+            throw;
+        }
+    }
+
+    private static void RetireAll<TEntry>(ConcurrentDictionary<string, Lazy<TEntry>> entries) where TEntry : LeasedEntry
+    {
+        foreach (var pair in entries.ToArray())
+        {
+            if (!entries.TryRemove(pair)) continue;
             if (pair.Value.IsValueCreated)
                 pair.Value.Value.Retire();
         }
@@ -168,20 +256,20 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         return "|deps:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes))[..16];
     }
 
-    private void EvictOverflow()
+    private void EvictOverflow<TEntry>(ConcurrentDictionary<string, Lazy<TEntry>> entries) where TEntry : LeasedEntry
     {
         var max = Math.Max(1, _options.MaxLoadedAssemblies);
-        if (_entries.Count <= max) return;
+        if (entries.Count <= max) return;
 
-        var idle = _entries
+        var idle = entries
             .Where(p => p.Value.IsValueCreated && p.Value.Value.IsIdle)
             .OrderBy(p => Interlocked.Read(ref p.Value.Value.LastAccess))
             .ToArray();
 
-        var overflow = _entries.Count - max;
+        var overflow = entries.Count - max;
         foreach (var pair in idle.Take(overflow))
         {
-            if (_entries.TryRemove(pair))
+            if (entries.TryRemove(pair))
                 pair.Value.Value.Retire();
         }
     }

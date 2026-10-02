@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
@@ -23,6 +24,8 @@ internal sealed class MetadataTokenResolver
 {
     private readonly MetadataReader _md;
     private readonly StringSignatureTypeProvider _provider;
+    private readonly ConcurrentDictionary<int, ResolvedMember?> _resolved = new();
+    private readonly ConcurrentDictionary<TypeDefinitionHandle, string> _typeDefNames = new();
 
     public MetadataTokenResolver(MetadataReader md)
     {
@@ -30,7 +33,9 @@ internal sealed class MetadataTokenResolver
         _provider = new StringSignatureTypeProvider(md);
     }
 
-    public ResolvedMember? Resolve(int token)
+    public ResolvedMember? Resolve(int token) => _resolved.GetOrAdd(token, ResolveUncached);
+
+    private ResolvedMember? ResolveUncached(int token)
     {
         EntityHandle handle;
         try { handle = MetadataTokens.EntityHandle(token); }
@@ -58,14 +63,15 @@ internal sealed class MetadataTokenResolver
             case HandleKind.MethodSpecification:
             {
                 var spec = _md.GetMethodSpecification((MethodSpecificationHandle)handle);
-                return Resolve(MetadataTokens.GetToken(spec.Method));
+                return ResolveUncached(MetadataTokens.GetToken(spec.Method));
             }
             default:
                 return null;
         }
     }
 
-    public string TypeDefName(TypeDefinitionHandle handle) => _provider.GetTypeFromDefinition(_md, handle, 0);
+    public string TypeDefName(TypeDefinitionHandle handle) =>
+        _typeDefNames.GetOrAdd(handle, h => _provider.GetTypeFromDefinition(_md, h, 0));
 
     private string ParentName(EntityHandle parent)
     {

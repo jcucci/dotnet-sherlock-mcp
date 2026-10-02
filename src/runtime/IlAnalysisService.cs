@@ -13,12 +13,21 @@ namespace Sherlock.MCP.Runtime;
 public class IlAnalysisService : IIlAnalysisService
 {
     private readonly IInspectionContextProvider _contexts;
+    private readonly IMetadataReaderProvider _readers;
 
     public IlAnalysisService() : this(new SharedInspectionContextProvider(new RuntimeOptions()))
     {
     }
 
-    public IlAnalysisService(IInspectionContextProvider contexts) => _contexts = contexts;
+    private IlAnalysisService(SharedInspectionContextProvider provider) : this(contexts: provider, readers: provider)
+    {
+    }
+
+    public IlAnalysisService(IInspectionContextProvider contexts, IMetadataReaderProvider readers)
+    {
+        _contexts = contexts;
+        _readers = readers;
+    }
 
     public MethodCallsResult? GetMethodCalls(
         string assemblyPath, string typeName, string methodName, IlAnalysisOptions options,
@@ -67,12 +76,11 @@ public class IlAnalysisService : IIlAnalysisService
         var fieldAccesses = new List<FieldAccessInfo>();
         var anyBodyless = false;
 
-        using (var stream = File.OpenRead(assemblyPath))
-        using (var pe = new PEReader(stream))
+        using (var metadata = _readers.AcquireMetadata(assemblyPath))
         {
-            if (!pe.HasMetadata) return null;
-            var md = pe.GetMetadataReader();
-            var resolver = new MetadataTokenResolver(md);
+            var pe = metadata.PEReader;
+            var md = metadata.Reader;
+            var resolver = metadata.Resolver;
 
             foreach (var method in targets)
             {
@@ -158,17 +166,16 @@ public class IlAnalysisService : IIlAnalysisService
             .ToArray();
     }
 
-    private static void ScanAssemblyForCallers(
+    private void ScanAssemblyForCallers(
         string path, string typeName, ReverseLookupOptions options,
         Func<InboundCallHit, bool> tryAdd, Func<bool> isTruncated, CancellationToken cancellationToken)
     {
         try
         {
-            using var stream = File.OpenRead(path);
-            using var pe = new PEReader(stream);
-            if (!pe.HasMetadata) return;
-            var md = pe.GetMetadataReader();
-            var resolver = new MetadataTokenResolver(md);
+            using var metadata = _readers.AcquireMetadata(path);
+            var pe = metadata.PEReader;
+            var md = metadata.Reader;
+            var resolver = metadata.Resolver;
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var typeHandle in md.TypeDefinitions)
