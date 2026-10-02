@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Runtime.ProjectAssets;
 
@@ -7,7 +8,10 @@ public static class ProjectAssetsReader
 {
     private const string Placeholder = "_._";
 
-    private static readonly ConcurrentDictionary<string, CachedAssets> Cache = new(StringComparer.OrdinalIgnoreCase);
+    internal const int MaxCachedFiles = 32;
+
+    private static readonly ConcurrentDictionary<string, CachedAssets> Cache = new(PathComparers.Comparer);
+    private static long _accessCounter;
 
     public static ProjectAssetsFile Read(string assetsPath)
     {
@@ -17,14 +21,30 @@ public static class ProjectAssetsReader
             throw new FileNotFoundException($"Assets file not found: {fullPath}", fullPath);
 
         var stamp = (info.LastWriteTimeUtc.Ticks, info.Length);
-        if (Cache.TryGetValue(fullPath, out var cached) && cached.Stamp == stamp) return cached.File;
+        if (Cache.TryGetValue(fullPath, out var cached) && cached.Stamp == stamp)
+        {
+            Interlocked.Exchange(ref cached.LastAccess, Interlocked.Increment(ref _accessCounter));
+            return cached.File;
+        }
 
         var file = Parse(fullPath);
-        Cache[fullPath] = new CachedAssets(stamp, file);
+        Cache[fullPath] = new CachedAssets(stamp, file) { LastAccess = Interlocked.Increment(ref _accessCounter) };
+        EvictOverflow();
         return file;
     }
 
+    internal static int CachedFileCount => Cache.Count;
+
     internal static void ResetCache() => Cache.Clear();
+
+    private static void EvictOverflow()
+    {
+        var overflow = Cache.Count - MaxCachedFiles;
+        if (overflow <= 0) return;
+
+        foreach (var pair in Cache.ToArray().OrderBy(pair => Interlocked.Read(ref pair.Value.LastAccess)).Take(overflow))
+            Cache.TryRemove(pair);
+    }
 
     private static ProjectAssetsFile Parse(string fullPath)
     {
@@ -145,5 +165,12 @@ public static class ProjectAssetsReader
     private static string? Text(JsonElement element, string name) =>
         Property(element, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
 
-    private sealed record CachedAssets((long Ticks, long Length) Stamp, ProjectAssetsFile File);
+    private sealed class CachedAssets((long Ticks, long Length) stamp, ProjectAssetsFile file)
+    {
+        public (long Ticks, long Length) Stamp { get; } = stamp;
+
+        public ProjectAssetsFile File { get; } = file;
+
+        public long LastAccess;
+    }
 }

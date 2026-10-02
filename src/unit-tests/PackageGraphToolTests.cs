@@ -122,6 +122,21 @@ public sealed class PackageGraphToolTests : IDisposable
         Assert.Contains("net8.0/linux-x64", json.RootElement.GetProperty("recommendedParams").GetProperty("candidates").EnumerateArray().Select(c => c.GetString()));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ArtifactsLayout_ProjectInput_FindsArtifactsAssets(bool passDirectory)
+    {
+        var artifactsAssets = Path.Combine(_fixture.Root, "artifacts", "obj", "Sample", "project.assets.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(artifactsAssets)!);
+        File.Move(_fixture.AssetsPath, artifactsAssets);
+
+        var data = Data(Call(projectPath: passDirectory ? _fixture.ProjectDirectory : _fixture.ProjectFile, targetFramework: "net8.0"));
+
+        Assert.Equal(artifactsAssets, data.GetProperty("assetsPath").GetString());
+        Assert.Equal(3, data.GetProperty("total").GetInt32());
+    }
+
     [Fact]
     public void MissingAssetsFile_SuggestsRestore()
     {

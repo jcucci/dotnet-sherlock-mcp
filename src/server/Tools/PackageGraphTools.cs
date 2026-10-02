@@ -63,6 +63,7 @@ public static class PackageGraphTools
             var located = LocateAssets(handles, projectPath, assemblyPath, assemblyHandle);
             if (located.Error != null) return located.Error;
 
+            var assetsStamp = CacheKeyHelper.FileStamp(located.AssetsPath!);
             ProjectAssetsFile assets;
             try
             {
@@ -78,7 +79,6 @@ public static class PackageGraphTools
             var target = selected.Target!;
 
             var filter = string.IsNullOrWhiteSpace(packageIdContains) ? null : packageIdContains.Trim();
-            var assetsStamp = CacheKeyHelper.FileStamp(assets.AssetsPath);
             var saltSeed = CacheKeyHelper.Build("project.packageGraph.salt", assetsStamp, target.Key, filter, normalizedProjection);
             var cacheKey = CacheKeyHelper.Build(Kind, assetsStamp, target.Key, filter, normalizedProjection, maxItems, continuationToken);
 

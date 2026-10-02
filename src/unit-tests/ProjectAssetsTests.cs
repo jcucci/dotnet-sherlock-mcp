@@ -208,6 +208,43 @@ public sealed class ProjectAssetsTests : IDisposable
         Assert.Contains(Path.Combine(referencedOutput, "Ref.dll"), paths);
     }
 
+    [Fact]
+    public void ResolveDependencyPaths_SingleTargetArtifactsConsumer_FindsFrameworkQualifiedReference()
+    {
+        WriteSingleTargetAssetsWithNetStandardReference();
+        var artifacts = Path.Combine(_fixture.Root, "artifacts");
+        var artifactsAssets = Path.Combine(artifacts, "obj", "Sample", ProjectAssetsLocator.AssetsFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(artifactsAssets)!);
+        File.Copy(_fixture.AssetsPath, artifactsAssets);
+        var referencedOutput = Directory.CreateDirectory(Path.Combine(artifacts, "bin", "Ref", "debug_netstandard2.0")).FullName;
+        File.WriteAllBytes(Path.Combine(referencedOutput, "Ref.dll"), []);
+        var dll = WriteEmptyDll(Directory.CreateDirectory(Path.Combine(artifacts, "bin", "Sample", "debug")).FullName);
+
+        var paths = ProjectAssetsLocator.Locate(dll)!.ResolveDependencyPaths();
+
+        Assert.Contains(Path.Combine(referencedOutput, "Ref.dll"), paths);
+    }
+
+    [Fact]
+    public void AssetsPathForProject_ArtifactsLayout_FindsArtifactsObj()
+    {
+        WriteStandardAssets();
+        var artifactsAssets = Path.Combine(_fixture.Root, "artifacts", "obj", "Sample", ProjectAssetsLocator.AssetsFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(artifactsAssets)!);
+        File.Move(_fixture.AssetsPath, artifactsAssets);
+
+        Assert.Equal(artifactsAssets, ProjectAssetsLocator.AssetsPathForProject(_fixture.ProjectFile));
+        Assert.Equal(artifactsAssets, ProjectAssetsLocator.AssetsPathForProject(_fixture.ProjectDirectory));
+    }
+
+    [Fact]
+    public void AssetsPathForProject_StandardLayout_PrefersObj()
+    {
+        WriteStandardAssets();
+
+        Assert.Equal(_fixture.AssetsPath, ProjectAssetsLocator.AssetsPathForProject(_fixture.ProjectDirectory));
+    }
+
     [Theory]
     [InlineData(new[] { "net8.0-windows", "net8.0" }, "net8.0", "net8.0")]
     [InlineData(new[] { "net8.0-windows", "net9.0" }, "net8.0", "net8.0-windows")]
@@ -332,6 +369,21 @@ public sealed class ProjectAssetsTests : IDisposable
             });
     }
 
+    private void WriteSingleTargetAssetsWithNetStandardReference()
+    {
+        Directory.CreateDirectory(Path.Combine(_fixture.Root, "Ref"));
+        var reference = new JsonObject
+        {
+            ["type"] = "project",
+            ["framework"] = ".NETStandard,Version=v2.0",
+            ["compile"] = new JsonObject { ["bin/placeholder/Ref.dll"] = new JsonObject() }
+        };
+        _fixture.WriteAssets(
+            targets: new JsonObject { ["net8.0"] = new JsonObject { ["Ref/1.0.0"] = reference } },
+            libraries: new JsonObject { ["Ref/1.0.0"] = AssetsFixture.Library("project", "../Ref/Ref.csproj") },
+            frameworks: new JsonObject { ["net8.0"] = AssetsFixture.Framework("net8.0") });
+    }
+
     private void WriteStandardAssets() => WriteStandardAssets(_fixture);
 
     private static string WriteEmptyDll(string directory)
@@ -339,5 +391,27 @@ public sealed class ProjectAssetsTests : IDisposable
         var path = Path.Combine(directory, "Sample.dll");
         File.WriteAllBytes(path, []);
         return path;
+    }
+}
+
+[Collection(nameof(EnvVarCollection))]
+public sealed class ProjectAssetsReaderCacheTests : IDisposable
+{
+    private readonly AssetsFixture _fixture = new();
+
+    public void Dispose() => _fixture.Dispose();
+
+    [Fact]
+    public void Read_ManyAssetsFiles_KeepsCacheBounded()
+    {
+        for (var i = 0; i <= ProjectAssetsReader.MaxCachedFiles + 8; i++)
+        {
+            var assets = Path.Combine(_fixture.Root, $"P{i}", "obj", ProjectAssetsLocator.AssetsFileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(assets)!);
+            File.WriteAllText(assets, "{}");
+            ProjectAssetsReader.Read(assets);
+        }
+
+        Assert.True(ProjectAssetsReader.CachedFileCount <= ProjectAssetsReader.MaxCachedFiles);
     }
 }

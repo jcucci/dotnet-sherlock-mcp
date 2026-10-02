@@ -24,6 +24,7 @@ public static class ProjectAssetsLocator
 
     private const string BinDirectoryName = "bin";
     private const string ObjDirectoryName = "obj";
+    private const string ArtifactsDirectoryName = "artifacts";
     private const int MaxDepthBelowBin = 6;
 
     public static string? FindAssetsFile(string assemblyPath) =>
@@ -48,8 +49,29 @@ public static class ProjectAssetsLocator
         var fullPath = Path.GetFullPath(projectPath);
         if (Path.GetFileName(fullPath).Equals(AssetsFileName, StringComparison.OrdinalIgnoreCase)) return fullPath;
 
-        var projectDirectory = Directory.Exists(fullPath) ? fullPath : Path.GetDirectoryName(fullPath) ?? fullPath;
-        return Path.Combine(projectDirectory, ObjDirectoryName, AssetsFileName);
+        var isDirectory = Directory.Exists(fullPath);
+        var projectDirectory = isDirectory ? fullPath : Path.GetDirectoryName(fullPath) ?? fullPath;
+        var standard = Path.Combine(projectDirectory, ObjDirectoryName, AssetsFileName);
+        if (File.Exists(standard)) return standard;
+
+        var projectName = isDirectory ? ProjectNameInDirectory(projectDirectory) : Path.GetFileNameWithoutExtension(fullPath);
+        return FindArtifactsAssets(projectDirectory, projectName) ?? standard;
+    }
+
+    private static string ProjectNameInDirectory(string directory)
+    {
+        var projects = Directory.EnumerateFiles(directory, "*.*proj", SearchOption.TopDirectoryOnly).Take(2).ToArray();
+        return projects.Length == 1 ? Path.GetFileNameWithoutExtension(projects[0]) : Path.GetFileName(directory);
+    }
+
+    private static string? FindArtifactsAssets(string projectDirectory, string projectName)
+    {
+        for (var directory = new DirectoryInfo(projectDirectory); directory != null; directory = directory.Parent)
+        {
+            var candidate = Path.Combine(directory.FullName, ArtifactsDirectoryName, ObjDirectoryName, projectName, AssetsFileName);
+            if (File.Exists(candidate)) return candidate;
+        }
+        return null;
     }
 
     public static ProjectAssetsMatch? Locate(string assemblyPath)
@@ -98,9 +120,24 @@ public static class ProjectAssetsLocator
         bool IsRid(string token) => consumer.RuntimeIdentifier != null && token.Equals(consumer.RuntimeIdentifier, StringComparison.OrdinalIgnoreCase);
         bool IsTfm(string token) => token.Equals(consumer.Alias, StringComparison.OrdinalIgnoreCase);
 
+        string[] Qualify(Func<string, bool> keep) => pivot
+            .Select((segment, index) =>
+            {
+                var tokens = segment.Split('_').Where(keep).ToArray();
+                return index == 0 && tokens.Length > 0 ? string.Join('_', [tokens[0], framework, .. tokens.Skip(1)]) : string.Join('_', tokens);
+            })
+            .Where(segment => segment.Length > 0)
+            .ToArray();
+
         yield return Rewrite(_ => true);
         if (consumer.RuntimeIdentifier != null) yield return Rewrite(token => !IsRid(token));
-        if (isArtifacts) yield return Rewrite(token => !IsRid(token) && !IsTfm(token));
+        if (!isArtifacts) yield break;
+
+        yield return Rewrite(token => !IsRid(token) && !IsTfm(token));
+        if (pivot.SelectMany(segment => segment.Split('_')).Any(IsTfm)) yield break;
+
+        yield return Qualify(_ => true);
+        if (consumer.RuntimeIdentifier != null) yield return Qualify(token => !IsRid(token));
     }
 
     private static AssetsTarget? SelectTarget(ProjectAssetsFile assets, IReadOnlyList<string> pivotSegments, string assemblyPath)
