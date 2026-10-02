@@ -23,7 +23,9 @@ internal sealed record ApiTypeSurface(
     IReadOnlyDictionary<string, string> Constraints,
     string Signature,
     IReadOnlyDictionary<string, ApiMemberSurface>? Members,
-    IReadOnlyDictionary<string, int>? InheritedMembers);
+    IReadOnlyDictionary<string, ApiInheritedMember>? InheritedMembers);
+
+internal sealed record ApiInheritedMember(int Visibility, string? ValueType, bool IsStatic, int GetterVisibility, int SetterVisibility);
 
 internal sealed record ApiMemberSurface(
     string Identity,
@@ -44,4 +46,4 @@ internal sealed record ApiMemberSurface(
     bool IsInitOnly,
     IReadOnlyList<ApiParameter> Parameters);
 
-internal sealed record ApiParameter(string Name, string Modifier, bool IsParams, string? DefaultValue);
+internal sealed record ApiParameter(string Name, string Modifier, bool IsParams, bool IsOptional, string? DefaultValue);

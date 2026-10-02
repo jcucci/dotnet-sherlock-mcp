@@ -20,12 +20,15 @@ internal static class ApiSurfaceComparer
             if (reasons.Count > 0)
                 changes.Add(TypeChange(ApiChangeKind.Changed, rightType, leftType.Signature, rightType.Signature, reasons));
             if (leftType.Members != null && rightType.Members != null)
-                CompareMembers(leftType, rightType, changes);
+                CompareMembers(leftType, rightType, changes, cancellationToken);
         }
 
         foreach (var (key, rightType) in right)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!left.ContainsKey(key))
                 changes.Add(TypeChange(ApiChangeKind.Added, rightType, null, rightType.Signature, []));
+        }
 
         return changes
             .OrderBy(change => change.TypeName, StringComparer.Ordinal)
@@ -94,10 +97,12 @@ internal static class ApiSurfaceComparer
             reasons.Add(new($"accessibility increased from {ApiVisibility.Name(left)} to {ApiVisibility.Name(right)}", Breaking: false));
     }
 
-    private static void CompareMembers(ApiTypeSurface leftType, ApiTypeSurface rightType, List<ApiChange> changes)
+    private static void CompareMembers(
+        ApiTypeSurface leftType, ApiTypeSurface rightType, List<ApiChange> changes, CancellationToken cancellationToken)
     {
         foreach (var (identity, left) in leftType.Members!)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!rightType.Members!.TryGetValue(identity, out var right))
             {
                 changes.Add(MemberChange(ApiChangeKind.Removed, rightType, left, left.Signature, null, [RemovedMemberReason(rightType, left)]));
@@ -109,14 +114,24 @@ internal static class ApiSurfaceComparer
         }
 
         foreach (var (identity, right) in rightType.Members!)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!leftType.Members.ContainsKey(identity))
                 changes.Add(MemberChange(ApiChangeKind.Added, rightType, right, null, right.Signature, AddedMemberReasons(rightType, right)));
+        }
     }
 
     private static ApiChangeReason RemovedMemberReason(ApiTypeSurface type, ApiMemberSurface member) =>
-        type.InheritedMembers?.GetValueOrDefault(member.Identity) is int inherited && inherited >= member.Visibility
+        type.InheritedMembers?.GetValueOrDefault(member.Identity) is { } inherited && IsCompatibleReplacement(inherited, member)
             ? new("no longer declared here but still inherited from a base type; callers are unaffected", Breaking: false)
             : new("member removed or no longer visible", Breaking: true);
+
+    private static bool IsCompatibleReplacement(ApiInheritedMember inherited, ApiMemberSurface member) =>
+        inherited.Visibility >= member.Visibility
+        && inherited.ValueType == member.ValueType
+        && inherited.IsStatic == member.IsStatic
+        && inherited.GetterVisibility >= member.GetterVisibility
+        && inherited.SetterVisibility >= member.SetterVisibility;
 
     private static IReadOnlyList<ApiChangeReason> AddedMemberReasons(ApiTypeSurface type, ApiMemberSurface member)
     {
@@ -226,13 +241,12 @@ internal static class ApiSurfaceComparer
                     : new($"parameter {after.Name} is no longer params; callers passing separate arguments break", Breaking: true));
             if (before.Name != after.Name)
                 reasons.Add(new($"parameter renamed from {before.Name} to {after.Name}; breaks callers using named arguments", Breaking: false));
-            if (before.DefaultValue == after.DefaultValue) continue;
-            if (after.DefaultValue == null)
+            if (before.IsOptional && !after.IsOptional)
                 reasons.Add(new($"parameter {after.Name} is no longer optional", Breaking: true));
-            else if (before.DefaultValue == null)
+            else if (!before.IsOptional && after.IsOptional)
                 reasons.Add(new($"parameter {after.Name} became optional", Breaking: false));
-            else
-                reasons.Add(new($"default value of {after.Name} changed from {before.DefaultValue} to {after.DefaultValue}; compiled callers keep the old value", Breaking: false));
+            else if (before.IsOptional && before.DefaultValue != after.DefaultValue)
+                reasons.Add(new($"default value of {after.Name} changed from {before.DefaultValue ?? "(none)"} to {after.DefaultValue ?? "(none)"}; compiled callers keep the old value", Breaking: false));
         }
     }
 }

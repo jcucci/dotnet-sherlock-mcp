@@ -13,7 +13,7 @@ internal static class ApiSurfaceReader
         IEnumerable<Type> types, string? namespacePrefix, ICollection<string> warnings, CancellationToken cancellationToken)
     {
         var surfaces = new Dictionary<string, ApiTypeSurface>(StringComparer.Ordinal);
-        var declaredIdentities = new Dictionary<Type, Dictionary<string, int>>();
+        var declaredIdentities = new Dictionary<Type, Dictionary<string, ApiInheritedMember>>();
         foreach (var type in types)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -36,7 +36,7 @@ internal static class ApiSurfaceReader
 
         var outer = TypeVisibility(type.DeclaringType!);
         var own = type.IsNestedPublic ? ApiVisibility.Public
-            : (type.IsNestedFamily || type.IsNestedFamORAssem) && !type.DeclaringType!.IsSealed ? ApiVisibility.Protected
+            : (type.IsNestedFamily || type.IsNestedFamORAssem) && IsExternallyExtensible(type.DeclaringType!) ? ApiVisibility.Protected
             : ApiVisibility.None;
         return Math.Min(outer, own);
     }
@@ -70,14 +70,15 @@ internal static class ApiSurfaceReader
 
     private static bool IsCompilerGenerated(string name) => name.Contains('<') || name.Contains('>');
 
-    private static ApiTypeSurface ReadType(Type type, int visibility, Dictionary<Type, Dictionary<string, int>> declaredIdentities)
+    private static ApiTypeSurface ReadType(Type type, int visibility, Dictionary<Type, Dictionary<string, ApiInheritedMember>> declaredIdentities)
     {
         var kind = Safe(() => KindOf(type), "class");
         var isClass = kind == "class";
         var isStatic = isClass && type.IsAbstract && type.IsSealed;
         var isSealed = isClass && type.IsSealed && !isStatic;
         var isAbstract = isClass && type.IsAbstract && !isStatic;
-        var members = Safe<IReadOnlyDictionary<string, ApiMemberSurface>?>(() => ReadMembers(type, isSealed || !isClass), null);
+        var isExtensible = isClass && !isSealed && !isStatic && Safe(() => HasAccessibleConstructor(type), false);
+        var members = Safe<IReadOnlyDictionary<string, ApiMemberSurface>?>(() => ReadMembers(type, hidesProtected: !isExtensible), null);
         var displayName = TypeNameFormatter.FriendlyFullName(type);
 
         return new ApiTypeSurface(
@@ -88,13 +89,13 @@ internal static class ApiSurfaceReader
             IsSealed: isSealed,
             IsAbstract: isAbstract,
             IsStatic: isStatic,
-            IsExtensible: isClass && !isSealed && !isStatic && Safe(() => HasAccessibleConstructor(type), false),
+            IsExtensible: isExtensible,
             BaseTypes: Safe<IReadOnlyList<string>?>(() => BaseChain(type), null),
             Interfaces: Safe<IReadOnlyList<string>?>(() => Interfaces(type), null),
             Constraints: Safe<IReadOnlyDictionary<string, string>>(() => Constraints(type), new Dictionary<string, string>()),
             Signature: $"{ApiVisibility.Name(visibility)} {TypeModifiers(isStatic, isSealed, isAbstract)}{kind} {displayName}",
             Members: members,
-            InheritedMembers: Safe<IReadOnlyDictionary<string, int>?>(() => InheritedMembers(type, declaredIdentities), null));
+            InheritedMembers: Safe<IReadOnlyDictionary<string, ApiInheritedMember>?>(() => InheritedMembers(type, declaredIdentities), null));
     }
 
     private static string KindOf(Type type)
@@ -109,6 +110,9 @@ internal static class ApiSurfaceReader
     private static string TypeModifiers(bool isStatic, bool isSealed, bool isAbstract) =>
         isStatic ? "static " : isSealed ? "sealed " : isAbstract ? "abstract " : string.Empty;
 
+    private static bool IsExternallyExtensible(Type type) =>
+        type.IsClass && !type.IsSealed && Safe(() => HasAccessibleConstructor(type), false);
+
     private static bool HasAccessibleConstructor(Type type) =>
         type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .Any(c => c.IsPublic || c.IsFamily || c.IsFamilyOrAssembly);
@@ -121,40 +125,51 @@ internal static class ApiSurfaceReader
             yield return current;
     }
 
-    private static Dictionary<string, int> InheritedMembers(Type type, Dictionary<Type, Dictionary<string, int>> declaredIdentities)
+    private static Dictionary<string, ApiInheritedMember> InheritedMembers(
+        Type type, Dictionary<Type, Dictionary<string, ApiInheritedMember>> declaredIdentities)
     {
-        var inherited = new Dictionary<string, int>(StringComparer.Ordinal);
+        var inherited = new Dictionary<string, ApiInheritedMember>(StringComparer.Ordinal);
         var sources = type.IsInterface ? type.GetInterfaces() : BaseTypes(type);
         foreach (var source in sources)
-            foreach (var (identity, visibility) in DeclaredIdentities(source, declaredIdentities))
-                inherited[identity] = Math.Max(visibility, inherited.GetValueOrDefault(identity));
+            foreach (var (identity, member) in DeclaredIdentities(source, declaredIdentities))
+                inherited.TryAdd(identity, member);
         return inherited;
     }
 
-    private static Dictionary<string, int> DeclaredIdentities(Type type, Dictionary<Type, Dictionary<string, int>> declaredIdentities)
+    private static Dictionary<string, ApiInheritedMember> DeclaredIdentities(
+        Type type, Dictionary<Type, Dictionary<string, ApiInheritedMember>> declaredIdentities)
     {
         if (declaredIdentities.TryGetValue(type, out var known)) return known;
-        var identities = new Dictionary<string, int>(StringComparer.Ordinal);
+        var identities = new Dictionary<string, ApiInheritedMember>(StringComparer.Ordinal);
         foreach (var member in type.GetMembers(DeclaredMembers))
-            if (IdentityOf(member) is { Visibility: > ApiVisibility.None } entry)
-                identities[entry.Identity] = Math.Max(entry.Visibility, identities.GetValueOrDefault(entry.Identity));
+            if (IdentityOf(member) is { Member.Visibility: > ApiVisibility.None } entry)
+                identities.TryAdd(entry.Identity, entry.Member);
         declaredIdentities[type] = identities;
         return identities;
     }
 
-    private static (string Identity, int Visibility)? IdentityOf(MemberInfo member) => member switch
+    private static (string Identity, ApiInheritedMember Member)? IdentityOf(MemberInfo member)
     {
-        MethodInfo method when !MemberAnalysisService.IsAccessorMethod(method) && !IsCompilerGenerated(method.Name) =>
-            (MethodIdentity(method), MemberVisibility(method, hidesProtected: false)),
-        PropertyInfo property =>
-            (PropertyIdentity(property), Math.Max(
-                MemberVisibility(property.GetGetMethod(true), hidesProtected: false),
-                MemberVisibility(property.GetSetMethod(true), hidesProtected: false))),
-        FieldInfo field when !field.IsSpecialName && !IsCompilerGenerated(field.Name) =>
-            (FieldIdentity(field), FieldVisibility(field, hidesProtected: false)),
-        EventInfo eventInfo => (EventIdentity(eventInfo), MemberVisibility(eventInfo.GetAddMethod(true), hidesProtected: false)),
-        _ => null
-    };
+        switch (member)
+        {
+            case MethodInfo method when !MemberAnalysisService.IsAccessorMethod(method) && !IsCompilerGenerated(method.Name):
+                var methodVisibility = MemberVisibility(method, hidesProtected: false);
+                return (MethodIdentity(method), new(methodVisibility, IdentityName(method.ReturnType), method.IsStatic, ApiVisibility.None, ApiVisibility.None));
+            case PropertyInfo property:
+                var getter = MemberVisibility(property.GetGetMethod(true), hidesProtected: false);
+                var setter = MemberVisibility(property.GetSetMethod(true), hidesProtected: false);
+                var isStatic = (property.GetGetMethod(true) ?? property.GetSetMethod(true))?.IsStatic ?? false;
+                return (PropertyIdentity(property), new(Math.Max(getter, setter), IdentityName(property.PropertyType), isStatic, getter, setter));
+            case FieldInfo field when !field.IsSpecialName && !IsCompilerGenerated(field.Name):
+                return (FieldIdentity(field), new(FieldVisibility(field, hidesProtected: false), IdentityName(field.FieldType), field.IsStatic, ApiVisibility.None, ApiVisibility.None));
+            case EventInfo eventInfo:
+                var adder = eventInfo.GetAddMethod(true);
+                var handler = eventInfo.EventHandlerType is { } handlerType ? IdentityName(handlerType) : null;
+                return (EventIdentity(eventInfo), new(MemberVisibility(adder, hidesProtected: false), handler, adder?.IsStatic ?? false, ApiVisibility.None, ApiVisibility.None));
+            default:
+                return null;
+        }
+    }
 
     private static string MethodIdentity(MethodInfo method)
     {
@@ -380,7 +395,7 @@ internal static class ApiSurfaceReader
         string.Join(",", parameters.Select(p => IdentityName(p.ParameterType)));
 
     private static ApiParameter[] Parameters(IEnumerable<ParameterDetails> parameters) =>
-        parameters.Select(p => new ApiParameter(p.Name, Modifier(p), p.IsParams, p.IsOptional ? p.DefaultValue : null)).ToArray();
+        parameters.Select(p => new ApiParameter(p.Name, Modifier(p), p.IsParams, p.IsOptional, p.IsOptional ? p.DefaultValue : null)).ToArray();
 
     private static string Modifier(ParameterDetails parameter) =>
         parameter.IsOut ? "out" : parameter.IsRef ? (parameter.IsIn ? "in" : "ref") : string.Empty;

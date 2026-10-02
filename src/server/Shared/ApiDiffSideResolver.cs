@@ -66,16 +66,25 @@ internal static partial class ApiDiffSideResolver
     public static async Task<(ApiDiffSide Left, ApiDiffSide Right, string? Warning)> AlignTfmsAsync(
         ApiDiffSide left, ApiDiffSide right, IProjectAnalysisService projects)
     {
-        if (left.Source != NuGetSource || right.Source != NuGetSource || left.Tfm == right.Tfm)
+        if (left.Source != NuGetSource || right.Source != NuGetSource || string.Equals(left.Tfm, right.Tfm, StringComparison.OrdinalIgnoreCase))
             return (left, right, null);
-        if (left.AvailableTfms.Contains(right.Tfm!, StringComparer.OrdinalIgnoreCase)
-            && await ResolvePackageAsync(nameof(left), left.PackageId!, left.PackageVersion, right.Tfm, projects) is { Side: { } retargetedLeft })
-            return (retargetedLeft, right, null);
-        if (right.AvailableTfms.Contains(left.Tfm!, StringComparer.OrdinalIgnoreCase)
-            && await ResolvePackageAsync(nameof(right), right.PackageId!, right.PackageVersion, left.Tfm, projects) is { Side: { } retargetedRight })
-            return (left, retargetedRight, null);
-        return (left, right, $"The packages share no target framework; comparing {left.Tfm} with {right.Tfm}. Pass tfm to choose one.");
+
+        var warning = $"The packages share no target framework; comparing {left.Tfm} with {right.Tfm}. Pass tfm to choose one.";
+        var shared = left.AvailableTfms.Intersect(right.AvailableTfms, StringComparer.OrdinalIgnoreCase);
+        if (ProjectAnalysisService.PickBestTargetFramework(shared) is not { } best)
+            return (left, right, warning);
+
+        var retargetedLeft = await RetargetAsync(nameof(left), left, best, projects);
+        var retargetedRight = await RetargetAsync(nameof(right), right, best, projects);
+        return retargetedLeft != null && retargetedRight != null
+            ? (retargetedLeft, retargetedRight, null)
+            : (left, right, warning);
     }
+
+    private static async Task<ApiDiffSide?> RetargetAsync(string side, ApiDiffSide package, string tfm, IProjectAnalysisService projects) =>
+        string.Equals(package.Tfm, tfm, StringComparison.OrdinalIgnoreCase)
+            ? package
+            : (await ResolvePackageAsync(side, package.PackageId!, package.PackageVersion, tfm, projects)).Side;
 
     private static async Task<ApiDiffSideResult> ResolvePackageAsync(
         string side, string packageId, string? version, string? tfm, IProjectAnalysisService projects)

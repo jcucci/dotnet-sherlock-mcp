@@ -198,6 +198,23 @@ public class ApiDiffToolTests
     }
 
     [Fact]
+    public async Task NuGetPackages_FallBackToTheBestCommonTfm()
+    {
+        using var cache = new TempDir();
+        CopyIntoCache(cache.Path, "1.0.0", "net8.0", Pair.LeftPath);
+        CopyIntoCache(cache.Path, "1.0.0", "netstandard2.0", Pair.LeftPath);
+        CopyIntoCache(cache.Path, "2.0.0", "net9.0", Pair.RightPath);
+        CopyIntoCache(cache.Path, "2.0.0", "netstandard2.0", Pair.RightPath);
+        using var _ = new EnvVar("NUGET_PACKAGES", cache.Path);
+
+        var data = Data(await Compare("Acme.Lib@1.0.0", "Acme.Lib@2.0.0"));
+
+        Assert.Equal("netstandard2.0", data.GetProperty("left").GetProperty("tfm").GetString());
+        Assert.Equal("netstandard2.0", data.GetProperty("right").GetProperty("tfm").GetString());
+        Assert.Empty(data.GetProperty("warnings").EnumerateArray());
+    }
+
+    [Fact]
     public async Task NuGetPackages_WithoutASharedTfm_AreComparedWithAWarning()
     {
         using var cache = new TempDir();

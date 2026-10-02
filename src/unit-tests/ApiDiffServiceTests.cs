@@ -167,6 +167,22 @@ public class ApiDiffServiceTests
     }
 
     [Fact]
+    public void InheritedMemberWithADifferentType_IsBreaking()
+    {
+        var change = MemberChange("Acme.Lib.Derived", "Retyped");
+        Assert.Equal(ApiChangeKind.Removed, change.Change);
+        Assert.True(change.Breaking);
+    }
+
+    [Fact]
+    public void OptionalWithoutDefaultMadeRequired_IsBreaking() =>
+        AssertReason(MemberChange("Acme.Lib.Derived", "Attr"), "no longer optional", breaking: true);
+
+    [Fact]
+    public void ProtectedMembersOfClassesWithoutAccessibleConstructors_AreIgnored() =>
+        Assert.DoesNotContain(Diff.Changes, c => c.TypeName == "Acme.Lib.NoCtor");
+
+    [Fact]
     public void UnchangedMembers_AreNotReported()
     {
         Assert.DoesNotContain(Diff.Changes, c => c.MemberName is "Spin" or "Count" or "Helper" or "Run" or "Speak" or "Area");

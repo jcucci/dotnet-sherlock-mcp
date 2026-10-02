@@ -50,6 +50,14 @@ internal static class ApiDiffFixtures
             {
                 public virtual void Moved() { }
                 public void Promoted() { }
+                public long Retyped() => 0;
+                public void Attr([System.Runtime.InteropServices.Optional] int x) { }
+            }
+
+            public class NoCtor
+            {
+                internal NoCtor() { }
+                protected void Hidden() { }
             }
 
             public enum Color { Red = 1, Green = 2 }
@@ -106,10 +114,17 @@ internal static class ApiDiffFixtures
             {
                 public virtual void Moved() { }
                 public virtual void Promoted() { }
+                public int Retyped() => 0;
             }
             public class Derived : BaseThing
             {
                 public override void Promoted() { }
+                public void Attr(int x) { }
+            }
+
+            public class NoCtor
+            {
+                internal NoCtor() { }
             }
 
             public enum Color { Red = 1, Green = 3, Blue = 4 }
