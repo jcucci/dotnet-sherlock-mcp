@@ -25,6 +25,7 @@
     <RepositoryUrl>https://github.com/jcucci/dotnet-sherlock-mcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackAsTool>true</PackAsTool>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ToolCommandName>sherlock-mcp</ToolCommandName>
     <PackageType>McpServer</PackageType>
     <PackageVersion>$(Version)</PackageVersion>

@@ -29,6 +29,7 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Consolidated member listing**: `get_type_members` with a `kinds` filter replaces the per-kind member tools, and a `core` tool profile (`--profile core` / `SHERLOCK_TOOL_PROFILE`) exposes 18 tools ([#60](https://github.com/jcucci/dotnet-sherlock-mcp/issues/60)).
 - **Assembly handles**: `open_assembly` returns a short `asm_…` handle that any tool accepts as `assemblyHandle` instead of `assemblyPath`, carries `additionalAssemblies`, and survives server restarts ([#68](https://github.com/jcucci/dotnet-sherlock-mcp/issues/68)).
 - **Decompilation to C#**: `decompile_member` (in the `core` profile) and `decompile_type`, paged by line and cached by file stamp ([#70](https://github.com/jcucci/dotnet-sherlock-mcp/issues/70)).
+- **Original source via Source Link and PDBs**: `get_member_source` (in the `core` profile) reads embedded source, the local build file or the Source Link URL (known hosts by default), verified against the PDB checksum, falling back to decompilation ([#71](https://github.com/jcucci/dotnet-sherlock-mcp/issues/71)).
 
 ## Planned
 
@@ -42,7 +43,6 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - MCP prompts for common workflows ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69))
 
 ### New capabilities
-- Original source via Source Link and PDBs ([#71](https://github.com/jcucci/dotnet-sherlock-mcp/issues/71))
 - API diff and breaking-change detection between versions ([#72](https://github.com/jcucci/dotnet-sherlock-mcp/issues/72))
 - Dependency resolution from `project.assets.json` ([#73](https://github.com/jcucci/dotnet-sherlock-mcp/issues/73))
 - Type resolution against target-framework reference packs ([#74](https://github.com/jcucci/dotnet-sherlock-mcp/issues/74))

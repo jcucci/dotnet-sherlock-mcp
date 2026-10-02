@@ -31,6 +31,9 @@ public static class CacheKeyHelper
     public static string XmlDocStamp(string assemblyPath) =>
         $"{FileStamp(assemblyPath)};{FileStamp(Path.ChangeExtension(assemblyPath, ".xml"))}";
 
+    public static string PdbStamp(string assemblyStamp, string assemblyPath) =>
+        $"{assemblyStamp};{FileStamp(Path.ChangeExtension(assemblyPath, ".pdb"))}";
+
     public static string ProjectStamp(string projectFilePath)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectFilePath)) ?? string.Empty;
