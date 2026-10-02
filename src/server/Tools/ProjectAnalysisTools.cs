@@ -84,7 +84,7 @@ public static class ProjectAnalysisTools
     }
 
     [McpServerTool(Title = "Resolve Package References", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Resolves NuGet package references to local assembly paths from NuGet cache. Use packageName filter to find specific packages. Returns paths for assembly analysis.")]
+    [Description("Resolves NuGet package references to local assembly paths from NuGet cache. Use packageName filter to find specific packages. Returns paths for assembly analysis. Probes the cache for declared versions only; use get_package_graph for the exact restored (including transitive) versions.")]
     public static async Task<string> ResolvePackageReferences(
         IProjectAnalysisService projectAnalysis,
         [Description("Path to the project file")] string projectFilePath,

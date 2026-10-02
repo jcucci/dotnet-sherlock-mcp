@@ -60,7 +60,7 @@ public static class MemberAnalysisTools
             // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
             // params (continuationToken, skip, take, maxItems) and rendering params (projection)
             // so a token minted on page 1 still validates on page 2.
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.methods.salt",
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -247,7 +247,7 @@ public static class MemberAnalysisTools
             // Salt seed: identifies the result set (filters + ordering). MUST exclude pagination
             // params (continuationToken, skip, take, maxItems) and rendering params (projection)
             // so a token minted on page 1 still validates on page 2.
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.members.salt",
                 assemblyStamp, typeName, normalizedKinds, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -468,7 +468,7 @@ public static class MemberAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("member.attributes", CacheKeyHelper.FileStamp(assemblyPath), typeName, memberKind, memberName, caseSensitive);
+            var cacheKey = CacheKeyHelper.Build("member.attributes", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, memberKind, memberName, caseSensitive);
             return middleware.Execute(cacheKey, () =>
             {
                 using var lease = contexts.Acquire(assemblyPath);
@@ -528,7 +528,7 @@ public static class MemberAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("parameter.attributes", CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName, parameterIndex, caseSensitive);
+            var cacheKey = CacheKeyHelper.Build("parameter.attributes", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, methodName, parameterIndex, caseSensitive);
             return middleware.Execute(cacheKey, () =>
             {
                 using var lease = contexts.Acquire(assemblyPath);
@@ -599,7 +599,7 @@ public static class MemberAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.properties.salt",
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -744,7 +744,7 @@ public static class MemberAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.fields.salt",
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -876,7 +876,7 @@ public static class MemberAnalysisTools
             if (target.Error != null)
                 return target.Error;
             assemblyPath = target.Path;
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.events.salt",
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -1009,7 +1009,7 @@ public static class MemberAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "member.constructors.salt",
                 assemblyStamp, typeName, includePublic, includeNonPublic, includeStatic, includeInstance,
@@ -1136,7 +1136,7 @@ public static class MemberAnalysisTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "member.all",
-                CacheKeyHelper.FileStamp(assemblyPath), typeName, includePublic, includeNonPublic, includeStatic, includeInstance);
+                CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, includePublic, includeNonPublic, includeStatic, includeInstance);
 
             return middleware.Execute(cacheKey, () =>
             {

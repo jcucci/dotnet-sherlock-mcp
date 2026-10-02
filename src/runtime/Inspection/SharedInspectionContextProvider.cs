@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
@@ -10,11 +11,12 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         private int _refCount;
         private bool _retired;
 
-        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength)
+        public Entry(IAssemblyInspectionContext context, long fileStampTicks, long fileLength, string assetsStamp)
         {
             Context = context;
             FileStampTicks = fileStampTicks;
             FileLength = fileLength;
+            AssetsStamp = assetsStamp;
         }
 
         public IAssemblyInspectionContext Context { get; }
@@ -22,6 +24,8 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         public long FileStampTicks { get; }
 
         public long FileLength { get; }
+
+        public string AssetsStamp { get; }
 
         public long LastAccess;
 
@@ -94,11 +98,12 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
 
         var stampTicks = fileInfo.LastWriteTimeUtc.Ticks;
         var length = fileInfo.Length;
+        var assetsStamp = ProjectAssetsLocator.AssetsStamp(fullPath);
 
         while (true)
         {
             var lazy = _entries.GetOrAdd(key, _ => new Lazy<Entry>(
-                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length),
+                () => new Entry(InspectionContextFactory.Create(fullPath, additionalSearchDirectories), stampTicks, length, assetsStamp),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
             Entry entry;
@@ -112,7 +117,7 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
                 throw;
             }
 
-            if (entry.FileStampTicks != stampTicks || entry.FileLength != length)
+            if (entry.FileStampTicks != stampTicks || entry.FileLength != length || entry.AssetsStamp != assetsStamp)
             {
                 if (_entries.TryRemove(new KeyValuePair<string, Lazy<Entry>>(key, lazy)))
                     entry.Retire();

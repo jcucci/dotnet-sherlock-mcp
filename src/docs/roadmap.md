@@ -31,6 +31,7 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Decompilation to C#**: `decompile_member` (in the `core` profile) and `decompile_type`, paged by line and cached by file stamp ([#70](https://github.com/jcucci/dotnet-sherlock-mcp/issues/70)).
 - **Original source via Source Link and PDBs**: `get_member_source` (in the `core` profile) reads embedded source, the local build file or the Source Link URL (known hosts by default), verified against the PDB checksum, falling back to decompilation ([#71](https://github.com/jcucci/dotnet-sherlock-mcp/issues/71)).
 - **API diff**: `compare_api_surface` diffs two assembly or NuGet package versions and flags breaking changes ([#72](https://github.com/jcucci/dotnet-sherlock-mcp/issues/72)).
+- **Restored dependency resolution**: assemblies in a project's build output resolve NuGet dependencies from `obj/project.assets.json` at the restored versions, and `get_package_graph` exposes the restored graph ([#73](https://github.com/jcucci/dotnet-sherlock-mcp/issues/73)).
 
 ## Planned
 
@@ -44,7 +45,6 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - MCP prompts for common workflows ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69))
 
 ### New capabilities
-- Dependency resolution from `project.assets.json` ([#73](https://github.com/jcucci/dotnet-sherlock-mcp/issues/73))
 - Type resolution against target-framework reference packs ([#74](https://github.com/jcucci/dotnet-sherlock-mcp/issues/74))
 - MSBuild evaluation for project analysis ([#75](https://github.com/jcucci/dotnet-sherlock-mcp/issues/75))
 - Framework pattern detectors: ASP.NET endpoints, DI registrations, EF models, MediatR handlers ([#76](https://github.com/jcucci/dotnet-sherlock-mcp/issues/76))

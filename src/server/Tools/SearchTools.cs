@@ -65,7 +65,7 @@ public static class SearchTools
                 }
             }
 
-            var assemblyStamp = CacheKeyHelper.FileStamp(assemblyPath);
+            var assemblyStamp = CacheKeyHelper.AssemblyStamp(assemblyPath);
             var saltSeed = CacheKeyHelper.Build(
                 "search.members.salt",
                 assemblyStamp, nameContains, normalizedKinds, caseSensitive, includeNonPublic);

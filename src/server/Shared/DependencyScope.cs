@@ -5,7 +5,7 @@ internal sealed record DependencyScope(string Stamp, string[]? SearchDirectories
     public static DependencyScope Build(string assemblyPath, string[]? additionalAssemblies)
     {
         if (additionalAssemblies is not { Length: > 0 })
-            return new DependencyScope(CacheKeyHelper.FileStamp(assemblyPath), null, null);
+            return new DependencyScope(CacheKeyHelper.AssemblyStamp(assemblyPath), null, null);
 
         var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
         if (scope.Error != null)
@@ -18,6 +18,6 @@ internal sealed record DependencyScope(string Stamp, string[]? SearchDirectories
             .Where(directory => directory.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        return new DependencyScope(CacheKeyHelper.ScopeStamp(scope.Paths), directories, null);
+        return new DependencyScope(CacheKeyHelper.AssemblyScopeStamp(scope.Paths), directories, null);
     }
 }

@@ -39,10 +39,10 @@ public static class ReflectionTools
             assemblyPath = target.Path;
 
             var pageSize = Math.Max(1, maxItems ?? runtimeOptions.GetMaxItemsForTool("analyze_assembly"));
-            var saltSeed = $"analyze_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}";
+            var saltSeed = $"analyze_assembly_{CacheKeyHelper.AssemblyStamp(assemblyPath)}_{pageSize}";
             var cacheKey = CacheKeyHelper.Build(
                 "reflection.assembly",
-                CacheKeyHelper.FileStamp(assemblyPath), pageSize, skip, continuationToken);
+                CacheKeyHelper.AssemblyStamp(assemblyPath), pageSize, skip, continuationToken);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -137,7 +137,7 @@ public static class ReflectionTools
             if (normalizedProjection != "summary" && normalizedProjection != "full")
                 return ToolResponse.Result(JsonHelpers.Error("InvalidProjection", "projection must be 'summary' or 'full'"));
 
-            var cacheKey = CacheKeyHelper.Build("reflection.assemblyInfo", CacheKeyHelper.FileStamp(assemblyPath), normalizedProjection);
+            var cacheKey = CacheKeyHelper.Build("reflection.assemblyInfo", CacheKeyHelper.AssemblyStamp(assemblyPath), normalizedProjection);
             return ToolResponse.Result(middleware.Execute(cacheKey, () =>
             {
                 using var lease = contexts.Acquire(assemblyPath);
@@ -328,10 +328,10 @@ public static class ReflectionTools
             assemblyPath = target.Path;
 
             var pageSize = Math.Max(1, maxItems ?? 25);
-            var saltSeed = $"analyze_type_{CacheKeyHelper.FileStamp(assemblyPath)}_{typeName}_{pageSize}";
+            var saltSeed = $"analyze_type_{CacheKeyHelper.AssemblyStamp(assemblyPath)}_{typeName}_{pageSize}";
             var cacheKey = CacheKeyHelper.Build(
                 "reflection.type",
-                CacheKeyHelper.FileStamp(assemblyPath), typeName, pageSize, skip, continuationToken,
+                CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, pageSize, skip, continuationToken,
                 includeConstructors, includeMethods, includeProperties, includeFields);
 
             return middleware.Execute(cacheKey, () =>
@@ -591,7 +591,7 @@ public static class ReflectionTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("reflection.method", CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName);
+            var cacheKey = CacheKeyHelper.Build("reflection.method", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, methodName);
 
             return middleware.Execute(cacheKey, () =>
             {

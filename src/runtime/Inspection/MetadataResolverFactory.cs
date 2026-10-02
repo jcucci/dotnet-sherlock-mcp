@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
@@ -17,11 +18,16 @@ internal static class MetadataResolverFactory
         AddDllsFromDirectory(paths, simpleNames, Path.GetDirectoryName(fullPath));
         AddDllsFromDirectory(paths, simpleNames, RuntimeEnvironment.GetRuntimeDirectory());
 
+        var assets = ProjectAssetsLocator.Locate(fullPath);
+        if (assets != null)
+            foreach (var dll in assets.ResolveDependencyPaths())
+                AddPath(paths, simpleNames, dll);
+
         if (additionalSearchDirectories != null)
             foreach (var directory in additionalSearchDirectories)
                 AddDllsFromDirectory(paths, simpleNames, directory);
 
-        if (NuGetCacheProbe.TryParseCacheLayout(fullPath, out var consumingTfm, out var packageId))
+        if (assets == null && NuGetCacheProbe.TryParseCacheLayout(fullPath, out var consumingTfm, out var packageId))
             foreach (var dll in NuGetCacheProbe.EnumerateCandidateDependencyDlls(consumingTfm, packageId))
                 AddPath(paths, simpleNames, dll);
 
