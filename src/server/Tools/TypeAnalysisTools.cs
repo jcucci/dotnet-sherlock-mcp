@@ -65,11 +65,11 @@ public static class TypeAnalysisTools
             var dependencyScope = searchDirectories is { Length: > 0 }
                 ? string.Join("|", searchDirectories.OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
                 : "";
-            var saltSeed = $"types_from_assembly_{CacheKeyHelper.FileStamp(assemblyPath)}_{pageSize}_{dependencyScope}";
+            var saltSeed = $"types_from_assembly_{CacheKeyHelper.AssemblyStamp(assemblyPath)}_{pageSize}_{dependencyScope}";
 
             var cacheKey = CacheKeyHelper.Build(
                 "type.list",
-                CacheKeyHelper.ScopeStamp(scopePaths), dependencyScope, maxItems, skip, continuationToken, normalizedProjection);
+                CacheKeyHelper.AssemblyScopeStamp(scopePaths), dependencyScope, maxItems, skip, continuationToken, normalizedProjection);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -140,7 +140,7 @@ public static class TypeAnalysisTools
                 return ToolResponse.Result(target.Error);
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("type.info", CacheKeyHelper.FileStamp(assemblyPath), typeName);
+            var cacheKey = CacheKeyHelper.Build("type.info", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName);
             return ToolResponse.Result(middleware.Execute(cacheKey, () =>
             {
                 var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
@@ -198,7 +198,7 @@ public static class TypeAnalysisTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "type.hierarchy",
-                CacheKeyHelper.ScopeStamp(scopePaths ?? [assemblyPath]), scopePaths != null, typeName);
+                CacheKeyHelper.AssemblyScopeStamp(scopePaths ?? [assemblyPath]), scopePaths != null, typeName);
 
             return middleware.Execute(cacheKey, () =>
             {
@@ -247,7 +247,7 @@ public static class TypeAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("type.generic", CacheKeyHelper.FileStamp(assemblyPath), typeName);
+            var cacheKey = CacheKeyHelper.Build("type.generic", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName);
             return middleware.Execute(cacheKey, () =>
             {
                 var genericInfo = typeAnalysis.GetGenericTypeInfo(assemblyPath, typeName);
@@ -289,7 +289,7 @@ public static class TypeAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("type.attributes", CacheKeyHelper.FileStamp(assemblyPath), typeName);
+            var cacheKey = CacheKeyHelper.Build("type.attributes", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName);
             return middleware.Execute(cacheKey, () =>
             {
                 var lookup = typeAnalysis.GetTypeAttributes(assemblyPath, typeName);
@@ -331,7 +331,7 @@ public static class TypeAnalysisTools
                 return target.Error;
             assemblyPath = target.Path;
 
-            var cacheKey = CacheKeyHelper.Build("type.nested", CacheKeyHelper.FileStamp(assemblyPath), typeName);
+            var cacheKey = CacheKeyHelper.Build("type.nested", CacheKeyHelper.AssemblyStamp(assemblyPath), typeName);
             return middleware.Execute(cacheKey, () =>
             {
                 var lookup = typeAnalysis.GetNestedTypes(assemblyPath, typeName);

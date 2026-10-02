@@ -51,7 +51,7 @@ public static class IlAnalysisTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "il.methodCalls",
-                CacheKeyHelper.FileStamp(assemblyPath), typeName, methodName, caseSensitive, includeNonPublic, normalizedProjection);
+                CacheKeyHelper.AssemblyStamp(assemblyPath), typeName, methodName, caseSensitive, includeNonPublic, normalizedProjection);
 
             return ToolResponse.Result(middleware.Execute(cacheKey, () =>
             {

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Server.Shared;
 
@@ -28,8 +29,13 @@ public static class CacheKeyHelper
 
     public static string ScopeStamp(IEnumerable<string> paths) => string.Join(";", paths.Select(FileStamp));
 
+    public static string AssemblyStamp(string assemblyPath) =>
+        $"{FileStamp(assemblyPath)};{ProjectAssetsLocator.AssetsStamp(assemblyPath)}";
+
+    public static string AssemblyScopeStamp(IEnumerable<string> assemblyPaths) => string.Join(";", assemblyPaths.Select(AssemblyStamp));
+
     public static string XmlDocStamp(string assemblyPath) =>
-        $"{FileStamp(assemblyPath)};{FileStamp(Path.ChangeExtension(assemblyPath, ".xml"))}";
+        $"{AssemblyStamp(assemblyPath)};{FileStamp(Path.ChangeExtension(assemblyPath, ".xml"))}";
 
     public static string PdbStamp(string assemblyStamp, string assemblyPath) =>
         $"{assemblyStamp};{FileStamp(Path.ChangeExtension(assemblyPath, ".pdb"))}";

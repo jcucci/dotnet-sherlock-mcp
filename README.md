@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 42 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 43 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -142,7 +142,7 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 42 | Every tool, including the deprecated per-kind member tools |
+| `full` (default) | 43 | Every tool, including the deprecated per-kind member tools |
 | `core` | 22 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
@@ -318,6 +318,7 @@ All three tools page their source by line: `maxLines` (default 400, max 5000) ca
 - **`AnalyzeProject`**: Project metadata, references, and build configuration
 - **`GetProjectOutputPaths`**: Resolve output directories for different configurations
 - **`ResolvePackageReferences`**: Map NuGet packages to cached assemblies
+- **`GetPackageGraph`**: Restored NuGet graph from `obj/project.assets.json` (exact direct and transitive versions per target framework and RID)
 - **`FindDepsJsonDependencies`**: Parse deps.json for runtime dependencies
 
 ### Configuration & Runtime
@@ -372,7 +373,7 @@ Most enumerating tools default to a lean **`summary`** projection and let you op
 * `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, and `FindReferencesTo`. `summary` returns just enough to browse (e.g. `{ kind, name, signature }` for members); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: the deprecated `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
 * `analysisDepth` (`signatures` | `il`): `FindReferencesTo` only. `signatures` (default) scans member declarations; `il` additionally scans method bodies for inbound callers (slower).
 * `additionalAssemblies` (string[]): widen the search scope for `GetTypeHierarchy` and the reverse-lookup tools. `GetTypeHierarchy.derivedTypes` stays `null` until you pass this.
-* `noCache` (bool): bypass the response cache for a single call when you suspect stale results. Every tool that reads an assembly or project caches its response, keyed by the file stamps of its inputs (the assembly and any `additionalAssemblies`, the XML doc file beside it, or the project file and `obj/project.assets.json`), so a rebuild or restore invalidates it automatically. The `find_assembly_by_*` lookups and `resolve_package_references` (which read the shared NuGet package cache), configuration and handle tools are not cached. Two cases the stamps don't catch, where `noCache=true` is the fix: a dependency DLL dropped in beside an assembly that previously resolved only partially (keys stamp the assembly, not its siblings), and a restore for a project whose `project.assets.json` lives outside `obj/` (e.g. `UseArtifactsOutput` or a custom `BaseIntermediateOutputPath`).
+* `noCache` (bool): bypass the response cache for a single call when you suspect stale results. Every tool that reads an assembly or project caches its response, keyed by the file stamps of its inputs (the assembly and any `additionalAssemblies`, the `project.assets.json` of the project whose `bin` output holds the assembly, the XML doc file beside it, or the project file and `obj/project.assets.json`), so a rebuild or restore invalidates it automatically. The `find_assembly_by_*` lookups and `resolve_package_references` (which read the shared NuGet package cache), configuration and handle tools are not cached. Two cases the stamps don't catch, where `noCache=true` is the fix: a dependency DLL dropped in beside an assembly that previously resolved only partially (keys stamp the assembly, not its siblings), and a restore for a project whose `project.assets.json` lives outside `obj/` or `artifacts/obj/<project>/` (e.g. a custom `BaseIntermediateOutputPath`).
 * `assemblyHandle` (string): accepted by every tool that takes `assemblyPath`, as an alternative to it (pass one, not both). Get one from `open_assembly`; it also supplies the `additionalAssemblies` it was opened with, and any you pass explicitly are added to them.
 
 **Type Resolution:**

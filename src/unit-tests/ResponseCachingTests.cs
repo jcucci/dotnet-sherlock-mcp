@@ -91,6 +91,24 @@ public sealed class ResponseCachingTests : IDisposable
     }
 
     [Theory]
+    [MemberData(nameof(AssemblyToolNames))]
+    public async Task AssemblyTool_RestoredProject_MissesCache(string tool)
+    {
+        var (middleware, cache) = Recording();
+        var copy = CopyWithDocs("Restored", Path.Combine("bin", "Debug", "net10.0"));
+        var assets = Path.Combine(_workDirectory, "obj", "project.assets.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(assets)!);
+        File.WriteAllText(assets, "{}");
+
+        await AssemblyTools[tool](middleware, copy, false);
+        File.SetLastWriteTimeUtc(assets, File.GetLastWriteTimeUtc(assets).AddMinutes(1));
+        await AssemblyTools[tool](middleware, copy, false);
+
+        Assert.Equal(2, cache.Sets);
+        Assert.Equal(0, cache.Hits);
+    }
+
+    [Theory]
     [InlineData("get_xml_docs_for_type")]
     [InlineData("get_xml_docs_for_member")]
     public async Task XmlDocTool_ChangedDocFile_MissesCache(string tool)
@@ -224,16 +242,17 @@ public sealed class ResponseCachingTests : IDisposable
         _ => throw new ArgumentOutOfRangeException(nameof(tool))
     };
 
-    private string CopyWithDocs(string name)
+    private string CopyWithDocs(string name, string? subdirectory = null)
     {
-        var destination = Path.Combine(_workDirectory, $"{name}.dll");
+        var directory = subdirectory == null ? _workDirectory : Directory.CreateDirectory(Path.Combine(_workDirectory, subdirectory)).FullName;
+        var destination = Path.Combine(directory, $"{name}.dll");
         File.Copy(TestAssemblyPath, destination, overwrite: true);
         File.Copy(Path.ChangeExtension(TestAssemblyPath, ".xml"), Path.ChangeExtension(destination, ".xml"), overwrite: true);
         foreach (var reference in Assembly.GetExecutingAssembly().GetReferencedAssemblies())
         {
             var sibling = Path.Combine(Path.GetDirectoryName(TestAssemblyPath)!, $"{reference.Name}.dll");
             if (File.Exists(sibling))
-                File.Copy(sibling, Path.Combine(_workDirectory, Path.GetFileName(sibling)), overwrite: true);
+                File.Copy(sibling, Path.Combine(directory, Path.GetFileName(sibling)), overwrite: true);
         }
         return destination;
     }
