@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 41 specialized tools for .NET assembly analysis, with an optional 21-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 42 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -142,8 +142,8 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 41 | Every tool, including the deprecated per-kind member tools |
-| `core` | 21 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) and source (`get_member_source`, `decompile_member`) |
+| `full` (default) | 42 | Every tool, including the deprecated per-kind member tools |
+| `core` | 22 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -295,6 +295,9 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 ### IL Analysis
 - **`GetMethodCalls`**: Read a method's IL body to list what it calls and which fields it touches — the "what does this method do?" question signature-level tools can't answer (aggregates across overloads; use `.ctor`/`.cctor` for constructors)
 
+### API Diff
+- **`CompareApiSurface`**: Diff the public API of two versions of an assembly. `left` (old) and `right` (new) each take an assembly path, an `asm_…` handle, or a NuGet package as `Package.Id@1.2.3` resolved from the local cache (omit the version for the highest cached one; `tfm` picks the target framework; by default both sides use one target framework both packages ship, with a warning when they share none). Public types and members, plus protected ones on inheritable types, are compared. Breaking changes are flagged with reasons: removed types or members, changed return/field/property types, reduced accessibility, classes that became sealed, abstract or static, removed base types or interfaces, new generic constraints, abstract members added to interfaces or inheritable classes, members that became static/instance, abstract or non-virtual, fields that became readonly, removed or less accessible property accessors, setters that became `init`, changed parameter modifiers, parameters that are no longer optional or `params`, and changed enum values. Additions and compatible changes (parameter renames, new default values, changed constants, new `params`, members moved to a base type) are listed without the flag. The default `summary` returns `counts` and the breaking changes; `projection='full'` lists every change with `leftSignature`, `rightSignature` and `reasons[]` (narrow with `breakingOnly` and `namespaceFilter`). Paged with `maxItems` / `continuationToken`
+
 ### Original Source & Decompilation
 - **`GetMemberSource`**: The member's original source, with comments and real names, read through the assembly's portable PDB (embedded in the DLL or beside it). It uses source embedded in the PDB, then the local file the assembly was built from, then the file at the PDB's Source Link URL. Each candidate, embedded source included, must match the SHA-1/SHA-256 checksum the PDB recorded (CRLF/LF differences are tolerated); otherwise that overload falls back to decompiled C#. Local files are read only from absolute, non-UNC paths and only up to 5 MB. The result's `origin` is `embedded`, `local`, `sourcelink`, `decompiled` or `mixed`, each overload reports its `document`, `url` and `lines`, and `note` explains any fallback. The slice covers the member's `///` docs, attributes, signature and body
 - **`DecompileMember`**: Decompile one member (method, property, field, event or constructor) to C# with ICSharpCode.Decompiler. Returns every overload of the name, or one overload when `parameterTypes` is given (e.g. `string,int`; an empty string selects the parameterless overload). Use `.ctor`/`.cctor` for constructors
@@ -385,7 +388,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `compare_api_surface`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
 
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 

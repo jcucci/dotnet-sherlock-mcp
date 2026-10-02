@@ -49,6 +49,8 @@ Start with a small `maxItems` and page with `continuationToken` instead of fetch
 
 Pass `additionalAssemblies` to search across several DLLs.
 
+To upgrade a package or review a release, `compare_api_surface` diffs two versions (`left` = old, `right` = new; each an assembly path, a handle, or `Package.Id@1.2.3` from the NuGet cache). The default summary returns counts and the breaking changes with reasons; `projection='full'` lists every addition and change.
+
 ## 5. Recovering from errors
 
 Failed calls return `isError: true` with JSON guidance. Follow it rather than retrying blindly:

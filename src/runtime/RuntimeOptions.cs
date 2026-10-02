@@ -32,7 +32,8 @@ public class RuntimeOptions
             ["find_implementations_of"] = 50,
             ["find_methods_returning"] = 50,
             ["find_references_to"] = 25,     // Broader sweep, keep smaller
-            ["search_members"] = 50
+            ["search_members"] = 50,
+            ["compare_api_surface"] = 100   // Change rows are compact
         };
     }
 

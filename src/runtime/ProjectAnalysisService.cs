@@ -380,6 +380,8 @@ public class ProjectAnalysisService : IProjectAnalysisService
         return versions.OrderByDescending(v => v, StringComparer.OrdinalIgnoreCase).First();
     }
 
+    public static string? PickBestTargetFramework(IEnumerable<string> availableTfms) => PickBestTfm(availableTfms.ToArray());
+
     private static string? PickBestTfm(string[] availableTfms)
     {
         if (availableTfms.Length == 0)
