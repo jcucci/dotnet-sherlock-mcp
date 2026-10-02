@@ -169,39 +169,17 @@ public static class DecompilationTools
         }
     }
 
-    private sealed record DependencyScope(string Stamp, string[]? SearchDirectories, string? Error)
-    {
-        public static DependencyScope Build(string assemblyPath, string[]? additionalAssemblies)
-        {
-            if (additionalAssemblies is not { Length: > 0 })
-                return new DependencyScope(CacheKeyHelper.FileStamp(assemblyPath), null, null);
-
-            var scope = AssemblyScope.BuildAndValidate(assemblyPath, additionalAssemblies);
-            if (scope.Error != null)
-                return new DependencyScope("", null, scope.Error);
-
-            var directories = scope.Paths
-                .Skip(1)
-                .Select(Path.GetDirectoryName)
-                .OfType<string>()
-                .Where(directory => directory.Length > 0)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            return new DependencyScope(CacheKeyHelper.ScopeStamp(scope.Paths), directories, null);
-        }
-    }
-
-    private static string? MaxLinesError(int maxLines) =>
+    internal static string? MaxLinesError(int maxLines) =>
         maxLines is < 1 or > SourcePager.MaxLinesLimit
             ? JsonHelpers.Error("InvalidArgument", $"maxLines must be between 1 and {SourcePager.MaxLinesLimit}")
             : null;
 
-    private static string CombineOverloads(IReadOnlyList<MemberInfo> members, IReadOnlyList<string> sources) =>
+    internal static string CombineOverloads(IReadOnlyList<MemberInfo> members, IReadOnlyList<string> sources) =>
         members.Count == 1
             ? sources[0]
             : string.Join("\n\n", members.Zip(sources, (m, s) => $"// {DecompilationTargets.FormatSignature(m)}\n{s}"));
 
-    private static string TypeForwarded(Type type, string assemblyPath)
+    internal static string TypeForwarded(Type type, string assemblyPath)
     {
         var target = type.Assembly.GetName().Name;
         var targetPath = string.IsNullOrEmpty(type.Assembly.Location) ? null : type.Assembly.Location;
@@ -215,7 +193,7 @@ public static class DecompilationTools
             recommendedParams: new { assemblyName = target, assemblyPath = targetPath });
     }
 
-    private static string OverloadNotFound(Type type, string memberName, string parameterTypes, IReadOnlyList<MemberInfo> named) =>
+    internal static string OverloadNotFound(Type type, string memberName, string parameterTypes, IReadOnlyList<MemberInfo> named) =>
         JsonHelpers.ErrorWithGuidance(
             "OverloadNotFound",
             $"No overload of '{memberName}' on '{type.FullName ?? type.Name}' takes ({parameterTypes}).",

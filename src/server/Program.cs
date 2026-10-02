@@ -9,6 +9,7 @@ using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Runtime.Decompilation;
 using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Runtime.SourceLink;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Completions;
 using Sherlock.MCP.Server.Middleware;
@@ -75,6 +76,10 @@ builder.Services
     .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
     .AddSingleton<IDecompilerService, DecompilerService>()
+    .AddSingleton<ISourceFetcher>(services => new SourceFetcher(
+        services.GetRequiredService<RuntimeOptions>(),
+        new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan }))
+    .AddSingleton<IOriginalSourceService, OriginalSourceService>()
     .AddSingleton<ISearchService, SearchService>()
     .AddSingleton<ICompletionService, CompletionService>()
     .AddSingleton<IAssemblyHandleRegistry, AssemblyHandleRegistry>()

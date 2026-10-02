@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 40 specialized tools for .NET assembly analysis, with an optional 20-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 41 specialized tools for .NET assembly analysis, with an optional 21-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -142,8 +142,8 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 40 | Every tool, including the deprecated per-kind member tools |
-| `core` | 20 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) and decompilation (`decompile_member`) |
+| `full` (default) | 41 | Every tool, including the deprecated per-kind member tools |
+| `core` | 21 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) and source (`get_member_source`, `decompile_member`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -295,11 +295,12 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 ### IL Analysis
 - **`GetMethodCalls`**: Read a method's IL body to list what it calls and which fields it touches — the "what does this method do?" question signature-level tools can't answer (aggregates across overloads; use `.ctor`/`.cctor` for constructors)
 
-### Decompilation
+### Original Source & Decompilation
+- **`GetMemberSource`**: The member's original source, with comments and real names, read through the assembly's portable PDB (embedded in the DLL or beside it). It uses source embedded in the PDB, then the local file the assembly was built from, then the file at the PDB's Source Link URL. Each candidate, embedded source included, must match the SHA-1/SHA-256 checksum the PDB recorded (CRLF/LF differences are tolerated); otherwise that overload falls back to decompiled C#. Local files are read only from absolute, non-UNC paths and only up to 5 MB. The result's `origin` is `embedded`, `local`, `sourcelink`, `decompiled` or `mixed`, each overload reports its `document`, `url` and `lines`, and `note` explains any fallback. The slice covers the member's `///` docs, attributes, signature and body
 - **`DecompileMember`**: Decompile one member (method, property, field, event or constructor) to C# with ICSharpCode.Decompiler. Returns every overload of the name, or one overload when `parameterTypes` is given (e.g. `string,int`; an empty string selects the parameterless overload). Use `.ctor`/`.cctor` for constructors
 - **`DecompileType`**: Decompile a whole type to C#. Not in the `core` profile; prefer `DecompileMember`
 
-Both tools page their source by line: `maxLines` (default 400, max 5000) caps the page size, a page also stops early once it reaches about 90,000 characters so it always fits the response limit, and each page reports `startLine`, `lineCount`, `totalLines`, `truncated` and a `continuationToken` for the next page. Lines over 2,000 characters are clipped with a `/* … more characters clipped */` marker and counted in `clippedLines`. Pass `additionalAssemblies` (or use an `assemblyHandle` opened with them) when dependencies live outside the assembly's folder; their folders are searched when resolving referenced types and their file stamps are part of the cache key. The full decompilation is cached by file stamp, so later pages are cheap. A type the assembly only forwards (e.g. `System.String` in a `System.Runtime.dll` facade) returns `TypeForwarded` with the defining assembly in `recommendedParams`.
+All three tools page their source by line: `maxLines` (default 400, max 5000) caps the page size, a page also stops early once it reaches about 90,000 characters so it always fits the response limit, and each page reports `startLine`, `lineCount`, `totalLines`, `truncated` and a `continuationToken` for the next page. Lines over 2,000 characters are clipped with a `/* … more characters clipped */` marker and counted in `clippedLines`. Pass `additionalAssemblies` (or use an `assemblyHandle` opened with them) when dependencies live outside the assembly's folder; their folders are searched when resolving referenced types and their file stamps are part of the cache key. The full decompilation is cached by file stamp, so later pages are cheap. A type the assembly only forwards (e.g. `System.String` in a `System.Runtime.dll` facade) returns `TypeForwarded` with the defining assembly in `recommendedParams`.
 
 ### Attributes & Metadata
 - **`GetMemberAttributes`**: Attributes for specific members
@@ -318,7 +319,9 @@ Both tools page their source by line: `maxLines` (default 400, max 5000) caps th
 
 ### Configuration & Runtime
 - **`GetRuntimeOptions`**: Current server configuration and defaults
-- **`UpdateRuntimeOptions`**: Modify pagination, caching, and search behavior
+- **`UpdateRuntimeOptions`**: Modify pagination, caching, search and Source Link fetch behavior
+
+`get_member_source` fetches Source Link files over HTTPS only from known source hosts by default (`raw.githubusercontent.com`, `gitlab.com`, `bitbucket.org`, `api.bitbucket.org`, `dev.azure.com`, `*.visualstudio.com`), because the URL comes from the PDB and could otherwise point anywhere. Set `SHERLOCK_SOURCE_FETCH` to `off`, `known-hosts` (default) or `any`, or change it at runtime with `update_runtime_options sourceFetch=…` and `addSourceFetchHosts` / `removeSourceFetchHosts`. A host gets 5 seconds to respond and 30 seconds to deliver the file, files over 5 MB are refused, redirects are followed manually (at most 3) and each hop must pass the same HTTPS and host checks, a host that can't be connected to is not retried for the rest of the session, a fallback caused by a network failure is not cached, and verified files are cached under `SHERLOCK_STATE_DIR/sources`.
 
 ### Resources
 Three resource templates let clients fetch a single type, doc entry or cached package without another tool call. Every variable is percent-encoded.
@@ -382,7 +385,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
 ```
 
-The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
 
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 

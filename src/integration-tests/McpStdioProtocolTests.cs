@@ -10,7 +10,7 @@ namespace Sherlock.MCP.IntegrationTests;
 
 public class McpStdioProtocolTests
 {
-    private const int ExpectedToolCount = 40;
+    private const int ExpectedToolCount = 41;
 
     private const string CurrentProtocolVersion = "2026-07-28";
 
@@ -275,6 +275,9 @@ public class McpStdioProtocolTests
         // Discovery tools scan search roots for an unbounded set of assemblies, so they stay open-world.
         Assert.NotEqual(false, tools["find_assembly_by_class_name"].Annotations!.OpenWorldHint);
 
+        // get_member_source may fetch from Source Link hosts named in a PDB.
+        Assert.Equal(true, tools["get_member_source"].Annotations!.OpenWorldHint);
+
         // The only tools that mutate server state: runtime options and the assembly handle registry.
         string[] mutatingTools = ["open_assembly", "update_runtime_options"];
         foreach (var name in mutatingTools)
@@ -314,6 +317,30 @@ public class McpStdioProtocolTests
         Assert.True(count <= total, $"count ({count}) should not exceed total ({total}).");
         Assert.Equal(JsonValueKind.Array, data.GetProperty("methods").ValueKind);
         Assert.Equal(count, data.GetProperty("methods").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Call_get_member_source_falls_back_to_decompiled_without_a_pdb()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var result = await client.CallToolAsync(
+            "get_member_source",
+            new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(string).Assembly.Location,
+                ["typeName"] = "System.String",
+                ["memberName"] = "IsNullOrEmpty"
+            },
+            cancellationToken: cts.Token);
+
+        Assert.NotEqual(true, result.IsError);
+        Assert.NotNull(result.StructuredContent);
+
+        var data = Envelope(result).GetProperty("data");
+        Assert.Equal("decompiled", data.GetProperty("origin").GetString());
+        Assert.Contains("IsNullOrEmpty", data.GetProperty("source").GetString());
     }
 
     [Fact]

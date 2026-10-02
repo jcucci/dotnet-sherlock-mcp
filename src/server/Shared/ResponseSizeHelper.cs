@@ -132,7 +132,7 @@ public static class ResponseSizeHelper
                 new[] { "get_type_info", "get_type_members" },
                 new { maxItems = 15 }
             ),
-            "decompile_member" or "decompile_type" => (
+            "decompile_member" or "decompile_type" or "get_member_source" => (
                 "Lower maxLines and follow continuationToken, or decompile a single member instead of a whole type.",
                 new[] { "decompile_member" },
                 new { maxLines = 200 }

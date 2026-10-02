@@ -43,6 +43,16 @@ public sealed class ToolMiddleware
         return Store(cacheKey, result, sw, noCache);
     }
 
+    public async Task<string> ExecuteWhenCacheableAsync(string cacheKey, Func<Task<(string Result, bool Cacheable)>> action, bool noCache = false)
+    {
+        if (TryGetCached(cacheKey, noCache, out var cached))
+            return cached;
+
+        var sw = Stopwatch.StartNew();
+        var (result, cacheable) = await action();
+        return Store(cacheKey, result, sw, noCache || !cacheable);
+    }
+
     private bool TryGetCached(string cacheKey, bool noCache, out string cached)
     {
         if (!noCache && _cache.TryGet(cacheKey, out var hit) && hit != null)

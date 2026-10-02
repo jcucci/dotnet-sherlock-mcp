@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.SourceLink;
 using Sherlock.MCP.Server.Shared;
 
 namespace Sherlock.MCP.Server.Tools;
@@ -20,7 +21,9 @@ public static class ConfigTools
             includeNonPublicByDefault = options.IncludeNonPublicByDefault,
             maxLoadedAssemblies = options.MaxLoadedAssemblies,
             maxCachedResponses = options.MaxCachedResponses,
-            maxAssemblyHandles = options.MaxAssemblyHandles
+            maxAssemblyHandles = options.MaxAssemblyHandles,
+            sourceFetch = SourceFetchName(options.SourceFetch),
+            sourceFetchHosts = options.SourceFetchHosts.ToArray()
         };
 
         return JsonHelpers.Envelope("runtime.options", result);
@@ -37,8 +40,18 @@ public static class ConfigTools
         [Description("Remove search roots (absolute paths)")] string[]? removeSearchRoots = null,
         [Description("Maximum assemblies kept loaded in the inspection cache")] int? maxLoadedAssemblies = null,
         [Description("Maximum cached tool responses kept in memory")] int? maxCachedResponses = null,
-        [Description("Maximum assembly handles kept in the on-disk handle registry")] int? maxAssemblyHandles = null)
+        [Description("Maximum assembly handles kept in the on-disk handle registry")] int? maxAssemblyHandles = null,
+        [Description("Source Link fetching for get_member_source: 'off', 'known-hosts' (only sourceFetchHosts) or 'any'")] string? sourceFetch = null,
+        [Description("Add hosts get_member_source may fetch Source Link files from, e.g. 'git.example.com' or '*.example.com'")] string[]? addSourceFetchHosts = null,
+        [Description("Remove hosts from sourceFetchHosts")] string[]? removeSourceFetchHosts = null)
     {
+        if (sourceFetch != null)
+        {
+            if (!RuntimeOptions.TryParseSourceFetch(sourceFetch, out var mode))
+                return JsonHelpers.Error("InvalidArgument", "sourceFetch must be 'off', 'known-hosts' or 'any'");
+            options.SourceFetch = mode;
+        }
+
         if (defaultMaxItems is > 0) options.DefaultMaxItems = defaultMaxItems.Value;
         if (cacheTtlSeconds is > 0) options.CacheTtlSeconds = cacheTtlSeconds.Value;
         if (maxLoadedAssemblies is > 0) options.MaxLoadedAssemblies = maxLoadedAssemblies.Value;
@@ -65,7 +78,27 @@ public static class ConfigTools
             }
         }
 
+        if (addSourceFetchHosts is { Length: > 0 } || removeSourceFetchHosts is { Length: > 0 })
+            options.SourceFetchHosts = UpdatedHosts(options.SourceFetchHosts, addSourceFetchHosts ?? [], removeSourceFetchHosts ?? []);
+
         return GetRuntimeOptions(options);
     }
+
+    private static string[] UpdatedHosts(IReadOnlyList<string> current, string[] add, string[] remove)
+    {
+        var removed = remove.Select(host => host.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return current
+            .Concat(add.Select(host => host.Trim()).Where(host => host.Length > 0))
+            .Where(host => !removed.Contains(host))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string SourceFetchName(SourceFetchMode mode) => mode switch
+    {
+        SourceFetchMode.Off => "off",
+        SourceFetchMode.AnyHost => "any",
+        _ => "known-hosts"
+    };
 }
 

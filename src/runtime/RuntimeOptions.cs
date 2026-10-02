@@ -1,3 +1,5 @@
+using Sherlock.MCP.Runtime.SourceLink;
+
 namespace Sherlock.MCP.Runtime;
 
 public class RuntimeOptions
@@ -12,6 +14,8 @@ public class RuntimeOptions
         MaxCachedResponses = 256;
         MaxAssemblyHandles = 256;
         StateDirectory = DefaultStateDirectory();
+        SourceFetch = DefaultSourceFetch();
+        SourceFetchHosts = KnownSourceHosts;
 
         ToolSpecificMaxItems = new Dictionary<string, int>(ToolNameComparer.Instance)
         {
@@ -48,6 +52,32 @@ public class RuntimeOptions
 
     public string StateDirectory { get; set; }
 
+    public SourceFetchMode SourceFetch { get; set; }
+
+    public IReadOnlyList<string> SourceFetchHosts { get; set; }
+
+    public static readonly IReadOnlyList<string> KnownSourceHosts =
+    [
+        "raw.githubusercontent.com",
+        "gitlab.com",
+        "bitbucket.org",
+        "api.bitbucket.org",
+        "dev.azure.com",
+        "*.visualstudio.com"
+    ];
+
+    public static bool TryParseSourceFetch(string? value, out SourceFetchMode mode)
+    {
+        mode = value?.Trim().ToLowerInvariant() switch
+        {
+            "off" or "false" or "0" or "none" => SourceFetchMode.Off,
+            "known-hosts" or "knownhosts" or "known" => SourceFetchMode.KnownHosts,
+            "any" or "anyhost" or "any-host" or "true" or "1" => SourceFetchMode.AnyHost,
+            _ => (SourceFetchMode)(-1)
+        };
+        return Enum.IsDefined(mode);
+    }
+
     public Dictionary<string, int> ToolSpecificMaxItems { get; }
 
     public int GetMaxItemsForTool(string toolName)
@@ -58,6 +88,11 @@ public class RuntimeOptions
 
         return DefaultMaxItems;
     }
+
+    private static SourceFetchMode DefaultSourceFetch() =>
+        TryParseSourceFetch(Environment.GetEnvironmentVariable("SHERLOCK_SOURCE_FETCH"), out var mode)
+            ? mode
+            : SourceFetchMode.KnownHosts;
 
     private static string DefaultStateDirectory() =>
         Environment.GetEnvironmentVariable("SHERLOCK_STATE_DIR") is { Length: > 0 } configured
