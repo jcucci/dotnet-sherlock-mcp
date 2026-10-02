@@ -96,6 +96,29 @@ public class MetadataReaderCacheTests
     }
 
     [Fact]
+    public void AcquireMetadata_Invalid_Image_Throws_And_Is_Not_Cached()
+    {
+        using var provider = new SharedInspectionContextProvider(new RuntimeOptions());
+        var tempPath = Path.Combine(Path.GetTempPath(), $"sherlock-md-invalid-{Guid.NewGuid():N}.dll");
+        try
+        {
+            File.WriteAllBytes(tempPath, new byte[] { 0x4D, 0x5A, 0x00, 0x01, 0x02, 0x03 });
+            Assert.Throws<BadImageFormatException>(() => provider.AcquireMetadata(tempPath));
+
+            File.Copy(_testAssemblyPath, tempPath, overwrite: true);
+            File.SetLastWriteTimeUtc(tempPath, DateTime.UtcNow.AddSeconds(5));
+            using var lease = provider.AcquireMetadata(tempPath);
+
+            Assert.Equal(Assembly.GetExecutingAssembly().GetName().Name, AssemblyName(lease.Reader));
+        }
+        finally
+        {
+            provider.Dispose();
+            File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
     public void AcquireMetadata_Handles_Concurrent_Acquire()
     {
         using var provider = new SharedInspectionContextProvider(new RuntimeOptions { MaxLoadedAssemblies = 2 });

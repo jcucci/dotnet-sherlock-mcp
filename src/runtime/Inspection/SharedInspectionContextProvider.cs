@@ -156,7 +156,7 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         var entry = AcquireEntry(
             _metadataEntries,
             fullPath,
-            () => new MetadataEntry(OpenPEReader(fullPath), stampTicks, length),
+            () => CreateMetadataEntry(fullPath, stampTicks, length),
             e => e.FileStampTicks == stampTicks && e.FileLength == length);
 
         return new MetadataReaderLease(entry.PEReader, entry.Reader, entry.Resolver, entry.Release);
@@ -214,14 +214,14 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
         return fileInfo;
     }
 
-    private static PEReader OpenPEReader(string fullPath)
+    private static MetadataEntry CreateMetadataEntry(string fullPath, long fileStampTicks, long fileLength)
     {
         var peReader = new PEReader(File.OpenRead(fullPath));
         try
         {
             if (!peReader.HasMetadata)
                 throw new BadImageFormatException($"File has no .NET metadata: {fullPath}", fullPath);
-            return peReader;
+            return new MetadataEntry(peReader, fileStampTicks, fileLength);
         }
         catch
         {
