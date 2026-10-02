@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.ApiDiff;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Runtime.Decompilation;
@@ -81,6 +82,7 @@ builder.Services
         new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan }))
     .AddSingleton<IOriginalSourceService, OriginalSourceService>()
     .AddSingleton<ISearchService, SearchService>()
+    .AddSingleton<IApiDiffService, ApiDiffService>()
     .AddSingleton<ICompletionService, CompletionService>()
     .AddSingleton<IAssemblyHandleRegistry, AssemblyHandleRegistry>()
     .AddSingleton<ToolMiddleware>()

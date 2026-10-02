@@ -4,6 +4,7 @@ using Json.Schema;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.ApiDiff;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Decompilation;
 using Sherlock.MCP.Runtime.Inspection;
@@ -23,6 +24,7 @@ public class StructuredOutputTests
     private static readonly IInspectionContextProvider Contexts = new SharedInspectionContextProvider(Options);
     private static readonly ToolMiddleware Middleware = new(new InMemoryToolResponseCache(), new NoopTelemetry(), Options);
     private static readonly IReverseLookupService ReverseLookup = new ReverseLookupService();
+    private static readonly ApiDiffPair ApiDiffPair = ApiDiffFixtures.EmitPair();
 
     private static readonly string[] StructuredTools =
     [
@@ -39,7 +41,8 @@ public class StructuredOutputTests
         nameof(ReverseLookupTools.FindMethodsReturning),
         nameof(ReverseLookupTools.FindExtensionMethodsFor),
         nameof(ReverseLookupTools.FindReferencesTo),
-        nameof(HandleTools.OpenAssembly)
+        nameof(HandleTools.OpenAssembly),
+        nameof(ApiDiffTools.CompareApiSurface)
     ];
 
     private static readonly Dictionary<string, McpServerTool> ToolsByMethodName = typeof(ConfigTools).Assembly.GetTypes()
@@ -72,7 +75,9 @@ public class StructuredOutputTests
         { nameof(ReverseLookupTools.FindExtensionMethodsFor), "full" },
         { nameof(ReverseLookupTools.FindReferencesTo), "summary" },
         { nameof(ReverseLookupTools.FindReferencesTo), "full" },
-        { nameof(HandleTools.OpenAssembly), "summary" }
+        { nameof(HandleTools.OpenAssembly), "summary" },
+        { nameof(ApiDiffTools.CompareApiSurface), "summary" },
+        { nameof(ApiDiffTools.CompareApiSurface), "full" }
     };
 
     [Fact]
@@ -177,6 +182,8 @@ public class StructuredOutputTests
             ReverseLookupTools.FindReferencesTo(ReverseLookup, new IlAnalysisService(), Middleware, Options, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: "Snapshot", projection: projection, noCache: true),
         nameof(HandleTools.OpenAssembly) =>
             HandleTools.OpenAssembly(TestHandles.Registry, Contexts, TestAssemblyPath),
+        nameof(ApiDiffTools.CompareApiSurface) =>
+            ApiDiffTools.CompareApiSurface(new ApiDiffService(Contexts), new ProjectAnalysisService(), Middleware, Options, TestHandles.Registry, ApiDiffPair.LeftPath, ApiDiffPair.RightPath, projection: projection, noCache: true).GetAwaiter().GetResult(),
         _ => throw new ArgumentOutOfRangeException(nameof(methodName), methodName, null)
     };
 }

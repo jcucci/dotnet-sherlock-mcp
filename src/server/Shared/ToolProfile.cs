@@ -27,7 +27,8 @@ public sealed class ToolProfile
         "find_references_to",
         "get_method_calls",
         "decompile_member",
-        "get_member_source"
+        "get_member_source",
+        "compare_api_surface"
     ];
 
     public static readonly ToolProfile Full = new("full", allowedTools: null);

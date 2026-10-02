@@ -73,7 +73,7 @@ internal static class PdbFixtures
         return new EmittedAssembly(assemblyPath, DocumentDirectory + first.Key, Utf8.GetBytes(first.Value));
     }
 
-    private static IEnumerable<MetadataReference> PlatformReferences() =>
+    internal static IEnumerable<MetadataReference> PlatformReferences() =>
         ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Where(path => Path.GetFileName(path) is "System.Runtime.dll" or "System.Private.CoreLib.dll" or "netstandard.dll")

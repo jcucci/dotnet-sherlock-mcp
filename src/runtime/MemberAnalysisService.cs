@@ -151,11 +151,11 @@ public class MemberAnalysisService : IMemberAnalysisService
         return new PagedResult<TDetails>(filtered.Count, items);
     }
 
-    private static bool IsAccessorMethod(MethodInfo method) =>
+    internal static bool IsAccessorMethod(MethodInfo method) =>
         method.IsSpecialName && (method.Name.StartsWith("get_", StringComparison.Ordinal) || method.Name.StartsWith("set_", StringComparison.Ordinal) ||
             method.Name.StartsWith("add_", StringComparison.Ordinal) || method.Name.StartsWith("remove_", StringComparison.Ordinal));
 
-    private static MethodDetails BuildMethodDetails(MethodInfo method)
+    internal static MethodDetails BuildMethodDetails(MethodInfo method)
     {
         var parameters = GetParameterDetails(method.GetParameters());
         var genericParams = method.IsGenericMethodDefinition ?
@@ -185,7 +185,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         );
     }
 
-    private static PropertyDetails BuildPropertyDetails(PropertyInfo property)
+    internal static PropertyDetails BuildPropertyDetails(PropertyInfo property)
     {
         var indexerParams = GetParameterDetails(property.GetIndexParameters());
         var isIndexer = indexerParams.Length > 0;
@@ -218,7 +218,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         );
     }
 
-    private static FieldDetails BuildFieldDetails(FieldInfo field)
+    internal static FieldDetails BuildFieldDetails(FieldInfo field)
     {
         object? constantValue = null;
         if (field.IsLiteral && !field.IsInitOnly)
@@ -251,7 +251,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         );
     }
 
-    private static EventDetails BuildEventDetails(EventInfo eventInfo)
+    internal static EventDetails BuildEventDetails(EventInfo eventInfo)
     {
         var addMethod = eventInfo.GetAddMethod(true);
         var removeMethod = eventInfo.GetRemoveMethod(true);
@@ -278,7 +278,7 @@ public class MemberAnalysisService : IMemberAnalysisService
         );
     }
 
-    private static ConstructorDetails BuildConstructorDetails(ConstructorInfo constructor)
+    internal static ConstructorDetails BuildConstructorDetails(ConstructorInfo constructor)
     {
         var parameters = GetParameterDetails(constructor.GetParameters());
         var signature = BuildConstructorSignature(constructor, parameters);
