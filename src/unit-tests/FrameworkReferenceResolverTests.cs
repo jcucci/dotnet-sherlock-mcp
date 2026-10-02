@@ -129,6 +129,55 @@ public sealed class FrameworkReferenceResolverTests : IDisposable
     }
 
     [Fact]
+    public void ProjectAssets_WindowsDesktopAliases_ResolveTheWindowsDesktopPack()
+    {
+        using var fixture = new AssetsFixture();
+        AddPack(NetCoreRef, "8.0.10", "net8.0");
+        var desktop = AddPack("Microsoft.WindowsDesktop.App.Ref", "8.0.10", "net8.0");
+        WriteFrameworkAssets(fixture, new JsonObject
+        {
+            ["Microsoft.WindowsDesktop.App.WPF"] = new JsonObject(),
+            ["Microsoft.WindowsDesktop.App.WindowsForms"] = new JsonObject()
+        });
+        var assembly = Emit(".NETCoreApp,Version=v8.0", fixture.BinDirectory("Debug", "net8.0"));
+
+        var resolution = Resolve(assembly, ProjectAssetsLocator.Locate(assembly));
+
+        Assert.Equal(desktop, Assert.Single(resolution.Packs, pack => pack.Name == "Microsoft.WindowsDesktop.App.Ref").Directory);
+        Assert.Equal(2, resolution.Packs.Count);
+        Assert.Empty(resolution.MissingFrameworks);
+    }
+
+    [Fact]
+    public void ProjectAssets_PackRestoredToTheProjectPackageFolder_IsFound()
+    {
+        using var fixture = new AssetsFixture();
+        var expected = Directory.CreateDirectory(Path.Combine(fixture.PackageFolder, "microsoft.netcore.app.ref", "8.0.5", "ref", "net8.0")).FullName;
+        WriteFrameworkAssets(fixture, new JsonObject(), (NetCoreRef, "[8.0.5, 8.0.5]"));
+        var assembly = Emit(".NETCoreApp,Version=v8.0", fixture.BinDirectory("Debug", "net8.0"));
+
+        var resolution = Resolve(assembly, ProjectAssetsLocator.Locate(assembly));
+
+        Assert.Equal(new FrameworkPack(NetCoreRef, "8.0.5", expected), Assert.Single(resolution.Packs));
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("\"text\"")]
+    public void NonObjectRuntimeConfig_IsIgnored(string json)
+    {
+        AddPack(NetCoreRef, "8.0.10", "net8.0");
+        var assembly = Emit(".NETCoreApp,Version=v8.0");
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(assembly)!, "Other.runtimeconfig.json"), json);
+
+        var resolution = Resolve(assembly);
+
+        Assert.Equal(FrameworkResolutionKind.ReferencePack, resolution.Kind);
+        Assert.Equal(NetCoreRef, Assert.Single(resolution.Packs).Name);
+    }
+
+    [Fact]
     public void NetStandard21_UsesTheNetStandardReferencePack()
     {
         var expected = AddPack("NETStandard.Library.Ref", "2.1.0", "netstandard2.1");
@@ -333,6 +382,22 @@ public sealed class FrameworkReferenceResolverTests : IDisposable
         Assert.True(result.Success, string.Join("\n", result.Diagnostics));
         return assemblyPath;
     }
+
+    private static void WriteFrameworkAssets(AssetsFixture fixture, JsonObject frameworkReferences, params (string Name, string Version)[] downloads) =>
+        fixture.WriteAssets(
+            targets: new JsonObject { ["net8.0"] = new JsonObject() },
+            libraries: new JsonObject(),
+            frameworks: new JsonObject
+            {
+                ["net8.0"] = new JsonObject
+                {
+                    ["targetAlias"] = "net8.0",
+                    ["frameworkReferences"] = frameworkReferences,
+                    ["downloadDependencies"] = new JsonArray(downloads
+                        .Select(download => (JsonNode)new JsonObject { ["name"] = download.Name, ["version"] = download.Version })
+                        .ToArray())
+                }
+            });
 
     private static void WriteRuntimeConfig(string assemblyPath, params string[] frameworks) =>
         File.WriteAllText(

@@ -31,6 +31,13 @@ public static class FrameworkReferenceResolver
     private const string NetStandardLibrary = "NETStandard.Library";
     private const string NetStandardLibraryRef = "NETStandard.Library.Ref";
     private const string RefPackSuffix = ".Ref";
+    private const string WindowsDesktopApp = "Microsoft.WindowsDesktop.App";
+
+    private static readonly Dictionary<string, string> FrameworkAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [WindowsDesktopApp + ".WPF"] = WindowsDesktopApp,
+        [WindowsDesktopApp + ".WindowsForms"] = WindowsDesktopApp
+    };
 
     private static readonly AsyncLocal<string?> DotnetRootOverrideValue = new();
 
@@ -52,7 +59,7 @@ public static class FrameworkReferenceResolver
         return ParseShortName(shortName) switch
         {
             ("netcoreapp", var version) => ResolveNetCore(fullPath, shortName!, version, assets),
-            ("netstandard", var version) => ResolveNetStandard(shortName!, version),
+            ("netstandard", var version) => ResolveNetStandard(shortName!, version, PackageFolders(assets)),
             _ => HostRuntime(shortName, [NetCoreApp], missing: [])
         };
     }
@@ -61,13 +68,15 @@ public static class FrameworkReferenceResolver
     {
         var frameworks = FrameworkNames(assemblyPath, assets);
         var pins = PinnedPackVersions(assets);
+        var packageFolders = PackageFolders(assets);
         var packs = new List<FrameworkPack>();
         var missing = new List<string>();
 
         foreach (var framework in frameworks)
         {
             var packName = framework + RefPackSuffix;
-            var pack = FindPack(packName, Path.Combine("ref", tfm), candidate => SameMajorMinor(candidate, version), pins.GetValueOrDefault(packName));
+            var pack = FindPack(
+                packName, Path.Combine("ref", tfm), candidate => SameMajorMinor(candidate, version), pins.GetValueOrDefault(packName), packageFolders);
             if (pack != null) packs.Add(pack);
             else missing.Add(framework);
         }
@@ -81,11 +90,11 @@ public static class FrameworkReferenceResolver
         return new FrameworkResolution(FrameworkResolutionKind.ReferencePack, tfm, NetCoreCoreAssembly, packs, missing, searchDirectories);
     }
 
-    private static FrameworkResolution ResolveNetStandard(string tfm, Version version)
+    private static FrameworkResolution ResolveNetStandard(string tfm, Version version, IReadOnlyList<string> packageFolders)
     {
         var pack = version >= new Version(2, 1)
-            ? FindPack(NetStandardLibraryRef, Path.Combine("ref", tfm), candidate => SameMajorMinor(candidate, version), pinnedVersion: null)
-            : FindPack(NetStandardLibrary, Path.Combine("build", "netstandard2.0", "ref"), candidate => candidate.Major == 2, pinnedVersion: null);
+            ? FindPack(NetStandardLibraryRef, Path.Combine("ref", tfm), candidate => SameMajorMinor(candidate, version), pinnedVersion: null, packageFolders)
+            : FindPack(NetStandardLibrary, Path.Combine("build", "netstandard2.0", "ref"), candidate => candidate.Major == 2, pinnedVersion: null, packageFolders);
 
         if (pack == null)
             return HostRuntime(tfm, [NetCoreApp], [version >= new Version(2, 1) ? NetStandardLibraryRef : NetStandardLibrary]);
@@ -107,8 +116,14 @@ public static class FrameworkReferenceResolver
     {
         var references = assets?.Assets.FrameworkFor(assets.Target.Alias)?.FrameworkReferences
             ?? RuntimeConfigFrameworks(assemblyPath);
-        return references.Prepend(NetCoreApp).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return references
+            .Select(reference => FrameworkAliases.GetValueOrDefault(reference, reference))
+            .Prepend(NetCoreApp)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
+
+    private static IReadOnlyList<string> PackageFolders(ProjectAssetsMatch? assets) => assets?.Assets.PackageFolders ?? [];
 
     public static string RuntimeConfigStamp(string assemblyPath) =>
         string.Join(";", RuntimeConfigPaths(Path.GetFullPath(assemblyPath)).Select(FileStamp));
@@ -158,7 +173,9 @@ public static class FrameworkReferenceResolver
         {
             using var stream = File.OpenRead(configPath);
             using var document = JsonDocument.Parse(stream);
-            if (!document.RootElement.TryGetProperty("runtimeOptions", out var options) || options.ValueKind != JsonValueKind.Object)
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("runtimeOptions", out var options)
+                || options.ValueKind != JsonValueKind.Object)
                 return [];
 
             var frameworks = new List<string>();
@@ -193,9 +210,10 @@ public static class FrameworkReferenceResolver
         return pins;
     }
 
-    private static FrameworkPack? FindPack(string packName, string relativeDirectory, Func<Version, bool> accepts, string? pinnedVersion)
+    private static FrameworkPack? FindPack(
+        string packName, string relativeDirectory, Func<Version, bool> accepts, string? pinnedVersion, IReadOnlyList<string> packageFolders)
     {
-        var candidates = PackRoots(packName)
+        var candidates = PackRoots(packName, packageFolders)
             .SelectMany(root => SafeEnumerateDirectories(root).Select(versionDirectory => (
                 Version: Path.GetFileName(versionDirectory),
                 Directory: Path.Combine(versionDirectory, relativeDirectory))))
@@ -216,10 +234,11 @@ public static class FrameworkReferenceResolver
         return chosen.Directory is null ? null : new FrameworkPack(packName, chosen.Version, Path.GetFullPath(chosen.Directory));
     }
 
-    private static IEnumerable<string> PackRoots(string packName) =>
+    private static IEnumerable<string> PackRoots(string packName, IReadOnlyList<string> packageFolders) =>
         DotnetRoots()
             .Select(root => Path.Combine(root, "packs", packName))
-            .Append(Path.Combine(NuGetCacheProbe.GetCacheRoot(), packName.ToLowerInvariant()))
+            .Concat(packageFolders.Append(NuGetCacheProbe.GetCacheRoot()).Select(folder => Path.Combine(folder, packName.ToLowerInvariant())))
+            .Select(Path.GetFullPath)
             .Distinct(PathComparers.Comparer);
 
     private static IEnumerable<string> DotnetRoots()
