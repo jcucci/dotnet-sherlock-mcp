@@ -18,7 +18,8 @@ public interface ISourceFetcher
 
 public sealed class SourceFetcher : ISourceFetcher
 {
-    public const int MaxDocumentBytes = 5 * 1024 * 1024;
+    public const int MaxDocumentBytes = SourceDocument.MaxBytes;
+    public const int MaxRedirects = 3;
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
     public static readonly TimeSpan DefaultDownloadTimeout = TimeSpan.FromSeconds(30);
 
@@ -60,6 +61,11 @@ public sealed class SourceFetcher : ISourceFetcher
         return new FetchResult(verified, null);
     }
 
+    private string? RedirectRefusal(Uri from, Uri to) =>
+        to.Scheme != Uri.UriSchemeHttps
+            ? $"{from} redirected to '{to}', which is not an https URL."
+            : PolicyRefusal(to) is { } refusal ? $"{from} redirected to another host. {refusal}" : null;
+
     private string? PolicyRefusal(Uri uri) => _options.SourceFetch switch
     {
         SourceFetchMode.Off => "Source Link fetching is off (sourceFetch=off).",
@@ -77,12 +83,29 @@ public sealed class SourceFetcher : ISourceFetcher
 
     private async Task<FetchResult> DownloadAsync(Uri uri, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd("sherlock-mcp");
-        using var response = await SendAsync(request, cancellationToken);
-        if (response.Failure is { } failure) return failure;
+        for (var hop = 0; hop <= MaxRedirects; hop++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.UserAgent.ParseAdd("sherlock-mcp");
+            using var response = await SendAsync(request, cancellationToken);
+            if (response.Failure is { } failure) return failure;
 
-        var message = response.Message!;
+            var message = response.Message!;
+            if (!IsRedirect(message)) return await ReadResponseAsync(uri, message, cancellationToken);
+            if (message.Headers.Location is not { } location)
+                return FetchResult.Failed($"{uri} returned a redirect without a Location header.");
+
+            var next = new Uri(uri, location);
+            if (RedirectRefusal(uri, next) is { } refusal) return FetchResult.Failed(refusal);
+            uri = next;
+        }
+        return FetchResult.Failed($"{uri} redirected more than {MaxRedirects} times.");
+    }
+
+    private static bool IsRedirect(HttpResponseMessage message) => (int)message.StatusCode is 301 or 302 or 303 or 307 or 308;
+
+    private async Task<FetchResult> ReadResponseAsync(Uri uri, HttpResponseMessage message, CancellationToken cancellationToken)
+    {
         if (!message.IsSuccessStatusCode)
         {
             var status = $"{uri} returned HTTP {(int)message.StatusCode} ({message.StatusCode}).";
@@ -101,7 +124,7 @@ public sealed class SourceFetcher : ISourceFetcher
         {
             return FetchResult.TransientFailure($"Downloading {uri} timed out.");
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or HttpRequestException)
         {
             return FetchResult.TransientFailure($"Downloading {uri} failed ({ex.Message}).");
         }

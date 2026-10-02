@@ -140,7 +140,7 @@ public static class PdbSourceLocator
             sourceLink?.GetUrl(path));
     }
 
-    private static string? ReadEmbeddedSource(MetadataReader reader, DocumentHandle handle)
+    private static byte[]? ReadEmbeddedSource(MetadataReader reader, DocumentHandle handle)
     {
         foreach (var cdiHandle in reader.GetCustomDebugInformation(handle))
         {
@@ -149,18 +149,26 @@ public static class PdbSourceLocator
 
             var blob = reader.GetBlobReader(info.Value);
             var format = blob.ReadInt32();
+            if (format < 0 || blob.RemainingBytes > SourceDocument.MaxBytes) return null;
             var bytes = blob.ReadBytes(blob.RemainingBytes);
-            return SourceSlicer.Decode(format > 0 ? Inflate(bytes, format) : bytes);
+            return format > 0 ? Inflate(bytes, format) : bytes;
         }
         return null;
     }
 
-    private static byte[] Inflate(byte[] compressed, int uncompressedSize)
+    internal static byte[]? Inflate(byte[] compressed, int uncompressedSize)
     {
-        using var input = new DeflateStream(new MemoryStream(compressed), CompressionMode.Decompress);
-        using var output = new MemoryStream(uncompressedSize);
-        input.CopyTo(output);
-        return output.ToArray();
+        if (uncompressedSize > SourceDocument.MaxBytes) return null;
+        try
+        {
+            using var input = new DeflateStream(new MemoryStream(compressed), CompressionMode.Decompress);
+            var inflated = BoundedReader.ReadAll(input, uncompressedSize);
+            return inflated?.Length == uncompressedSize ? inflated : null;
+        }
+        catch (InvalidDataException)
+        {
+            return null;
+        }
     }
 
     private static T? Safe<T>(Func<T?> read) where T : class

@@ -2,8 +2,10 @@ using System.Security.Cryptography;
 
 namespace Sherlock.MCP.Runtime.SourceLink;
 
-public sealed record SourceDocument(string Path, Guid HashAlgorithm, byte[] Hash, string? EmbeddedText, string? Url)
+public sealed record SourceDocument(string Path, Guid HashAlgorithm, byte[] Hash, byte[]? EmbeddedSource, string? Url)
 {
+    public const int MaxBytes = 5 * 1024 * 1024;
+
     private static readonly Guid Sha1 = new("ff1816ec-aa5e-4d10-87f7-6f4963833460");
     private static readonly Guid Sha256 = new("8829d00f-11b8-4213-878b-770e8597ac16");
 
@@ -13,7 +15,7 @@ public sealed record SourceDocument(string Path, Guid HashAlgorithm, byte[] Hash
 
     public byte[]? Verify(byte[] content)
     {
-        if (!HasChecksum) return content;
+        if (!HasChecksum) return null;
         return new[] { content, WithLineEndings(content, crlf: true), WithLineEndings(content, crlf: false) }
             .FirstOrDefault(HashMatches);
     }
@@ -37,6 +39,22 @@ public sealed record SourceDocument(string Path, Guid HashAlgorithm, byte[] Hash
             output.Add(content[i]);
         }
         return output.ToArray();
+    }
+}
+
+public static class BoundedReader
+{
+    public static byte[]? ReadAll(Stream stream, int maxBytes)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = stream.Read(chunk, 0, chunk.Length)) > 0)
+        {
+            if (buffer.Length + read > maxBytes) return null;
+            buffer.Write(chunk, 0, read);
+        }
+        return buffer.ToArray();
     }
 }
 

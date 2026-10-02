@@ -66,30 +66,45 @@ public sealed class OriginalSourceService : IOriginalSourceService
         return results;
     }
 
-    private async Task<ResolvedText> ResolveTextAsync(SourceDocument document, CancellationToken cancellationToken)
+    internal async Task<ResolvedText> ResolveTextAsync(SourceDocument document, CancellationToken cancellationToken)
     {
-        if (document.EmbeddedText != null)
-            return new ResolvedText(document.EmbeddedText, SourceOrigins.Embedded, null, false);
+        string? embeddedNote = null;
+        if (document.EmbeddedSource != null)
+        {
+            if (document.Verify(document.EmbeddedSource) is { } embedded)
+                return new ResolvedText(SourceSlicer.Decode(embedded), SourceOrigins.Embedded, null, false);
+            embeddedNote = "The source embedded in the PDB does not match the checksum recorded for it.";
+        }
 
         var localNote = ReadLocal(document, out var local);
         if (local != null)
-            return new ResolvedText(SourceSlicer.Decode(local), SourceOrigins.Local, null, false);
+            return new ResolvedText(SourceSlicer.Decode(local), SourceOrigins.Local, embeddedNote, false);
 
         var fetched = await _fetcher.FetchAsync(document, cancellationToken);
+        var notes = string.Join(" ", new[] { embeddedNote, localNote, fetched.Failure }.OfType<string>());
         return fetched.Content != null
-            ? new ResolvedText(SourceSlicer.Decode(fetched.Content), SourceOrigins.SourceLink, localNote, false)
-            : new ResolvedText(null, SourceOrigins.Decompiled, string.Join(" ", new[] { localNote, fetched.Failure }.OfType<string>()), fetched.Transient);
+            ? new ResolvedText(SourceSlicer.Decode(fetched.Content), SourceOrigins.SourceLink, NullIfEmpty(string.Join(" ", new[] { embeddedNote, localNote }.OfType<string>())), false)
+            : new ResolvedText(null, SourceOrigins.Decompiled, NullIfEmpty(notes), fetched.Transient);
     }
 
-    private sealed record ResolvedText(string? Text, string Origin, string? Note, bool Transient);
+    internal sealed record ResolvedText(string? Text, string Origin, string? Note, bool Transient);
+
+    private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+
+    private static bool IsLocalFilePath(string path) =>
+        Path.IsPathFullyQualified(path) && !path.StartsWith(@"\\", StringComparison.Ordinal) && !path.StartsWith("//", StringComparison.Ordinal);
 
     internal static string? ReadLocal(SourceDocument document, out byte[]? content)
     {
         content = null;
-        if (!document.HasChecksum || !Path.IsPathFullyQualified(document.Path) || !File.Exists(document.Path)) return null;
+        if (!document.HasChecksum || !IsLocalFilePath(document.Path) || !File.Exists(document.Path)) return null;
         try
         {
-            content = document.Verify(File.ReadAllBytes(document.Path));
+            var length = new FileInfo(document.Path).Length;
+            if (length is 0 or > SourceDocument.MaxBytes) return null;
+            using var stream = new FileStream(document.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (BoundedReader.ReadAll(stream, SourceDocument.MaxBytes) is not { } bytes) return null;
+            content = document.Verify(bytes);
             return content == null ? $"The local file {document.Path} differs from the one the assembly was built from." : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

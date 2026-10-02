@@ -103,6 +103,65 @@ public class SourceFetcherTests
     }
 
     [Fact]
+    public async Task Fetch_BodyReadHttpRequestExceptionFallsBackAsTransient()
+    {
+        var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new HttpFailingStream()) });
+
+        var result = await new SourceFetcher(Options(), new HttpClient(handler)).FetchAsync(Document(), default);
+
+        Assert.True(result.Transient);
+        Assert.Contains("response ended early", result.Failure);
+    }
+
+    [Fact]
+    public async Task Fetch_FollowsARedirectToAnAllowedHost()
+    {
+        var handler = new FakeHandler(request => request.RequestUri!.AbsolutePath.StartsWith("/moved", StringComparison.Ordinal)
+            ? Ok(Content)
+            : Redirect("https://raw.githubusercontent.com/moved/a.cs"));
+
+        var result = await new SourceFetcher(Options(), new HttpClient(handler)).FetchAsync(Document(), default);
+
+        Assert.Equal(Content, result.Content);
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Theory]
+    [InlineData("https://evil.example.com/a.cs", "not in sourceFetchHosts")]
+    [InlineData("http://raw.githubusercontent.com/a.cs", "not an https URL")]
+    public async Task Fetch_RefusesARedirectThatLeavesThePolicy(string location, string reason)
+    {
+        var handler = new FakeHandler(_ => Redirect(location));
+
+        var result = await new SourceFetcher(Options(), new HttpClient(handler)).FetchAsync(Document(), default);
+
+        Assert.Contains(reason, result.Failure);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task Fetch_StopsFollowingRedirectLoops()
+    {
+        var handler = new FakeHandler(_ => Redirect("https://raw.githubusercontent.com/acme/widgets/sha/a.cs"));
+
+        var result = await new SourceFetcher(Options(), new HttpClient(handler)).FetchAsync(Document(), default);
+
+        Assert.Contains("redirected more than", result.Failure);
+        Assert.Equal(SourceFetcher.MaxRedirects + 1, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Fetch_RejectsADocumentWithoutAChecksum()
+    {
+        var document = new SourceDocument("/src/a.cs", Guid.Empty, [], null, "https://raw.githubusercontent.com/a.cs");
+
+        var result = await new SourceFetcher(Options(), new HttpClient(new FakeHandler(_ => Ok(Content)))).FetchAsync(document, default);
+
+        Assert.Null(result.Content);
+        Assert.Contains("checksum", result.Failure);
+    }
+
+    [Fact]
     public async Task Fetch_HttpErrorDoesNotMarkTheHostUnreachable()
     {
         var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
@@ -188,10 +247,19 @@ public class SourceFetcherTests
 
     private static HttpResponseMessage Ok(byte[] content) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(content) };
 
+    private static HttpResponseMessage Redirect(string location) =>
+        new(HttpStatusCode.Found) { Headers = { Location = new Uri(location) } };
+
     private sealed class FailingStream : MemoryStream
     {
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
             throw new IOException("connection reset");
+    }
+
+    private sealed class HttpFailingStream : MemoryStream
+    {
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("response ended early");
     }
 
     private sealed class StallingStream : MemoryStream

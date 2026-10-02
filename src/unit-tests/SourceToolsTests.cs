@@ -1,5 +1,8 @@
+using System.IO.Compression;
 using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.Decompilation;
@@ -18,6 +21,7 @@ public class SourceToolsTests
     private static readonly IInspectionContextProvider Contexts = new SharedInspectionContextProvider(new RuntimeOptions());
     private static readonly string SubjectName = typeof(SourceSubject).FullName!;
     private const string WidgetName = "Acme.Widgets.Widget";
+    private static readonly Guid Sha256Algorithm = new("8829d00f-11b8-4213-878b-770e8597ac16");
 
     [Fact]
     public async Task GetMemberSource_ReadsTheLocalFileTheAssemblyWasBuiltFrom()
@@ -165,6 +169,63 @@ public class SourceToolsTests
 
         Assert.Null(unhashed);
         Assert.Null(relative);
+    }
+
+    [Theory]
+    [InlineData(@"\\attacker\share\a.cs")]
+    [InlineData("//attacker/share/a.cs")]
+    [InlineData(@"\\?\C:\a.cs")]
+    public void ReadLocal_IgnoresUncAndDevicePaths(string path)
+    {
+        var note = OriginalSourceService.ReadLocal(new SourceDocument(path, Sha256Algorithm, new byte[32], null, null), out var content);
+
+        Assert.Null(content);
+        Assert.Null(note);
+    }
+
+    [Fact]
+    public void ReadLocal_IgnoresSpecialAndOversizedFiles()
+    {
+        var oversized = Path.Combine(TestHandles.NewStateDirectory(), "big.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(oversized)!);
+        var bytes = new byte[SourceDocument.MaxBytes + 1];
+        File.WriteAllBytes(oversized, bytes);
+
+        OriginalSourceService.ReadLocal(new SourceDocument(oversized, Sha256Algorithm, SHA256.HashData(bytes), null, null), out var big);
+        Assert.Null(big);
+
+        if (OperatingSystem.IsWindows()) return;
+        OriginalSourceService.ReadLocal(new SourceDocument("/dev/zero", Sha256Algorithm, new byte[32], null, null), out var device);
+        Assert.Null(device);
+    }
+
+    [Fact]
+    public async Task ResolveText_SkipsEmbeddedSourceThatFailsItsChecksum()
+    {
+        var embedded = Encoding.UTF8.GetBytes("class Tampered { }");
+        var document = new SourceDocument("/nonexistent/a.cs", Sha256Algorithm, SHA256.HashData(Encoding.UTF8.GetBytes("class Original { }")), embedded, null);
+        var service = new OriginalSourceService(new SourceFetcher(new RuntimeOptions { StateDirectory = TestHandles.NewStateDirectory() }, new HttpClient()));
+
+        var resolved = await service.ResolveTextAsync(document, default);
+
+        Assert.Null(resolved.Text);
+        Assert.Equal(SourceOrigins.Decompiled, resolved.Origin);
+        Assert.Contains("embedded in the PDB does not match", resolved.Note);
+    }
+
+    [Fact]
+    public void Inflate_RejectsOversizedOrMisdeclaredEmbeddedSource()
+    {
+        var source = Encoding.UTF8.GetBytes(new string('x', 4096));
+        using var compressed = new MemoryStream();
+        using (var deflate = new DeflateStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+            deflate.Write(source);
+        var blob = compressed.ToArray();
+
+        Assert.Equal(source, PdbSourceLocator.Inflate(blob, source.Length));
+        Assert.Null(PdbSourceLocator.Inflate(blob, SourceDocument.MaxBytes + 1));
+        Assert.Null(PdbSourceLocator.Inflate(blob, source.Length - 1));
+        Assert.Null(PdbSourceLocator.Inflate(blob, source.Length + 1));
     }
 
     [Fact]

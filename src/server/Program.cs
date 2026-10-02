@@ -77,7 +77,8 @@ builder.Services
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
     .AddSingleton<IDecompilerService, DecompilerService>()
     .AddSingleton<ISourceFetcher>(services => new SourceFetcher(
-        services.GetRequiredService<RuntimeOptions>(), new HttpClient { Timeout = Timeout.InfiniteTimeSpan }))
+        services.GetRequiredService<RuntimeOptions>(),
+        new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan }))
     .AddSingleton<IOriginalSourceService, OriginalSourceService>()
     .AddSingleton<ISearchService, SearchService>()
     .AddSingleton<ICompletionService, CompletionService>()
