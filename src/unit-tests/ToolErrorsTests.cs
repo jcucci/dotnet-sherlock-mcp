@@ -138,6 +138,29 @@ public sealed class ToolErrorsTests : IDisposable
     }
 
     [Fact]
+    public void TypeNotFound_MissingReferencePack_SuggestsInstallingTheTargetingPack()
+    {
+        var context = new StubContext([], ["Microsoft.AspNetCore.Mvc.Core"])
+        {
+            Framework = new(FrameworkResolutionKind.HostRuntime, "net7.0", "System.Private.CoreLib", [], ["Microsoft.NETCore.App"], [])
+        };
+
+        var error = Parse(ToolErrors.TypeNotFound(context, "Acme.HomeController"));
+
+        var suggestion = error.GetProperty("suggestion").GetString();
+        Assert.Contains("No reference pack was found for Microsoft.NETCore.App (net7.0)", suggestion);
+        Assert.Contains("targeting pack", suggestion);
+    }
+
+    [Fact]
+    public void TypeNotFound_ReferencePackResolved_OmitsTargetingPackHint()
+    {
+        var error = Parse(ToolErrors.TypeNotFound(new StubContext([], ["Azure.Core"]), "Azure.Widget"));
+
+        Assert.DoesNotContain("reference pack", error.GetProperty("suggestion").GetString());
+    }
+
+    [Fact]
     public void TypeNotFound_NoUnresolvedDependencies_OmitsDetails()
     {
         var error = Parse(ToolErrors.TypeNotFound(new StubContext([typeof(TestSampleClass)], []), "TestSampleClas"));
@@ -290,6 +313,9 @@ public class SuggestionFixture
 internal sealed class StubContext(Type[] types, string[] unresolved) : IAssemblyInspectionContext
 {
     public Assembly Assembly => typeof(StubContext).Assembly;
+
+    public FrameworkResolution Framework { get; init; } =
+        new(FrameworkResolutionKind.HostRuntime, null, "System.Private.CoreLib", [], [], []);
 
     public IReadOnlyList<string> UnresolvedDependencies => unresolved;
 

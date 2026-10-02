@@ -21,5 +21,7 @@ public sealed class InspectionContextLease : IDisposable
 
     public Assembly Assembly => Context.Assembly;
 
+    public FrameworkResolution Framework => Context.Framework;
+
     public void Dispose() => Interlocked.Exchange(ref _release, null)?.Invoke();
 }

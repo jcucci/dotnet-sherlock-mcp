@@ -160,6 +160,7 @@ public static class ReflectionTools
                         fullName = assembly.FullName,
                         location = assembly.Location,
                         targetFramework = ReadTargetFramework(assembly),
+                        frameworkResolution = DescribeFrameworkResolution(lease.Framework),
                         referencedAssemblies,
                         attributes = assembly.GetCustomAttributesData().Select(AttributeUtils.Convert).ToArray()
                     }
@@ -171,6 +172,7 @@ public static class ReflectionTools
                         fullName = assembly.FullName,
                         location = assembly.Location,
                         targetFramework = ReadTargetFramework(assembly),
+                        frameworkResolution = DescribeFrameworkResolution(lease.Framework),
                         referencedAssemblies
                     };
 
@@ -186,6 +188,15 @@ public static class ReflectionTools
             return ToolResponse.Result(ToolErrors.FromException(ex, "get assembly info"));
         }
     }
+
+    internal static object DescribeFrameworkResolution(FrameworkResolution framework) => new
+    {
+        kind = JsonNamingPolicy.CamelCase.ConvertName(framework.Kind.ToString()),
+        targetFramework = framework.TargetFramework,
+        coreAssembly = framework.CoreAssemblyName,
+        packs = framework.Packs.Select(pack => new { name = pack.Name, version = pack.Version, path = pack.Directory }).ToArray(),
+        missingFrameworks = framework.MissingFrameworks
+    };
 
     internal static string? ReadTargetFramework(Assembly assembly)
     {

@@ -69,7 +69,7 @@ public static class ToolErrors
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return TypeNotFound(typeName, candidates: [], unresolvedDependencies: []);
+            return TypeNotFound(typeName, candidates: [], unresolvedDependencies: [], frameworkHint: null);
         }
     }
 
@@ -77,7 +77,7 @@ public static class ToolErrors
     {
         var loadableTypes = LoadableTypes(context);
         var candidates = SafeSuggest(() => NameSuggestions.ForTypes(searchedTypes ?? loadableTypes, typeName));
-        return TypeNotFound(typeName, candidates, context.UnresolvedDependencies);
+        return TypeNotFound(typeName, candidates, context.UnresolvedDependencies, FrameworkHint(context.Framework));
     }
 
     public static string MemberNotFound(
@@ -129,21 +129,22 @@ public static class ToolErrors
             suggestion: $"A referenced assembly{FileNameClause(ex)} could not be loaded. {AdditionalAssembliesHint}",
             alternativeTools: AssemblyDiscoveryTools);
 
-    private static string TypeNotFound(string typeName, IReadOnlyList<string> candidates, IReadOnlyList<string> unresolvedDependencies)
+    private static string TypeNotFound(
+        string typeName, IReadOnlyList<string> candidates, IReadOnlyList<string> unresolvedDependencies, string? frameworkHint)
     {
         var message = $"Type '{typeName}' not found in assembly";
         if (unresolvedDependencies.Count > 0 && candidates.Count == 0)
             return JsonHelpers.ErrorWithGuidance(
                 "DependencyResolutionFailed",
                 $"{message}; some of its types could not be loaded because dependencies are missing: {string.Join(", ", unresolvedDependencies)}.",
-                suggestion: DependencyResolutionHint(unresolvedDependencies),
+                suggestion: DependencyResolutionHint(unresolvedDependencies, frameworkHint),
                 details: new { unresolvedDependencies });
 
         var suggestion = candidates.Count > 0
             ? $"Did you mean {FormatChoices(candidates)}? Retry with one of recommendedParams.candidates as typeName."
             : "Browse the assembly's types or search by member name to find the declaring type.";
         if (unresolvedDependencies.Count > 0)
-            suggestion += $" If none of these is the type you meant, it may have been skipped because dependencies are missing: {DependencyResolutionHint(unresolvedDependencies)}";
+            suggestion += $" If none of these is the type you meant, it may have been skipped because dependencies are missing: {DependencyResolutionHint(unresolvedDependencies, frameworkHint)}";
 
         return JsonHelpers.ErrorWithGuidance(
             "TypeNotFound",
@@ -154,8 +155,14 @@ public static class ToolErrors
             details: unresolvedDependencies.Count > 0 ? new { unresolvedDependencies } : null);
     }
 
-    private static string DependencyResolutionHint(IReadOnlyList<string> unresolvedDependencies) =>
-        $"The dependencies ({string.Join(", ", unresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. {AdditionalAssembliesHint}";
+    private static string DependencyResolutionHint(IReadOnlyList<string> unresolvedDependencies, string? frameworkHint = null) =>
+        $"The dependencies ({string.Join(", ", unresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. {AdditionalAssembliesHint}"
+        + (frameworkHint is null ? "" : $" {frameworkHint}");
+
+    private static string? FrameworkHint(FrameworkResolution? framework) =>
+        framework is null || framework.MissingFrameworks.Count == 0
+            ? null
+            : $"No reference pack was found for {string.Join(", ", framework.MissingFrameworks)} ({framework.TargetFramework ?? "unknown target framework"}), so those framework types were resolved against the server's runtime; install the matching targeting pack or restore the project.";
 
     private static string[] MemberDiscoveryTools(string? memberKind) => memberKind?.ToLowerInvariant() switch
     {

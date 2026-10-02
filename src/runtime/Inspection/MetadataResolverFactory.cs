@@ -1,12 +1,12 @@
 using System.Reflection;
-using System.Runtime.InteropServices;
 using Sherlock.MCP.Runtime.ProjectAssets;
 
 namespace Sherlock.MCP.Runtime.Inspection;
 
 internal static class MetadataResolverFactory
 {
-    public static PathAssemblyResolver Create(string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
+    public static (PathAssemblyResolver Resolver, FrameworkResolution Framework) Create(
+        string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
     {
         var comparer = StringComparer.OrdinalIgnoreCase;
         var paths = new HashSet<string>(comparer);
@@ -16,12 +16,14 @@ internal static class MetadataResolverFactory
         if (File.Exists(fullPath)) AddPath(paths, simpleNames, fullPath);
 
         AddDllsFromDirectory(paths, simpleNames, Path.GetDirectoryName(fullPath));
-        AddDllsFromDirectory(paths, simpleNames, RuntimeEnvironment.GetRuntimeDirectory());
 
         var assets = ProjectAssetsLocator.Locate(fullPath);
-        if (assets != null)
-            foreach (var dll in assets.ResolveDependencyPaths())
-                AddPath(paths, simpleNames, dll);
+        var framework = FrameworkReferenceResolver.Resolve(fullPath, assets);
+        var frameworkAndPackageDlls = framework.SearchDirectories
+            .SelectMany(EnumerateDlls)
+            .Concat(assets?.ResolveDependencyPaths() ?? []);
+        foreach (var dll in HighestVersionPerName(frameworkAndPackageDlls, simpleNames))
+            AddPath(paths, simpleNames, dll);
 
         if (additionalSearchDirectories != null)
             foreach (var directory in additionalSearchDirectories)
@@ -31,20 +33,54 @@ internal static class MetadataResolverFactory
             foreach (var dll in NuGetCacheProbe.EnumerateCandidateDependencyDlls(consumingTfm, packageId))
                 AddPath(paths, simpleNames, dll);
 
-        return new PathAssemblyResolver(paths);
+        if (framework.Kind == FrameworkResolutionKind.ReferencePack)
+            AddDllsFromDirectory(paths, simpleNames, FrameworkReferenceResolver.HostRuntimeDirectory());
+
+        return (new PathAssemblyResolver(paths), framework);
     }
 
     private static void AddDllsFromDirectory(HashSet<string> paths, HashSet<string> simpleNames, string? directory)
     {
-        if (string.IsNullOrWhiteSpace(directory)) return;
+        foreach (var dll in EnumerateDlls(directory))
+            AddPath(paths, simpleNames, dll);
+    }
+
+    private static string[] EnumerateDlls(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory)) return [];
 
         try
         {
-            if (!Directory.Exists(directory)) return;
-            foreach (var dll in Directory.EnumerateFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
-                AddPath(paths, simpleNames, dll);
+            return Directory.Exists(directory) ? Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly) : [];
         }
-        catch { }
+        catch { return []; }
+    }
+
+    private static IEnumerable<string> HighestVersionPerName(IEnumerable<string> dlls, HashSet<string> takenNames)
+    {
+        var chosen = new Dictionary<string, (string Path, Version? Version)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var dll in dlls)
+        {
+            var name = Path.GetFileNameWithoutExtension(dll);
+            if (takenNames.Contains(name)) continue;
+
+            if (!chosen.TryGetValue(name, out var current))
+            {
+                chosen[name] = (dll, null);
+                continue;
+            }
+
+            var currentVersion = current.Version ?? ReadVersion(current.Path);
+            var candidateVersion = ReadVersion(dll);
+            chosen[name] = candidateVersion > currentVersion ? (dll, candidateVersion) : (current.Path, currentVersion);
+        }
+        return chosen.Values.Select(entry => entry.Path);
+    }
+
+    private static Version? ReadVersion(string dll)
+    {
+        try { return AssemblyName.GetAssemblyName(dll).Version; }
+        catch { return null; }
     }
 
     private static void AddPath(HashSet<string> paths, HashSet<string> simpleNames, string dll)

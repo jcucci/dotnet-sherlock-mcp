@@ -32,6 +32,21 @@ public class ReflectionToolsTests : IDisposable
     }
 
     [Fact]
+    public void GetAssemblyInfo_ReportsReferencePackResolution()
+    {
+        var result = ReflectionTools.GetAssemblyInfo(_contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath).Text();
+
+        var resolution = JsonDocument.Parse(result).RootElement.GetProperty("data").GetProperty("frameworkResolution");
+        Assert.Equal("referencePack", resolution.GetProperty("kind").GetString());
+        Assert.Equal("System.Runtime", resolution.GetProperty("coreAssembly").GetString());
+        Assert.StartsWith("net", resolution.GetProperty("targetFramework").GetString());
+        var pack = resolution.GetProperty("packs")[0];
+        Assert.Equal("Microsoft.NETCore.App.Ref", pack.GetProperty("name").GetString());
+        Assert.True(Directory.Exists(pack.GetProperty("path").GetString()));
+        Assert.Equal(0, resolution.GetProperty("missingFrameworks").GetArrayLength());
+    }
+
+    [Fact]
     public void GetAssemblyInfo_Full_IncludesAttributes()
     {
         var result = ReflectionTools.GetAssemblyInfo(_contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: _testAssemblyPath, projection: "full").Text();
