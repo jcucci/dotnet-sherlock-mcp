@@ -10,6 +10,7 @@
       "methodName": "Add",
       "matchedOverloads": 2,
       "anyBodyless": false,
+      "format": "json",
       "projection": "summary",
       "calls": [
         "Golden.Shapes.Order..ctor",

@@ -84,7 +84,7 @@ The enumerating tools return a lean **`summary`** payload by default (e.g. `GetT
 2. **Type details**: `GetTypeInfo` for metadata, inheritance, accessibility, and member counts (lightweight).
 3. **Members**: filtered `GetTypeMembers` (use `kinds` / `nameContains` / `hasAttributeContains`); re-call with `projection='full'` for the specific members you need. The per-kind `GetType{Methods,Properties,Fields,Events,Constructors}` tools are deprecated.
 4. **Specialized queries**:
-   - `GetTypeHierarchy` for inheritance chains and interfaces — pass `additionalAssemblies` to populate `derivedTypes` (otherwise it returns `null` with a note).
+   - `GetTypeHierarchy` for inheritance chains and interfaces — pass `additionalAssemblies` to populate `derivedTypes` (otherwise it returns `null` with a note); `format='mermaid'` returns a `classDiagram`.
    - `GetGenericTypeInfo` for generic type parameters and constraints.
    - `GetNestedTypes` for inner type declarations.
    - `AnalyzeMethod` for a single method's overloads, parameters, and attributes.
@@ -95,7 +95,8 @@ The enumerating tools return a lean **`summary`** payload by default (e.g. `GetT
 - **What returns a type**: `FindMethodsReturning`.
 - **Extension methods for a type**: `FindExtensionMethodsFor`.
 - **Where a type is used**: `FindReferencesTo`; add `analysisDepth='il'` to also resolve inbound callers from method bodies.
-- **What a method calls**: `GetMethodCalls` reads the IL body to list calls and field accesses (use `.ctor`/`.cctor` for constructors).
+- **What a method calls**: `GetMethodCalls` reads the IL body to list calls and field accesses (use `.ctor`/`.cctor` for constructors); `format='mermaid'` with `depth` (≤5) draws a transitive call graph of same-assembly callees.
+- **Diagrams for the user**: `format='mermaid'` on `GetTypeHierarchy`/`GetMethodCalls` returns `data.diagram`, bounded by `maxNodes` (check `truncated`).
 - **What changed between versions**: `CompareApiSurface` with `left`/`right` as paths, handles or `Package.Id@version` (NuGet cache); summary lists breaking changes, `projection='full'` everything.
 - **Read a body**: `GetMemberSource` returns the original source (comments and real names) when the assembly has a portable PDB, from embedded source, the local file it was built from, or its Source Link URL (fetched only from `sourceFetchHosts` unless `sourceFetch='any'`; `origin` says which, and it falls back to decompiled C#). `DecompileMember` decompiles one member (narrow overloads with `parameterTypes`, e.g. `string,int`); `DecompileType` decompiles a whole type. Follow `continuationToken` while `truncated` is true.
 - Reverse-lookup tools accept `additionalAssemblies` to widen the search scope across multiple DLLs.

@@ -33,7 +33,7 @@ When you will make several calls against the same assembly, call `open_assembly`
 1. `get_type_info` - kind, base type, interfaces, accessibility, member counts.
 2. `get_type_members` filtered by `kinds`, `nameContains` or `hasAttributeContains`. The default `summary` projection returns `{ kind, name, signature }`, and the C# signature already carries return type, parameters and modifiers.
 3. Re-call with `projection='full'` only for the few members where you need structured parameters, attributes or modifier flags.
-4. `analyze_method` for one method's overloads; `get_xml_docs_for_type` / `get_xml_docs_for_member` for documentation; `get_type_hierarchy` for the inheritance chain.
+4. `analyze_method` for one method's overloads; `get_xml_docs_for_type` / `get_xml_docs_for_member` for documentation; `get_type_hierarchy` for the inheritance chain (`format='mermaid'` for a class diagram).
 
 Start with a small `maxItems` and page with `continuationToken` instead of fetching everything.
 
@@ -43,7 +43,7 @@ Start with a small `maxItems` and page with `continuationToken` instead of fetch
 - `find_methods_returning` - factories and accessors that produce a type.
 - `find_extension_methods_for` - extension methods targeting a type.
 - `find_references_to` - where a type is used; add `analysisDepth='il'` to include callers found in method bodies.
-- `get_method_calls` - what a method body calls and which fields it touches (use `.ctor` / `.cctor` for constructors).
+- `get_method_calls` - what a method body calls and which fields it touches (use `.ctor` / `.cctor` for constructors). `format='mermaid'` with `depth` draws a call-graph flowchart.
 - `get_member_source` - a member's original source (comments, real names) from its PDB or Source Link; falls back to decompiled C# and says so in `origin`/`note`. Prefer it over `decompile_member` for reading a body.
 - `decompile_member` - a member's body as decompiled C#. Returns every overload unless `parameterTypes` (e.g. `string,int`) narrows it; long output is paged by line, so follow `continuationToken` while `truncated` is true.
 

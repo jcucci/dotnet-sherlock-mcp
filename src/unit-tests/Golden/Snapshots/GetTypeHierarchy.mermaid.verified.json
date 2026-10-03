@@ -1,0 +1,18 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "type.hierarchy",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "format": "mermaid",
+      "diagram": "classDiagram\n  class n0[\"Golden.Shapes.OrderProcessor\"]\n  class n1[\"System.Object\"]\n  class n2[\"Golden.Shapes.IOrderSource\"]\n  <<interface>> n2\n  class n3[\"Golden.Shapes.PriorityProcessor\"]\n  n1 <|-- n0\n  n2 <|.. n0\n  n0 <|-- n3",
+      "nodeCount": 4,
+      "edgeCount": 3,
+      "truncated": false,
+      "note": null
+    }
+  }
+}

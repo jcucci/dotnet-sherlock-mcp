@@ -37,3 +37,50 @@ public class StaticCtorSubject
 
     public int UseShared() => _shared.Count;
 }
+
+public class CallChainSubject
+{
+    public void Entry()
+    {
+        StepOne();
+        Console.WriteLine("entry");
+    }
+
+    private void StepOne() => StepTwo();
+
+    private void StepTwo() => Console.WriteLine("two");
+
+    public int Countdown(int n) => n <= 0 ? 0 : Countdown(n - 1);
+
+    public void Ping(int n)
+    {
+        if (n > 0) Pong(n - 1);
+    }
+
+    public void Pong(int n)
+    {
+        if (n > 0) Ping(n - 1);
+    }
+}
+
+public class GenericCallSubject<T>
+{
+    private readonly List<T> _items = new();
+
+    public void Save(T item)
+    {
+        Validate(item);
+        new LocalCache<int>().Put(1);
+    }
+
+    private void Validate(T item) => _items.Add(item);
+}
+
+public class LocalCache<TValue>
+{
+    public void Put(TValue value) => Store(value, 0);
+
+    public void Put(TValue value, int ttl) => Store(value, ttl);
+
+    private void Store(TValue value, int ttl) => Console.WriteLine(ttl);
+}

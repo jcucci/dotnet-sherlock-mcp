@@ -91,4 +91,86 @@ public class TypeHierarchyToolTests
         Assert.Contains("AssemblyNotFound", result);
         Assert.Contains("does-not-exist", result);
     }
+
+    [Fact]
+    public void GetTypeHierarchy_Mermaid_WithScope_DrawsBaseInterfaceAndDerivedEdges()
+    {
+        var result = TypeAnalysisTools.GetTypeHierarchy(
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestMiddleware.Fresh,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
+            additionalAssemblies: new[] { _testAssemblyPath },
+            format: "mermaid");
+
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        var diagram = data.GetProperty("diagram").GetString()!;
+        Assert.Equal("mermaid", data.GetProperty("format").GetString());
+        Assert.StartsWith("classDiagram", diagram);
+        Assert.Contains("[\"System.Object\"]", diagram);
+        Assert.Contains("<<interface>>", diagram);
+        Assert.Contains("<|--", diagram);
+        Assert.Contains("<|..", diagram);
+        Assert.Contains("DerivedSample", diagram);
+        Assert.False(data.GetProperty("truncated").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("note").ValueKind);
+    }
+
+    [Fact]
+    public void GetTypeHierarchy_Mermaid_WithoutScope_KeepsDerivedTypesNote()
+    {
+        var result = TypeAnalysisTools.GetTypeHierarchy(
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestMiddleware.Fresh,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
+            format: "mermaid");
+
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        Assert.DoesNotContain("DerivedSample", data.GetProperty("diagram").GetString());
+        Assert.Contains("additionalAssemblies", data.GetProperty("note").GetString());
+    }
+
+    [Fact]
+    public void GetTypeHierarchy_Mermaid_MaxNodes_Truncates()
+    {
+        var result = TypeAnalysisTools.GetTypeHierarchy(
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestMiddleware.Fresh,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
+            format: "mermaid",
+            maxNodes: 1);
+
+        var data = JsonDocument.Parse(result).RootElement.GetProperty("data");
+        Assert.Equal(1, data.GetProperty("nodeCount").GetInt32());
+        Assert.Equal(0, data.GetProperty("edgeCount").GetInt32());
+        Assert.True(data.GetProperty("truncated").GetBoolean());
+        Assert.Contains("maxNodes", data.GetProperty("note").GetString());
+    }
+
+    [Fact]
+    public void GetTypeHierarchy_InvalidFormat_ReturnsError()
+    {
+        var result = TypeAnalysisTools.GetTypeHierarchy(
+            _typeAnalysis,
+            Contexts,
+            _reverseLookup,
+            TestMiddleware.Fresh,
+            TestHandles.Registry,
+            assemblyPath: _testAssemblyPath,
+            typeName: "BaseSample",
+            format: "svg");
+
+        Assert.Contains("InvalidFormat", result);
+    }
 }

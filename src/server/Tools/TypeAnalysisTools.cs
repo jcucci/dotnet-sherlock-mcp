@@ -160,7 +160,7 @@ public static class TypeAnalysisTools
     }
 
     [McpServerTool(Title = "Get Type Hierarchy", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as find_implementations_of.")]
+    [Description("Gets full inheritance chain and implemented interfaces for a type. Use to understand type relationships and find inherited members. Lightweight response. By default derivedTypes is null with a note - pass additionalAssemblies to compute derived/implementing types via the same scan as find_implementations_of. format='mermaid' returns a Mermaid classDiagram instead of JSON fields.")]
     public static string GetTypeHierarchy(
         ITypeAnalysisService typeAnalysis,
         IInspectionContextProvider contexts,
@@ -173,6 +173,8 @@ public static class TypeAnalysisTools
         [Description("Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)")] string? assemblyHandle = null,
         [Description("Optional additional assembly paths to include in the search scope")]
         string[]? additionalAssemblies = null,
+        [Description("Output format. 'json' (default): hierarchy fields. 'mermaid': { typeName, diagram, nodeCount, edgeCount, truncated, note } where diagram is a Mermaid classDiagram.")] string format = "json",
+        [Description("Maximum diagram nodes when format='mermaid' (default 50, max 200)")] int maxNodes = Mermaid.DefaultMaxNodes,
         [Description("Bypass cache for this request")] bool noCache = false,
         IProgress<ProgressNotificationValue>? progress = null,
         RequestContext<CallToolRequestParams>? context = null,
@@ -188,6 +190,10 @@ public static class TypeAnalysisTools
             assemblyPath = target.Path;
             additionalAssemblies = target.AdditionalAssemblies;
 
+            var normalizedFormat = Mermaid.NormalizeFormat(format);
+            if (normalizedFormat == null) return Mermaid.InvalidFormat();
+            maxNodes = Math.Clamp(maxNodes, 1, Mermaid.MaxNodesLimit);
+
             string[]? scopePaths = null;
             if (additionalAssemblies is { Length: > 0 })
             {
@@ -198,20 +204,30 @@ public static class TypeAnalysisTools
 
             var cacheKey = CacheKeyHelper.Build(
                 "type.hierarchy",
-                CacheKeyHelper.AssemblyScopeStamp(scopePaths ?? [assemblyPath]), scopePaths != null, typeName);
+                CacheKeyHelper.AssemblyScopeStamp(scopePaths ?? [assemblyPath]), scopePaths != null, typeName, normalizedFormat, maxNodes);
 
             return middleware.Execute(cacheKey, () =>
             {
                 var hierarchy = typeAnalysis.GetTypeHierarchy(assemblyPath, typeName);
                 if (hierarchy == null) return ToolErrors.TypeNotFound(contexts, assemblyPath, typeName);
 
+                IReadOnlyDictionary<string, string[]>? derivedBaseChains = null;
                 if (scopePaths == null)
-                    return JsonHelpers.Envelope("type.hierarchy", hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use find_implementations_of" });
+                    hierarchy = hierarchy with { Note = "derivedTypes not computed; pass additionalAssemblies to compute, or use find_implementations_of" };
+                else
+                {
+                    var hits = reverseLookup.FindImplementations(
+                        scopePaths, hierarchy.TypeName, new ReverseLookupOptions(), ProgressAdapter.ForPhase(progress), cancellationToken);
+                    var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
+                    hierarchy = hierarchy with { DerivedTypes = derived, Note = null };
+                    derivedBaseChains = hits
+                        .GroupBy(h => h.TypeFullName, StringComparer.Ordinal)
+                        .ToDictionary(g => g.Key, g => g.First().BaseTypeChain, StringComparer.Ordinal);
+                }
 
-                var hits = reverseLookup.FindImplementations(
-                    scopePaths, hierarchy.TypeName, new ReverseLookupOptions(), ProgressAdapter.ForPhase(progress), cancellationToken);
-                var derived = hits.Select(h => new DerivedTypeRef(h.TypeFullName, h.AssemblyPath, h.Kind)).ToArray();
-                return JsonHelpers.Envelope("type.hierarchy", hierarchy with { DerivedTypes = derived, Note = null });
+                return normalizedFormat == "mermaid"
+                    ? HierarchyDiagram(hierarchy, maxNodes, derivedBaseChains)
+                    : JsonHelpers.Envelope("type.hierarchy", hierarchy);
             }, noCache);
         }
         catch (AmbiguousTypeNameException ex)
@@ -222,6 +238,22 @@ public static class TypeAnalysisTools
         {
             return ToolErrors.FromException(ex, "get type hierarchy");
         }
+    }
+
+    private static string HierarchyDiagram(
+        TypeHierarchy hierarchy, int maxNodes, IReadOnlyDictionary<string, string[]>? derivedBaseChains)
+    {
+        var diagram = Mermaid.ClassDiagram(hierarchy, maxNodes, derivedBaseChains);
+        return JsonHelpers.Envelope("type.hierarchy", new
+        {
+            typeName = hierarchy.TypeName,
+            format = "mermaid",
+            diagram = diagram.Diagram,
+            nodeCount = diagram.NodeCount,
+            edgeCount = diagram.EdgeCount,
+            truncated = diagram.Truncated,
+            note = diagram.Truncated ? Mermaid.TruncationNote(maxNodes) : hierarchy.Note
+        });
     }
 
     [McpServerTool(Title = "Get Generic Type Info", ReadOnly = true, Destructive = false, OpenWorld = false)]
