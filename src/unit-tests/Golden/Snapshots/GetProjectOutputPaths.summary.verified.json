@@ -12,6 +12,18 @@
         "{Fixture}/project/Sample/bin/Debug/net8.0",
         "{Fixture}/project/Sample/bin/Release/net8.0"
       ]
-    }
+    },
+    "hints": [
+      {
+        "tool": "analyze_project",
+        "reason": "shows the project's target frameworks, references and build properties",
+        "group": "project"
+      },
+      {
+        "tool": "get_package_graph",
+        "reason": "lists the exact package versions the project restored, direct and transitive",
+        "group": "project"
+      }
+    ]
   }
 }

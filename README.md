@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 47 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 47 specialized tools for .NET assembly analysis, with an optional 24-tool `core` profile whose other tools load on demand in groups
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -28,7 +28,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 ## What's New in 2.14.0
 
 - **Claude Code plugin**: `/plugin marketplace add jcucci/dotnet-sherlock-mcp` and `/plugin install sherlock@dotnet-sherlock-mcp` install the server plus a skill that teaches agents the Sherlock workflow. See [Claude Code plugin](#claude-code-plugin).
-- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to the essential tools. The per-kind member tools are deprecated.
+- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to the essential tools, and agents load the rest by group with `load_tools`. The per-kind member tools are deprecated.
 - **Structured output and error guidance**: the core browsing tools publish an `outputSchema` and return `structuredContent`, and failed calls carry `isError: true` with did-you-mean candidates and fix-it suggestions.
 - **Cancellation, progress and elicitation**: long scans can be cancelled and report progress, and an ambiguous simple type name prompts the client to choose. See `CHANGELOG.md` for full details.
 
@@ -71,7 +71,7 @@ This repository is also a Claude Code plugin marketplace. The `sherlock` plugin 
 /plugin install sherlock@dotnet-sherlock-mcp
 ```
 
-The plugin starts the server with the `core` [tool profile](#tool-profiles), which matches the tools the skill covers. To expose every tool, set `SHERLOCK_TOOL_PROFILE=full` in the environment Claude Code is launched from.
+The plugin starts the server with the `core` [tool profile](#tool-profiles), which matches the tools the skill covers. The agent can add the other tools by group with `load_tools` when it needs them (see [Tool groups](#tool-groups)). To expose every tool from the start, set `SHERLOCK_TOOL_PROFILE=full` in the environment Claude Code is launched from.
 
 Each user runs these commands once; restart Claude Code (or run `/reload-plugins`) afterwards. To pick up a new release, run `/plugin marketplace update dotnet-sherlock-mcp`. If you previously registered Sherlock with `claude mcp add`, remove that entry (`claude mcp remove sherlock`) so the tools aren't loaded twice.
 
@@ -143,7 +143,7 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 | Profile | Tools | Contents |
 |---|---|---|
 | `full` (default) | 47 | Every tool, including the deprecated per-kind member tools |
-| `core` | 22 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
+| `core` | 24 | `load_tools` and `invoke_tool` (see [Tool groups](#tool-groups)), discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -158,6 +158,32 @@ Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` en
   }
 }
 ```
+
+### Tool groups
+
+Under the `core` profile every other tool belongs to a group that the agent can load when it needs it:
+
+| Group | Tools |
+|---|---|
+| `frameworks` | `find_endpoints`, `find_service_registrations`, `find_ef_entities`, `find_handlers` |
+| `project` | `analyze_solution`, `analyze_project`, `resolve_package_references`, `get_package_graph`, `find_deps_json_dependencies` |
+| `metadata` | `analyze_assembly`, `get_generic_type_info`, `get_nested_types`, `get_type_attributes`, `get_member_attributes`, `get_parameter_attributes` |
+| `decompile` | `decompile_type` |
+| `config` | `get_runtime_options`, `update_runtime_options` |
+| `legacy` | the deprecated `analyze_type`, `get_all_type_members` and `get_type_{methods,properties,fields,events,constructors}` |
+
+- **`load_tools`**: with no arguments, lists every group, its tools and whether it is loaded. With `groups=['frameworks', …]`, it adds those tools to the server's tool list and returns each loaded tool's name, description and input schema. The server then sends `notifications/tools/list_changed`. Under protocol revision 2026-07-28 that only reaches clients that asked for it through `subscriptions/listen`.
+- **`invoke_tool`**: calls a loaded tool by `name` with its `arguments` object and returns that tool's own result. Clients that never refresh their tool list can still use loaded groups this way. Calling a tool whose group isn't loaded fails with `ToolNotLoaded` and names the group.
+- **Discovery hints**: core results can carry `hints[]`, each `{ tool, reason, group }`, pointing at a related tool. Examples:
+  - `get_type_info` on a type with nested types or generic parameters, or one that is a `DbContext`, controller or MediatR handler;
+  - `find_implementations_of` / `find_references_to` / `find_extension_methods_for` on those framework types or `IServiceCollection`;
+  - `decompile_member` → `decompile_type`;
+  - `get_project_output_paths` → `analyze_project` and `get_package_graph`.
+
+  Dependency errors suggest `get_package_graph`. `group` is null for core tools.
+- **Tool list caching**: under `core`, `tools/list` is marked `cacheScope: private`, since a session's tool list grows as groups load. Under `full`, it stays `public`.
+
+The `full` profile lists every tool and omits `load_tools` and `invoke_tool`.
 
 ## Auto-Configure for .NET Projects
 
@@ -293,7 +319,7 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 - **`FindReferencesTo`**: Broader sweep across parameters, fields, properties, events, and generic arguments; pass `analysisDepth='il'` to also resolve inbound callers from method bodies
 
 ### Framework Patterns
-Full profile only. Each tool scans one or more assemblies (`additionalAssemblies`) and pages with `maxItems` / `continuationToken`. The default `summary` projection is lean, and `projection='full'` adds the assembly path and detail fields.
+In the `frameworks` [tool group](#tool-groups) (always listed under `full`). Each tool scans one or more assemblies (`additionalAssemblies`) and pages with `maxItems` / `continuationToken`. The default `summary` projection is lean, and `projection='full'` adds the assembly path and detail fields.
 - **`FindEndpoints`**: ASP.NET Core endpoints. Controller actions are read from `[Route]` / `[Http*]` / `[AcceptVerbs]` attribute routes, with `[controller]` / `[action]` substituted. Minimal APIs come from `Map{Get,Post,Put,Delete,Patch,Methods,Group,Fallback}` calls read from IL. Filter with `routeContains` and `httpMethod`. Minimal-API routes and handlers are taken from the string literal and method reference next to each call, so a route held in a variable or field comes back as `null`, and `MapGroup` prefixes are listed as separate `minimalApiGroup` entries rather than combined
 - **`FindServiceRegistrations`**: `Microsoft.Extensions.DependencyInjection` registrations, read from IL calls to `Add{Singleton,Scoped,Transient}`, `TryAdd*`, `AddKeyed*`, `AddHostedService` and the `ServiceDescriptor` factories. Lifetime, service and implementation come from generic arguments or `typeof(...)` operands, and factory and instance registrations report `implementation: null`. Filter with `serviceType`, `implementationType` and `lifetime`
 - **`FindEfEntities`**: The `DbSet<T>` properties, declared or inherited, of every `DbContext` subclass. Filter with `contextType` and `entityType`
@@ -308,7 +334,7 @@ Full profile only. Each tool scans one or more assemblies (`additionalAssemblies
 ### Original Source & Decompilation
 - **`GetMemberSource`**: The member's original source, with comments and real names, read through the assembly's portable PDB (embedded in the DLL or beside it). It uses source embedded in the PDB, then the local file the assembly was built from, then the file at the PDB's Source Link URL. Each candidate, embedded source included, must match the SHA-1/SHA-256 checksum the PDB recorded (CRLF/LF differences are tolerated); otherwise that overload falls back to decompiled C#. Local files are read only from absolute, non-UNC paths and only up to 5 MB. The result's `origin` is `embedded`, `local`, `sourcelink`, `decompiled` or `mixed`, each overload reports its `document`, `url` and `lines`, and `note` explains any fallback. The slice covers the member's `///` docs, attributes, signature and body
 - **`DecompileMember`**: Decompile one member (method, property, field, event or constructor) to C# with ICSharpCode.Decompiler. Returns every overload of the name, or one overload when `parameterTypes` is given (e.g. `string,int`; an empty string selects the parameterless overload). Use `.ctor`/`.cctor` for constructors
-- **`DecompileType`**: Decompile a whole type to C#. Not in the `core` profile; prefer `DecompileMember`
+- **`DecompileType`**: Decompile a whole type to C#. In the `decompile` [tool group](#tool-groups); prefer `DecompileMember`
 
 All three tools page their source by line: `maxLines` (default 400, max 5000) caps the page size, a page also stops early once it reaches about 90,000 characters so it always fits the response limit, and each page reports `startLine`, `lineCount`, `totalLines`, `truncated` and a `continuationToken` for the next page. Lines over 2,000 characters are clipped with a `/* … more characters clipped */` marker and counted in `clippedLines`. Pass `additionalAssemblies` (or use an `assemblyHandle` opened with them) when dependencies live outside the assembly's folder; their folders are searched when resolving referenced types and their file stamps are part of the cache key. The full decompilation is cached by file stamp, so later pages are cheap. A type the assembly only forwards (e.g. `System.String` in a `System.Runtime.dll` facade) returns `TypeForwarded` with the defining assembly in `recommendedParams`.
 
@@ -394,7 +420,7 @@ Most enumerating tools default to a lean **`summary`** projection and let you op
 All tools return a stable JSON envelope:
 
 ```jsonc
-{ "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ } }
+{ "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ }, "hints": [ /* optional */ ] }
 ```
 
 The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `compare_api_surface`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.

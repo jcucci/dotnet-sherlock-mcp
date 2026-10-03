@@ -466,6 +466,64 @@ public class McpStdioProtocolTests
     }
 
     [Fact]
+    public async Task Core_profile_load_tools_adds_the_group_to_tools_list()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token, arguments: ["--profile", "core"]);
+
+        var loaded = await client.CallToolAsync(
+            "load_tools",
+            new Dictionary<string, object?> { ["groups"] = new[] { "frameworks" } },
+            cancellationToken: cts.Token);
+        var names = (await client.ListToolsAsync(cancellationToken: cts.Token)).Select(t => t.Name).ToHashSet();
+
+        Assert.NotEqual(true, loaded.IsError);
+        Assert.Equal(ToolProfile.CoreToolNames.Length + 4, names.Count);
+        Assert.Contains("find_endpoints", names);
+        Assert.Contains("find_service_registrations", names);
+    }
+
+    [Fact]
+    public async Task Core_profile_invoke_tool_calls_a_loaded_tool_without_a_list_refresh()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token, arguments: ["--profile", "core"]);
+        var arguments = new Dictionary<string, object?>
+        {
+            ["name"] = "get_nested_types",
+            ["arguments"] = new Dictionary<string, object?>
+            {
+                ["assemblyPath"] = typeof(McpStdioProtocolTests).Assembly.Location,
+                ["typeName"] = typeof(McpStdioProtocolTests).FullName
+            }
+        };
+
+        var beforeLoad = await client.CallToolAsync("invoke_tool", arguments, cancellationToken: cts.Token);
+        await client.CallToolAsync(
+            "load_tools",
+            new Dictionary<string, object?> { ["groups"] = new[] { "metadata" } },
+            cancellationToken: cts.Token);
+        var afterLoad = await client.CallToolAsync("invoke_tool", arguments, cancellationToken: cts.Token);
+
+        Assert.True(beforeLoad.IsError);
+        Assert.Contains("ToolNotLoaded", Text(beforeLoad));
+        Assert.NotEqual(true, afterLoad.IsError);
+        Assert.Contains(typeof(McpStdioProtocolTests).FullName!, Text(afterLoad));
+    }
+
+    [Fact]
+    public async Task Full_profile_does_not_expose_the_loader_tools()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using var client = await ConnectAsync(cts.Token);
+
+        var names = (await client.ListToolsAsync(cancellationToken: cts.Token)).Select(t => t.Name).ToHashSet();
+
+        Assert.DoesNotContain("load_tools", names);
+        Assert.DoesNotContain("invoke_tool", names);
+    }
+
+    [Fact]
     public async Task Continuation_token_round_trip_has_no_overlap_and_stable_total()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -677,6 +735,9 @@ public class McpStdioProtocolTests
 
         return await McpClient.CreateAsync(transport, options, NullLoggerFactory.Instance, cancellationToken);
     }
+
+    private static string Text(CallToolResult result) =>
+        string.Concat(result.Content.OfType<TextContentBlock>().Select(block => block.Text));
 
     private static Task<CallToolResult> CallGetTypeInfo(McpClient client, string typeName, CancellationToken cancellationToken) =>
         client.CallToolAsync(

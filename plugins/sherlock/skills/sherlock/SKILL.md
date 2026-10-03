@@ -67,3 +67,20 @@ Use full type names (`Namespace.Type`, nested as `Outer+Inner`) whenever you kno
 ## 6. Resource links
 
 `search_members`, `get_types_from_assembly` and the `find_*` tools also return `sherlock://assembly/{path}/type/{fullName}` resource links. Reading one gives the same payload as `get_type_info` without another tool call.
+
+## 7. More tools on demand
+
+The plugin starts Sherlock with its core tools. More are grouped and loaded only when you need them:
+
+| Group | Load it to |
+|---|---|
+| `frameworks` | list ASP.NET Core endpoints and routes, dependency-injection registrations, EF Core entities, MediatR handlers |
+| `project` | inspect solution and project structure, package references, the restored NuGet package graph |
+| `metadata` | list an assembly's types with counts, generic constraints, nested types, type/member/parameter attributes |
+| `decompile` | decompile a whole type to C# |
+| `config` | read or change server runtime options |
+| `legacy` | use the deprecated per-kind member listings |
+
+- `load_tools` with no arguments lists each group's tools and whether it is loaded; `load_tools` with `groups=['frameworks']` adds them.
+- If the new tools don't show up in your tool list, call them through `invoke_tool` with `name` and `arguments`.
+- Results may include `hints[]` (`{ tool, reason, group }`) pointing at a related tool. When `group` is set and the tool isn't in your list, load that group first.

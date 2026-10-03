@@ -28,25 +28,32 @@ public sealed class ToolProfile
         "get_method_calls",
         "decompile_member",
         "get_member_source",
-        "compare_api_surface"
+        "compare_api_surface",
+        "load_tools",
+        "invoke_tool"
     ];
 
-    public static readonly ToolProfile Full = new("full", allowedTools: null);
-    public static readonly ToolProfile Core = new("core", new HashSet<string>(CoreToolNames, StringComparer.Ordinal));
+    public static readonly string[] LoaderToolNames = ["load_tools", "invoke_tool"];
+
+    public static readonly ToolProfile Full = new("full", allowedTools: null, excludedTools: new HashSet<string>(LoaderToolNames, StringComparer.Ordinal));
+    public static readonly ToolProfile Core = new("core", new HashSet<string>(CoreToolNames, StringComparer.Ordinal), excludedTools: null);
 
     private readonly IReadOnlySet<string>? _allowedTools;
+    private readonly IReadOnlySet<string>? _excludedTools;
 
-    private ToolProfile(string name, IReadOnlySet<string>? allowedTools)
+    private ToolProfile(string name, IReadOnlySet<string>? allowedTools, IReadOnlySet<string>? excludedTools)
     {
         Name = name;
         _allowedTools = allowedTools;
+        _excludedTools = excludedTools;
     }
 
     public string Name { get; }
 
     public bool IsRestricted => _allowedTools is not null;
 
-    public bool Includes(string toolName) => _allowedTools?.Contains(toolName) ?? true;
+    public bool Includes(string toolName) =>
+        _allowedTools?.Contains(toolName) ?? _excludedTools?.Contains(toolName) != true;
 
     public static bool TryResolve(IReadOnlyList<string> args, string? environmentValue, out ToolProfile profile, out string? error)
     {

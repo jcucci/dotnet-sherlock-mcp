@@ -1,0 +1,81 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "toolgroups.list",
+    "version": "1.0.0",
+    "data": {
+      "profile": "core",
+      "groups": [
+        {
+          "name": "frameworks",
+          "summary": "ASP.NET Core endpoints and routes, dependency-injection registrations, EF Core entities, MediatR handlers",
+          "tools": [
+            "find_endpoints",
+            "find_service_registrations",
+            "find_ef_entities",
+            "find_handlers"
+          ],
+          "loaded": false
+        },
+        {
+          "name": "project",
+          "summary": "solution and project structure, package references, the restored NuGet package graph, deps.json dependencies",
+          "tools": [
+            "analyze_solution",
+            "analyze_project",
+            "resolve_package_references",
+            "get_package_graph",
+            "find_deps_json_dependencies"
+          ],
+          "loaded": false
+        },
+        {
+          "name": "metadata",
+          "summary": "assembly-wide type listing with counts, generic parameters and constraints, nested types, type/member/parameter attributes",
+          "tools": [
+            "analyze_assembly",
+            "get_generic_type_info",
+            "get_nested_types",
+            "get_type_attributes",
+            "get_member_attributes",
+            "get_parameter_attributes"
+          ],
+          "loaded": false
+        },
+        {
+          "name": "decompile",
+          "summary": "decompile a whole type to C#",
+          "tools": [
+            "decompile_type"
+          ],
+          "loaded": false
+        },
+        {
+          "name": "config",
+          "summary": "read and change server runtime options (cache, page sizes, source fetching)",
+          "tools": [
+            "get_runtime_options",
+            "update_runtime_options"
+          ],
+          "loaded": false
+        },
+        {
+          "name": "legacy",
+          "summary": "deprecated per-kind member listings kept for older clients",
+          "tools": [
+            "analyze_type",
+            "get_all_type_members",
+            "get_type_methods",
+            "get_type_properties",
+            "get_type_fields",
+            "get_type_events",
+            "get_type_constructors"
+          ],
+          "loaded": false
+        }
+      ]
+    }
+  }
+}

@@ -88,7 +88,7 @@ public static class DecompilationTools
                     memberName = members[0].Name,
                     overloads = members.Select(m => new { signature = DecompilationTargets.FormatSignature(m) }).ToArray(),
                     source = CombineOverloads(members, sources)
-                });
+                }, ToolHints.ForDecompiledMember());
             }, noCache);
 
             return ToolResponse.Result(SourcePager.Page(envelope, offset, maxLines, salt, "decompile_member"));

@@ -1,0 +1,20 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "ToolNotLoaded",
+    "message": "get_package_graph is in the 'project' tool group, which is not loaded.",
+    "suggestion": "Call load_tools with groups=['project'], then retry.",
+    "alternativeTools": [
+      "load_tools"
+    ],
+    "recommendedParams": {
+      "groups": [
+        "project"
+      ]
+    }
+  }
+}

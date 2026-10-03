@@ -20,6 +20,11 @@ public static class ToolErrors
     private const string AdditionalAssembliesHint =
         "Point assemblyPath at a copy of the assembly in a build-output folder (e.g. bin/Debug/<tfm>/Name.dll) whose sibling DLLs include these dependencies; tools that accept additionalAssemblies can instead be given the dependency DLL paths there.";
 
+    private const string PackageGraphHint =
+        "If the assembly is a project's build output, get_package_graph lists the package versions that project restored (it is in the 'project' tool group; call load_tools with groups=['project'] if it is not in your tool list).";
+
+    private static readonly string[] DependencyTools = [.. AssemblyDiscoveryTools, "get_package_graph"];
+
     private static readonly string[] AssemblyExtensions = [".dll", ".exe"];
 
     public static string AssemblyNotFound(string assemblyPath)
@@ -103,7 +108,8 @@ public static class ToolErrors
         DependencyResolutionException dependency => JsonHelpers.ErrorWithGuidance(
             "DependencyResolutionFailed",
             dependency.Message,
-            suggestion: DependencyResolutionHint(dependency.UnresolvedDependencies)),
+            suggestion: DependencyResolutionHint(dependency.UnresolvedDependencies),
+            alternativeTools: ["get_package_graph"]),
         BadImageFormatException => JsonHelpers.ErrorWithGuidance(
             "InvalidAssembly",
             $"Failed to {operation}: {ex.Message}",
@@ -126,8 +132,8 @@ public static class ToolErrors
         JsonHelpers.ErrorWithGuidance(
             "DependencyNotFound",
             $"Failed to {operation}: {ex.Message}",
-            suggestion: $"A referenced assembly{FileNameClause(ex)} could not be loaded. {AdditionalAssembliesHint}",
-            alternativeTools: AssemblyDiscoveryTools);
+            suggestion: $"A referenced assembly{FileNameClause(ex)} could not be loaded. {AdditionalAssembliesHint} {PackageGraphHint}",
+            alternativeTools: DependencyTools);
 
     private static string TypeNotFound(
         string typeName, IReadOnlyList<string> candidates, IReadOnlyList<string> unresolvedDependencies, string? frameworkHint)
@@ -138,6 +144,7 @@ public static class ToolErrors
                 "DependencyResolutionFailed",
                 $"{message}; some of its types could not be loaded because dependencies are missing: {string.Join(", ", unresolvedDependencies)}.",
                 suggestion: DependencyResolutionHint(unresolvedDependencies, frameworkHint),
+                alternativeTools: ["get_package_graph"],
                 details: new { unresolvedDependencies });
 
         var suggestion = candidates.Count > 0
@@ -156,7 +163,7 @@ public static class ToolErrors
     }
 
     private static string DependencyResolutionHint(IReadOnlyList<string> unresolvedDependencies, string? frameworkHint = null) =>
-        $"The dependencies ({string.Join(", ", unresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. {AdditionalAssembliesHint}"
+        $"The dependencies ({string.Join(", ", unresolvedDependencies)}) were not found next to the assembly or in the NuGet cache. {AdditionalAssembliesHint} {PackageGraphHint}"
         + (frameworkHint is null ? "" : $" {frameworkHint}");
 
     private static string? FrameworkHint(FrameworkResolution? framework) =>

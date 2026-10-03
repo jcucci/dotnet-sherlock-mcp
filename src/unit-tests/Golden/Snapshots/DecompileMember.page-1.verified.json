@@ -20,6 +20,13 @@
       "truncated": true,
       "clippedLines": 0,
       "continuationToken": "{Token}"
-    }
+    },
+    "hints": [
+      {
+        "tool": "decompile_type",
+        "reason": "decompiles the whole declaring type when one member is not enough context",
+        "group": "decompile"
+      }
+    ]
   }
 }
