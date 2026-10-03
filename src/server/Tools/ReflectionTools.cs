@@ -80,7 +80,7 @@ public static class ReflectionTools
                 var result = new
                 {
                     assemblyName = assembly.FullName,
-                    location = assembly.Location,
+                    location = AssemblyLocations.Of(assembly),
                     totalTypeCount = allTypes.Length,
                     returnedTypeCount = types.Length,
                     nextToken,
@@ -158,7 +158,7 @@ public static class ReflectionTools
                         name = name.Name,
                         version = name.Version?.ToString(),
                         fullName = assembly.FullName,
-                        location = assembly.Location,
+                        location = AssemblyLocations.Of(assembly),
                         targetFramework = ReadTargetFramework(assembly),
                         frameworkResolution = DescribeFrameworkResolution(lease.Framework),
                         referencedAssemblies,
@@ -170,7 +170,7 @@ public static class ReflectionTools
                         name = name.Name,
                         version = name.Version?.ToString(),
                         fullName = assembly.FullName,
-                        location = assembly.Location,
+                        location = AssemblyLocations.Of(assembly),
                         targetFramework = ReadTargetFramework(assembly),
                         frameworkResolution = DescribeFrameworkResolution(lease.Framework),
                         referencedAssemblies

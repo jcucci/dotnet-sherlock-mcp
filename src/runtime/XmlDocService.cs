@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Xml.Linq;
 using Sherlock.MCP.Runtime.Contracts.XmlDocs;
+using Sherlock.MCP.Runtime.Inspection;
 
 namespace Sherlock.MCP.Runtime;
 
@@ -52,7 +53,7 @@ public class XmlDocService : IXmlDocService
     public IReadOnlyCollection<string> GetDocumentedMemberIds(string assemblyPath) =>
         LoadDoc(Path.GetFullPath(assemblyPath))?.MembersById.Keys ?? (IReadOnlyCollection<string>)[];
 
-    private CachedDoc? LoadDoc(Assembly assembly) => LoadDoc(assembly.Location);
+    private CachedDoc? LoadDoc(Assembly assembly) => LoadDoc(AssemblyLocations.Of(assembly));
 
     private CachedDoc? LoadDoc(string key)
     {

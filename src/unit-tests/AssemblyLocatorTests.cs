@@ -22,7 +22,7 @@ public class AssemblyLocatorTests : IDisposable
 
     private string Place(string relativeDirectory, DateTime? lastWriteUtc = null)
     {
-        var directory = Path.Combine(_root, relativeDirectory);
+        var directory = Path.GetFullPath(Path.Combine(_root, relativeDirectory));
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, AssemblyFileName);
         File.Copy(SourceAssembly, path);
@@ -89,7 +89,7 @@ public class AssemblyLocatorTests : IDisposable
     public void FindByClassName_InspectsEachSameNamedFileIndependently()
     {
         var matching = Place("a/bin/Debug/net10.0");
-        var unrelated = Path.Combine(_root, "b/bin/Debug/net10.0", AssemblyFileName);
+        var unrelated = Path.GetFullPath(Path.Combine(_root, "b/bin/Debug/net10.0", AssemblyFileName));
         Directory.CreateDirectory(Path.GetDirectoryName(unrelated)!);
         File.Copy(typeof(AssemblyLocator).Assembly.Location, unrelated);
         File.SetLastWriteTimeUtc(unrelated, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));

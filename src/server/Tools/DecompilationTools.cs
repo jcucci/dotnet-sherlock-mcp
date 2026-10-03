@@ -182,7 +182,8 @@ public static class DecompilationTools
     internal static string TypeForwarded(Type type, string assemblyPath)
     {
         var target = type.Assembly.GetName().Name;
-        var targetPath = string.IsNullOrEmpty(type.Assembly.Location) ? null : type.Assembly.Location;
+        var location = AssemblyLocations.Of(type.Assembly);
+        var targetPath = string.IsNullOrEmpty(location) ? null : location;
         return JsonHelpers.ErrorWithGuidance(
             "TypeForwarded",
             $"'{type.FullName}' is not defined in {Path.GetFileName(assemblyPath)}; it is type-forwarded to {target}.",

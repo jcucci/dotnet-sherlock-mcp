@@ -286,7 +286,7 @@ public sealed class ProjectAssetsTests : IDisposable
         var baseType = context.Assembly.GetType(typeof(RuntimeDerivedFixture).FullName!)!.BaseType!;
 
         Assert.Equal(nameof(TypeAnalysisService), baseType.Name);
-        Assert.Equal(restored, baseType.Assembly.Location, ignoreCase: true);
+        Assert.Equal(restored, AssemblyLocations.Of(baseType.Assembly), ignoreCase: true);
     }
 
     [Fact]
