@@ -60,3 +60,5 @@ nunit-*.xml
 .mcpregistry_*
 # Verify snapshot test output
 *.received.*
+
+BenchmarkDotNet.Artifacts/

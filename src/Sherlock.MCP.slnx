@@ -9,4 +9,5 @@
   <Project Path="unit-tests/Sherlock.MCP.Tests.csproj" />
   <Project Path="integration-tests/Sherlock.MCP.IntegrationTests.csproj" />
   <Project Path="example/Sherlock.MCP.Example.csproj" />
+  <Project Path="benchmarks/Sherlock.MCP.Benchmarks.csproj" />
 </Solution>

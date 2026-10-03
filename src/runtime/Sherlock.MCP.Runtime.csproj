@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sherlock.MCP.Tests" />
+    <InternalsVisibleTo Include="Sherlock.MCP.Benchmarks" />
   </ItemGroup>
 
 </Project>
