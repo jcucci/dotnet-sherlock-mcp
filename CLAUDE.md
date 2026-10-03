@@ -12,6 +12,7 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 - `src/server/Sherlock.MCP.Server.csproj` - Main MCP server application
 - `src/runtime/Sherlock.MCP.Runtime.csproj` - Core reflection and assembly discovery services
 - `src/unit-tests/Sherlock.MCP.Tests.csproj` - Unit tests for all functionality
+- `src/benchmarks/Sherlock.MCP.Benchmarks.csproj` - BenchmarkDotNet benchmarks (run manually or via the on-demand `Benchmarks` workflow)
 
 ## Development Commands
 
@@ -19,6 +20,7 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 - `dotnet run --project src/server` - Run the MCP server with stdio transport
 - `dotnet test` - Run all unit tests
 - `dotnet restore` - Restore NuGet packages for all projects
+- `dotnet run -c Release --project src/benchmarks -f net10.0 -- --filter '*Search*'` - Run BenchmarkDotNet benchmarks (see `src/benchmarks/README.md`)
 
 ### Golden-file tests
 `src/unit-tests/Golden/ToolResponseGoldenTests.cs` snapshots every tool's response (summary/full projections, pagination pages, error payloads) with Verify against `Sherlock.Golden.dll`, a small assembly `GoldenFixture` emits per run; snapshots live in `src/unit-tests/Golden/Snapshots/*.verified.json`. Machine- and runtime-specific values are scrubbed to placeholders (`{Fixture}`, `{Token}`, `{Handle}`, `{Chars}`, `{FrameworkAssemblyVersion}`, …) so one snapshot holds across net8.0/net9.0/net10.0. When a shape changes intentionally, review the `*.received.json` diff and rename it over the matching `.verified.json`. A new tool fails `EveryToolHasAGoldenCase` until it gets a case, and a tool with `projection` needs both `summary` and `full` cases.

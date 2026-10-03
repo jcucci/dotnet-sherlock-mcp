@@ -1,0 +1,44 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: BenchmarkDotNet --filter glob
+        required: false
+        default: '*'
+      job:
+        description: BenchmarkDotNet job preset
+        required: false
+        default: short
+        type: choice
+        options: [dry, short, default]
+
+jobs:
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore src/benchmarks/Sherlock.MCP.Benchmarks.csproj
+
+      - name: Run benchmarks
+        run: >
+          dotnet run -c Release --project src/benchmarks -f net10.0 --
+          --filter '${{ inputs.filter }}' --job ${{ inputs.job }}
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: BenchmarkDotNet.Artifacts/results
