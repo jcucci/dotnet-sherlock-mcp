@@ -435,7 +435,7 @@ public class McpStdioProtocolTests
         }
         finally
         {
-            try { Directory.Delete(stateDirectory, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(stateDirectory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 

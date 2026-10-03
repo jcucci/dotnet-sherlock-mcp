@@ -216,7 +216,9 @@ public sealed class SharedInspectionContextProvider : IInspectionContextProvider
 
     private static MetadataEntry CreateMetadataEntry(string fullPath, long fileStampTicks, long fileLength)
     {
-        var peReader = new PEReader(File.OpenRead(fullPath));
+        PEReader peReader;
+        using (var stream = File.OpenRead(fullPath))
+            peReader = new PEReader(stream, PEStreamOptions.PrefetchEntireImage);
         try
         {
             if (!peReader.HasMetadata)

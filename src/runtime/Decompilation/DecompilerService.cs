@@ -36,7 +36,7 @@ public sealed class DecompilerService : IDecompilerService
             .Select(token =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return decompiler.DecompileAsString(MetadataTokens.EntityHandle(token)).Trim();
+                return decompiler.DecompileAsString(MetadataTokens.EntityHandle(token)).ReplaceLineEndings("\n").Trim();
             })
             .ToArray();
     }

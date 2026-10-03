@@ -14,6 +14,8 @@ internal static partial class GoldenSnapshot
         ["currentPageChars"] = "{Chars}"
     };
 
+    private static readonly string[] PathPlaceholders = ["{Fixture}", "{NuGetCache}", "{HostRuntime}"];
+
     public static string Render(CallToolResult result, IReadOnlyList<(string Value, string Placeholder)> scrubs)
     {
         var replacements = Expand(scrubs);
@@ -52,6 +54,8 @@ internal static partial class GoldenSnapshot
     {
         foreach (var (value, placeholder) in replacements)
             text = text.Replace(value, placeholder, StringComparison.Ordinal);
+        if (PathPlaceholders.Any(placeholder => text.Contains(placeholder, StringComparison.Ordinal)))
+            text = text.Replace('\\', '/').Replace("%5C", "%2F", StringComparison.Ordinal);
         return HandlePattern().Replace(text, "{Handle}");
     }
 

@@ -12,7 +12,7 @@ public sealed class MetadataOnlyInspectionContext : IAssemblyInspectionContext
         var (resolver, framework) = MetadataResolverFactory.Create(assemblyPath, additionalSearchDirectories);
         Framework = framework;
         _mlc = new MetadataLoadContext(resolver, framework.CoreAssemblyName);
-        Assembly = _mlc.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
+        Assembly = AssemblyLocations.LoadInMemory(_mlc, Path.GetFullPath(assemblyPath));
     }
 
     public Assembly Assembly { get; }

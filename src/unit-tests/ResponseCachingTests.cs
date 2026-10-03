@@ -22,7 +22,7 @@ public sealed class ResponseCachingTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_workDirectory, recursive: true); } catch (IOException) { }
+        try { Directory.Delete(_workDirectory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
     public delegate Task<string> ToolCall(ToolMiddleware middleware, string assemblyPath, bool noCache);

@@ -243,7 +243,7 @@ public sealed class FrameworkReferenceResolverTests : IDisposable
         Assert.Equal(FrameworkResolutionKind.ReferencePack, context.Framework.Kind);
         var baseType = context.Assembly.GetType("Fx.Widget")!.BaseType!;
         Assert.Equal("System.Exception", baseType.FullName);
-        Assert.Contains(context.Framework.Packs, framework => baseType.Assembly.Location.StartsWith(framework.Directory, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(context.Framework.Packs, framework => AssemblyLocations.Of(baseType.Assembly).StartsWith(framework.Directory, StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

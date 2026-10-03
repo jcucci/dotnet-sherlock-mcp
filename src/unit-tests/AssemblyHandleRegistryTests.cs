@@ -18,7 +18,7 @@ public sealed class AssemblyHandleRegistryTests : IDisposable
     {
         foreach (var directory in new[] { _stateDirectory, _workDirectory })
         {
-            try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 

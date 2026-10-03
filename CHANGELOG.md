@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Windows, assemblies that Sherlock has inspected are no longer locked, so rebuilding a project no longer fails while the server holds its output in the shared inspection cache. Inspection contexts and IL metadata readers now load each assembly (and its resolved dependencies) into memory and close the file straight away, instead of keeping it open or memory-mapped until the context is evicted. Decompiled source now uses `\n` line endings on every OS. (#84)
 - The first launch of a new version through the Claude Code plugin no longer fails to connect. On a fresh download `dnx` printed "Skipping NuGet package signature verification." to stdout, corrupting the MCP stream, so the client dropped the connection until a manual reconnect. The plugin now runs `dnx -v q --yes Sherlock.MCP.Server@<version>` (options before the package id, since later arguments are forwarded to the server), and the README's `dnx` examples do the same.
 
 ## [2.14.0] - 2026-10-01

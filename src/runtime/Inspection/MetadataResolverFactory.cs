@@ -5,7 +5,7 @@ namespace Sherlock.MCP.Runtime.Inspection;
 
 internal static class MetadataResolverFactory
 {
-    public static (PathAssemblyResolver Resolver, FrameworkResolution Framework) Create(
+    public static (MetadataAssemblyResolver Resolver, FrameworkResolution Framework) Create(
         string assemblyPath, IReadOnlyList<string>? additionalSearchDirectories = null)
     {
         var comparer = StringComparer.OrdinalIgnoreCase;
@@ -36,7 +36,7 @@ internal static class MetadataResolverFactory
         if (framework.Kind == FrameworkResolutionKind.ReferencePack)
             AddDllsFromDirectory(paths, simpleNames, FrameworkReferenceResolver.HostRuntimeDirectory());
 
-        return (new PathAssemblyResolver(paths), framework);
+        return (new InMemoryAssemblyResolver(paths), framework);
     }
 
     private static void AddDllsFromDirectory(HashSet<string> paths, HashSet<string> simpleNames, string? directory)

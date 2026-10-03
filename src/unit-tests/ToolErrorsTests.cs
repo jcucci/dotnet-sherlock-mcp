@@ -19,7 +19,7 @@ public sealed class ToolErrorsTests : IDisposable
     {
         foreach (var directory in _tempDirectories)
         {
-            try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 
