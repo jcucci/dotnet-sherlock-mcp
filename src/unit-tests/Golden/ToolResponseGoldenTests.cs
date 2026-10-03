@@ -53,6 +53,7 @@ public class ToolResponseGoldenTests
         ["GetTypeInfo|error-ambiguous-type-name"] = () => Done(TypeAnalysisTools.GetTypeInfo(new TypeAnalysisService(Contexts), Contexts, Middleware, TestHandles.Registry, "Order", assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetTypeHierarchy|summary"] = () => Text(TypeAnalysisTools.GetTypeHierarchy(new TypeAnalysisService(Contexts), Contexts, new ReverseLookupService(), Middleware, TestHandles.Registry, Processor, assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetTypeHierarchy|derived-types"] = () => Text(TypeAnalysisTools.GetTypeHierarchy(new TypeAnalysisService(Contexts), Contexts, new ReverseLookupService(), Middleware, TestHandles.Registry, Processor, assemblyPath: Fixture.AssemblyPath, additionalAssemblies: [Fixture.ApiDiffLeftPath], noCache: true)),
+        ["GetTypeHierarchy|mermaid"] = () => Text(TypeAnalysisTools.GetTypeHierarchy(new TypeAnalysisService(Contexts), Contexts, new ReverseLookupService(), Middleware, TestHandles.Registry, Processor, assemblyPath: Fixture.AssemblyPath, additionalAssemblies: [Fixture.ApiDiffLeftPath], format: "mermaid", noCache: true)),
         ["GetGenericTypeInfo|summary"] = () => Text(TypeAnalysisTools.GetGenericTypeInfo(new TypeAnalysisService(Contexts), Contexts, Middleware, TestHandles.Registry, "Golden.Shapes.Repository`1", assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetTypeAttributes|summary"] = () => Text(TypeAnalysisTools.GetTypeAttributes(new TypeAnalysisService(Contexts), Contexts, Middleware, TestHandles.Registry, Processor, assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetNestedTypes|summary"] = () => Text(TypeAnalysisTools.GetNestedTypes(new TypeAnalysisService(Contexts), Contexts, Middleware, TestHandles.Registry, Processor, assemblyPath: Fixture.AssemblyPath, noCache: true)),
@@ -90,6 +91,8 @@ public class ToolResponseGoldenTests
 
         ["GetMethodCalls|summary"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetMethodCalls|full"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, projection: "full", noCache: true)),
+        ["GetMethodCalls|mermaid"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, format: "mermaid", noCache: true)),
+        ["GetMethodCalls|mermaid-depth"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, format: "mermaid", depth: 3, noCache: true)),
 
         ["DecompileMember|summary"] = () => Done(DecompilePage(maxLines: SourcePager.DefaultMaxLines, continuationToken: null)),
         ["DecompileMember|page-1"] = () => Done(DecompilePage(maxLines: 4, continuationToken: null)),

@@ -60,6 +60,7 @@ public class StructuredOutputTests
         { nameof(ReflectionTools.GetAssemblyInfo), "full" },
         { nameof(IlAnalysisTools.GetMethodCalls), "summary" },
         { nameof(IlAnalysisTools.GetMethodCalls), "full" },
+        { nameof(IlAnalysisTools.GetMethodCalls), "mermaid" },
         { nameof(DecompilationTools.DecompileMember), "summary" },
         { nameof(SourceTools.GetMemberSource), "summary" },
         { nameof(ReverseLookupTools.FindImplementationsOf), "summary" },
@@ -160,7 +161,7 @@ public class StructuredOutputTests
         nameof(ReflectionTools.GetAssemblyInfo) =>
             ReflectionTools.GetAssemblyInfo(Contexts, TestMiddleware.Fresh, TestHandles.Registry, assemblyPath: TestAssemblyPath, projection: projection),
         nameof(IlAnalysisTools.GetMethodCalls) =>
-            IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, methodName: nameof(IlSampleSubject.DoWork), projection: projection, noCache: true),
+            IlAnalysisTools.GetMethodCalls(new IlAnalysisService(), Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, methodName: nameof(IlSampleSubject.DoWork), projection: projection == "mermaid" ? "summary" : projection, format: projection == "mermaid" ? "mermaid" : "json", depth: projection == "mermaid" ? 2 : 1, noCache: true),
         nameof(DecompilationTools.DecompileMember) =>
             DecompilationTools.DecompileMember(new DecompilerService(), Contexts, Middleware, TestHandles.Registry, assemblyPath: TestAssemblyPath, typeName: typeof(IlSampleSubject).FullName!, memberName: nameof(IlSampleSubject.Helper), noCache: true),
         nameof(SourceTools.GetMemberSource) =>

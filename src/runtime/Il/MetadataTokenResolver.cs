@@ -70,6 +70,66 @@ internal sealed class MetadataTokenResolver
         }
     }
 
+    public MethodDefinitionHandle LocalMethodDefinition(int token)
+    {
+        EntityHandle handle;
+        try { handle = MetadataTokens.EntityHandle(token); }
+        catch (ArgumentException) { return default; }
+        if (handle.IsNil) return default;
+
+        return LocalMethodDefinition(handle);
+    }
+
+    private MethodDefinitionHandle LocalMethodDefinition(EntityHandle handle) => handle.Kind switch
+    {
+        HandleKind.MethodDefinition => (MethodDefinitionHandle)handle,
+        HandleKind.MethodSpecification => LocalMethodDefinition(_md.GetMethodSpecification((MethodSpecificationHandle)handle).Method),
+        HandleKind.MemberReference => LocalMethodForReference(_md.GetMemberReference((MemberReferenceHandle)handle)),
+        _ => default
+    };
+
+    private MethodDefinitionHandle LocalMethodForReference(MemberReference reference)
+    {
+        if (reference.GetKind() != MemberReferenceKind.Method) return default;
+
+        var declaringType = LocalTypeDefinition(reference.Parent);
+        if (declaringType.IsNil) return default;
+
+        var name = _md.GetString(reference.Name);
+        var signature = _md.GetBlobContent(reference.Signature);
+        MethodDefinitionHandle onlyByName = default;
+        var nameMatches = 0;
+        foreach (var candidate in _md.GetTypeDefinition(declaringType).GetMethods())
+        {
+            var definition = _md.GetMethodDefinition(candidate);
+            if (!_md.StringComparer.Equals(definition.Name, name)) continue;
+            if (_md.GetBlobContent(definition.Signature).SequenceEqual(signature)) return candidate;
+            onlyByName = candidate;
+            nameMatches++;
+        }
+
+        return nameMatches == 1 ? onlyByName : default;
+    }
+
+    private TypeDefinitionHandle LocalTypeDefinition(EntityHandle parent)
+    {
+        if (parent.Kind == HandleKind.TypeDefinition) return (TypeDefinitionHandle)parent;
+        if (parent.Kind != HandleKind.TypeSpecification) return default;
+
+        try
+        {
+            var blob = _md.GetBlobReader(_md.GetTypeSpecification((TypeSpecificationHandle)parent).Signature);
+            if (blob.ReadSignatureTypeCode() != SignatureTypeCode.GenericTypeInstance) return default;
+            blob.ReadSignatureTypeCode();
+            var genericType = blob.ReadTypeHandle();
+            return genericType.Kind == HandleKind.TypeDefinition ? (TypeDefinitionHandle)genericType : default;
+        }
+        catch (BadImageFormatException)
+        {
+            return default;
+        }
+    }
+
     public string TypeDefName(TypeDefinitionHandle handle) =>
         _typeDefNames.GetOrAdd(handle, h => _provider.GetTypeFromDefinition(_md, h, 0));
 

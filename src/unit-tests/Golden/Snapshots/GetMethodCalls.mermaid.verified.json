@@ -1,0 +1,22 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "il.methodCalls",
+    "version": "1.0.0",
+    "data": {
+      "declaringType": "Golden.Shapes.OrderProcessor",
+      "methodName": "Add",
+      "matchedOverloads": 2,
+      "anyBodyless": false,
+      "format": "mermaid",
+      "depth": 1,
+      "diagram": "flowchart LR\n  n0[\"Golden.Shapes.OrderProcessor.Add\"]\n  n1[\"System.Array.Copy\"]:::external\n  n2[\"System.EventHandler.Invoke\"]:::external\n  n3[\"Golden.Shapes.Order..ctor\"]\n  n4[\"Golden.Shapes.Order.set_Id\"]\n  n5[\"Golden.Shapes.Order.set_Total\"]\n  n0 --> n1\n  n0 --> n2\n  n0 -->|newobj| n3\n  n0 --> n4\n  n0 --> n5\n  n0 --> n0\n  classDef external stroke-dasharray: 4 4",
+      "nodeCount": 6,
+      "edgeCount": 6,
+      "truncated": false,
+      "note": null
+    }
+  }
+}

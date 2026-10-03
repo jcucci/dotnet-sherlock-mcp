@@ -35,40 +35,7 @@ public class IlAnalysisService : IIlAnalysisService
     {
         if (!File.Exists(assemblyPath)) return null;
 
-        var flags = BuildMemberFlags(options.IncludeNonPublic);
-        Type? targetType;
-        var targets = new List<MethodBase>();
-
-        using (var lease = _contexts.Acquire(assemblyPath))
-        {
-            var matches = new List<Type>();
-            foreach (var candidate in SafeGetTypes(lease.Context))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (TypeNameMatcher.Matches(candidate, typeName, options.CaseSensitive)) matches.Add(candidate);
-            }
-
-            var comparison = options.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            targetType = TypeNameResolver.FromMatches(matches, typeName, comparison).OrThrowIfAmbiguous(typeName);
-            if (targetType != null)
-            {
-                foreach (var method in SafeGetMethods(targetType, flags))
-                {
-                    if (NameEquals(method.Name, methodName, options.CaseSensitive)) targets.Add(method);
-                }
-                if (IsStaticConstructorName(methodName))
-                {
-                    var cctor = SafeGetTypeInitializer(targetType);
-                    if (cctor != null) targets.Add(cctor);
-                }
-                else if (IsInstanceConstructorName(methodName))
-                {
-                    foreach (var ctor in SafeGetConstructors(targetType, flags))
-                        if (!ctor.IsStatic) targets.Add(ctor);
-                }
-            }
-        }
-
+        var (targetType, targets) = ResolveTargets(assemblyPath, typeName, methodName, options, cancellationToken);
         if (targetType == null || targets.Count == 0) return null;
 
         var declaringFullName = TypeNameFormatter.FriendlyFullName(targetType);
@@ -123,6 +90,95 @@ public class IlAnalysisService : IIlAnalysisService
             .ToArray();
 
         return new MethodCallsResult(declaringFullName, methodName, targets.Count, anyBodyless, distinctCalls, distinctFields);
+    }
+
+    public CallGraph? GetCallGraph(
+        string assemblyPath, string typeName, string methodName, IlAnalysisOptions options, int depth, int maxNodes,
+        CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(assemblyPath)) return null;
+
+        var (targetType, targets) = ResolveTargets(assemblyPath, typeName, methodName, options, cancellationToken);
+        if (targetType == null || targets.Count == 0) return null;
+
+        depth = Math.Max(1, depth);
+        maxNodes = Math.Max(1, maxNodes);
+        var nodes = new Dictionary<string, CallGraphNode>(StringComparer.Ordinal);
+        var edges = new List<CallGraphEdge>();
+        var edgeKeys = new HashSet<(string, string)>();
+        var visited = new HashSet<MethodDefinitionHandle>();
+        var queue = new Queue<(MethodDefinitionHandle Handle, string NodeId, int Level)>();
+        var anyBodyless = false;
+        var truncated = false;
+
+        using (var metadata = _readers.AcquireMetadata(assemblyPath))
+        {
+            var pe = metadata.PEReader;
+            var md = metadata.Reader;
+            var resolver = metadata.Resolver;
+
+            var rootDisplay = resolver.Resolve(targets[0].MetadataToken)?.Display
+                ?? $"{TypeNameFormatter.FriendlyFullName(targetType)}.{targets[0].Name}";
+            var root = AddNode(nodes, rootDisplay, external: false);
+            foreach (var method in targets)
+            {
+                var handle = (MethodDefinitionHandle)MetadataTokens.EntityHandle(method.MetadataToken);
+                if (visited.Add(handle)) queue.Enqueue((handle, root.Id, 0));
+            }
+
+            while (queue.Count > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var (handle, fromId, level) = queue.Dequeue();
+                var il = TryGetMethodBody(pe, md, MetadataTokens.GetToken(handle), out var hadBody);
+                if (!hadBody)
+                {
+                    if (level == 0) anyBodyless = true;
+                    continue;
+                }
+
+                foreach (var tokenRef in IlInstructionReader.ReadTokenInstructions(il))
+                {
+                    if (IsFieldAccess(tokenRef.Kind)) continue;
+                    var resolved = resolver.Resolve(tokenRef.Token);
+                    if (resolved == null) continue;
+
+                    var local = resolver.LocalMethodDefinition(tokenRef.Token);
+                    var display = resolved.Value.Display;
+                    if (!nodes.TryGetValue(display, out var node))
+                    {
+                        if (nodes.Count >= maxNodes)
+                        {
+                            truncated = true;
+                            continue;
+                        }
+                        node = AddNode(nodes, display, external: local.IsNil);
+                    }
+                    else if (node.External && !local.IsNil)
+                    {
+                        node = node with { External = false };
+                        nodes[display] = node;
+                    }
+
+                    if (edgeKeys.Add((fromId, node.Id)))
+                        edges.Add(new CallGraphEdge(fromId, node.Id, CallKindName(tokenRef.Kind)));
+
+                    if (!local.IsNil && level + 1 < depth && visited.Add(local))
+                        queue.Enqueue((local, node.Id, level + 1));
+                }
+            }
+        }
+
+        return new CallGraph(
+            TypeNameFormatter.FriendlyFullName(targetType), methodName, targets.Count, anyBodyless, depth,
+            nodes.Values.ToArray(), edges.ToArray(), truncated);
+    }
+
+    private static CallGraphNode AddNode(Dictionary<string, CallGraphNode> nodes, string display, bool external)
+    {
+        var node = new CallGraphNode($"n{nodes.Count}", display, external);
+        nodes[display] = node;
+        return node;
     }
 
     public InboundCallHit[] FindInboundCallers(
@@ -218,6 +274,46 @@ public class IlAnalysisService : IIlAnalysisService
         catch (FileLoadException) { }
         catch (FileNotFoundException) { }
         catch (IOException) { }
+    }
+
+    private (Type? TargetType, List<MethodBase> Targets) ResolveTargets(
+        string assemblyPath, string typeName, string methodName, IlAnalysisOptions options, CancellationToken cancellationToken)
+    {
+        var flags = BuildMemberFlags(options.IncludeNonPublic);
+        Type? targetType;
+        var targets = new List<MethodBase>();
+
+        using (var lease = _contexts.Acquire(assemblyPath))
+        {
+            var matches = new List<Type>();
+            foreach (var candidate in SafeGetTypes(lease.Context))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (TypeNameMatcher.Matches(candidate, typeName, options.CaseSensitive)) matches.Add(candidate);
+            }
+
+            var comparison = options.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            targetType = TypeNameResolver.FromMatches(matches, typeName, comparison).OrThrowIfAmbiguous(typeName);
+            if (targetType != null)
+            {
+                foreach (var method in SafeGetMethods(targetType, flags))
+                {
+                    if (NameEquals(method.Name, methodName, options.CaseSensitive)) targets.Add(method);
+                }
+                if (IsStaticConstructorName(methodName))
+                {
+                    var cctor = SafeGetTypeInitializer(targetType);
+                    if (cctor != null) targets.Add(cctor);
+                }
+                else if (IsInstanceConstructorName(methodName))
+                {
+                    foreach (var ctor in SafeGetConstructors(targetType, flags))
+                        if (!ctor.IsStatic) targets.Add(ctor);
+                }
+            }
+        }
+
+        return (targetType, targets);
     }
 
     private static byte[]? TryGetMethodBody(PEReader pe, MetadataReader md, int metadataToken, out bool hadBody)
