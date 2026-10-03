@@ -1,0 +1,25 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "decompile.member",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "memberName": "Add",
+      "overloads": [
+        {
+          "signature": "void Add(Order order)"
+        }
+      ],
+      "source": "[Tag(\"add\")]\npublic void Add(Order order)\n{\n\tOrder[] array = new Order[_orders.Length + 1];",
+      "startLine": 5,
+      "lineCount": 4,
+      "totalLines": 13,
+      "truncated": true,
+      "clippedLines": 0,
+      "continuationToken": "{Token}"
+    }
+  }
+}

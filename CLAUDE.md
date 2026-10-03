@@ -20,6 +20,9 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 - `dotnet test` - Run all unit tests
 - `dotnet restore` - Restore NuGet packages for all projects
 
+### Golden-file tests
+`src/unit-tests/Golden/ToolResponseGoldenTests.cs` snapshots every tool's response (summary/full projections, pagination pages, error payloads) with Verify against `Sherlock.Golden.dll`, a small assembly `GoldenFixture` emits per run; snapshots live in `src/unit-tests/Golden/Snapshots/*.verified.json`. Machine- and runtime-specific values are scrubbed to placeholders (`{Fixture}`, `{Token}`, `{Handle}`, `{Chars}`, `{FrameworkAssemblyVersion}`, …) so one snapshot holds across net8.0/net9.0/net10.0. When a shape changes intentionally, review the `*.received.json` diff and rename it over the matching `.verified.json`. A new tool fails `EveryToolHasAGoldenCase` until it gets a case, and a tool with `projection` needs both `summary` and `full` cases.
+
 ## Code Style Guidelines
 
 1. **Single-line blocks**: If the block of code is only one line and readability is not impaired, forego the braces.

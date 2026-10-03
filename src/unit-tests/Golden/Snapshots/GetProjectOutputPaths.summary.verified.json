@@ -1,0 +1,17 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.outputs",
+    "version": "1.0.0",
+    "data": {
+      "projectFilePath": "{Fixture}/project/Sample/Sample.csproj",
+      "configuration": null,
+      "outputPaths": [
+        "{Fixture}/project/Sample/bin/Debug/net8.0",
+        "{Fixture}/project/Sample/bin/Release/net8.0"
+      ]
+    }
+  }
+}

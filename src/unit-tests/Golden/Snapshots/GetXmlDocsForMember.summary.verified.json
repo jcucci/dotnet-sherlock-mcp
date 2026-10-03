@@ -1,0 +1,24 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "xml.member",
+    "version": "1.0.0",
+    "data": {
+      "type": "Golden.Shapes.OrderProcessor",
+      "member": "Add",
+      "docs": {
+        "Summary": "Queues an order.",
+        "Remarks": null,
+        "Returns": null,
+        "Params": [
+          {
+            "Name": "order",
+            "Text": "The order to queue."
+          }
+        ]
+      }
+    }
+  }
+}

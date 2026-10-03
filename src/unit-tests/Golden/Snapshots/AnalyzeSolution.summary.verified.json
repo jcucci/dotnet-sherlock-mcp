@@ -1,0 +1,29 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.solution",
+    "version": "1.0.0",
+    "data": {
+      "solutionFilePath": "{Fixture}/project/Golden.slnx",
+      "projectCount": 2,
+      "projects": [
+        {
+          "Name": "Sample",
+          "RelativePath": "Sample/Sample.csproj",
+          "FullPath": "{Fixture}/project/Sample/Sample.csproj",
+          "ProjectGuid": "",
+          "ProjectTypeGuid": ""
+        },
+        {
+          "Name": "Ref",
+          "RelativePath": "Ref/Ref.csproj",
+          "FullPath": "{Fixture}/project/Ref/Ref.csproj",
+          "ProjectGuid": "",
+          "ProjectTypeGuid": ""
+        }
+      ]
+    }
+  }
+}

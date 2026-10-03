@@ -1,0 +1,29 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "il.methodCalls",
+    "version": "1.0.0",
+    "data": {
+      "declaringType": "Golden.Shapes.OrderProcessor",
+      "methodName": "Add",
+      "matchedOverloads": 2,
+      "anyBodyless": false,
+      "projection": "summary",
+      "calls": [
+        "Golden.Shapes.Order..ctor",
+        "Golden.Shapes.Order.set_Id",
+        "Golden.Shapes.Order.set_Total",
+        "Golden.Shapes.OrderProcessor.Add",
+        "System.Array.Copy",
+        "System.EventHandler.Invoke"
+      ],
+      "fieldAccesses": [
+        "Golden.Shapes.OrderProcessor.Processed",
+        "Golden.Shapes.OrderProcessor._orders",
+        "System.EventArgs.Empty"
+      ]
+    }
+  }
+}

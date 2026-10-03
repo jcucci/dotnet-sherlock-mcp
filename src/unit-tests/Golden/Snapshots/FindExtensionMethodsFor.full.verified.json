@@ -1,0 +1,40 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    }
+  ],
+  "payload": {
+    "kind": "reverselookup.extensions",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.Order",
+      "scope": [
+        "{Fixture}/Sherlock.Golden.dll"
+      ],
+      "projection": "full",
+      "total": 1,
+      "count": 1,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 1,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes.OrderExtensions",
+          "methodName": "Describe",
+          "signature": "string Describe(Order order)",
+          "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+          "extendedType": "Order"
+        }
+      ]
+    }
+  }
+}

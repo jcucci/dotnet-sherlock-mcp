@@ -58,3 +58,5 @@ nunit-*.xml
 
 # MCP Registry tokens
 .mcpregistry_*
+# Verify snapshot test output
+*.received.*

@@ -1,0 +1,29 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "type.generic",
+    "version": "1.0.0",
+    "data": {
+      "TypeName": "Golden.Shapes.Repository<T>",
+      "IsGenericTypeDefinition": true,
+      "IsConstructedGenericType": false,
+      "GenericParameters": [
+        {
+          "Name": "T",
+          "Position": 0,
+          "Constraints": 20,
+          "TypeConstraints": [],
+          "HasReferenceTypeConstraint": true,
+          "HasValueTypeConstraint": false,
+          "HasDefaultConstructorConstraint": true
+        }
+      ],
+      "GenericArguments": [],
+      "ParameterVariances": [
+        0
+      ]
+    }
+  }
+}

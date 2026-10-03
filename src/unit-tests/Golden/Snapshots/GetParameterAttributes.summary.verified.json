@@ -1,0 +1,27 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "parameter.attributes",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "methodName": "Discount",
+      "parameterIndex": 0,
+      "attributeCount": 1,
+      "attributes": [
+        {
+          "AttributeType": "Golden.Shapes.TagAttribute",
+          "ConstructorArguments": [
+            "percent"
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 32767
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "source.member",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "memberName": "Add",
+      "origin": "embedded",
+      "overloads": [
+        {
+          "signature": "void Add(Order order)",
+          "origin": "embedded",
+          "document": "/_/Golden/Shapes.cs",
+          "url": null,
+          "lines": {
+            "start": 71,
+            "end": 81
+          }
+        }
+      ],
+      "note": null,
+      "source": "{\n    var next = new Order[_orders.Length + 1];\n    Array.Copy(_orders, next, _orders.Length);\n    next[_orders.Length] = order;",
+      "startLine": 5,
+      "lineCount": 4,
+      "totalLines": 11,
+      "truncated": true,
+      "clippedLines": 0,
+      "continuationToken": "{Token}"
+    }
+  }
+}

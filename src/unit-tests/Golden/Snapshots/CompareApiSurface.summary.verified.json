@@ -1,0 +1,264 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "api.compare",
+    "version": "1.0.0",
+    "data": {
+      "left": {
+        "source": "path",
+        "assemblyPath": "{Fixture}/left/Acme.Lib.dll",
+        "assemblyName": "Acme.Lib",
+        "assemblyVersion": "0.0.0.0",
+        "packageId": null,
+        "packageVersion": null,
+        "tfm": null
+      },
+      "right": {
+        "source": "path",
+        "assemblyPath": "{Fixture}/right/Acme.Lib.dll",
+        "assemblyName": "Acme.Lib",
+        "assemblyVersion": "0.0.0.0",
+        "packageId": null,
+        "packageVersion": null,
+        "tfm": null
+      },
+      "projection": "summary",
+      "breakingOnly": false,
+      "namespaceFilter": null,
+      "counts": {
+        "typesAdded": 1,
+        "typesRemoved": 2,
+        "typesChanged": 3,
+        "membersAdded": 10,
+        "membersRemoved": 5,
+        "membersChanged": 15,
+        "breaking": 21
+      },
+      "total": 21,
+      "count": 21,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 21,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "warnings": [],
+      "changes": [
+        {
+          "change": "added",
+          "scope": "member",
+          "type": "Acme.Lib.Animal",
+          "memberKind": "method",
+          "member": "Eat",
+          "breaking": true,
+          "signature": "public abstract void Eat()",
+          "reason": "abstract member added to an inheritable class; derived classes must override it"
+        },
+        {
+          "change": "changed",
+          "scope": "type",
+          "type": "Acme.Lib.Box<T>",
+          "memberKind": null,
+          "member": null,
+          "breaking": true,
+          "signature": "public class Acme.Lib.Box<T>",
+          "reason": "generic constraint added: T : class"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Color",
+          "memberKind": "field",
+          "member": "Green",
+          "breaking": true,
+          "signature": "public static const Color Green",
+          "reason": "enum value changed from 2 to 3"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Derived",
+          "memberKind": "method",
+          "member": "Attr",
+          "breaking": true,
+          "signature": "public void Attr(int x)",
+          "reason": "parameter x is no longer optional"
+        },
+        {
+          "change": "removed",
+          "scope": "member",
+          "type": "Acme.Lib.Derived",
+          "memberKind": "method",
+          "member": "Retyped",
+          "breaking": true,
+          "signature": "public long Retyped()",
+          "reason": "member removed or no longer visible"
+        },
+        {
+          "change": "added",
+          "scope": "member",
+          "type": "Acme.Lib.IShape",
+          "memberKind": "method",
+          "member": "Perimeter",
+          "breaking": true,
+          "signature": "double Perimeter()",
+          "reason": "abstract member added to an interface; implementers must add it"
+        },
+        {
+          "change": "removed",
+          "scope": "type",
+          "type": "Acme.Lib.Removed",
+          "memberKind": null,
+          "member": null,
+          "breaking": true,
+          "signature": "public class Acme.Lib.Removed",
+          "reason": "type removed or no longer visible"
+        },
+        {
+          "change": "changed",
+          "scope": "type",
+          "type": "Acme.Lib.Shape",
+          "memberKind": null,
+          "member": null,
+          "breaking": true,
+          "signature": "public class Acme.Lib.Shape",
+          "reason": "no longer implements Acme.Lib.IShape"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "field",
+          "member": "Mutable",
+          "breaking": true,
+          "signature": "public readonly int Mutable",
+          "reason": "became readonly"
+        },
+        {
+          "change": "removed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Gone",
+          "breaking": true,
+          "signature": "public void Gone()",
+          "reason": "member removed or no longer visible"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Hook",
+          "breaking": true,
+          "signature": "public void Hook()",
+          "reason": "no longer virtual; overrides break"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Optional",
+          "breaking": true,
+          "signature": "public void Optional(int x)",
+          "reason": "parameter x is no longer optional"
+        },
+        {
+          "change": "removed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Overload",
+          "breaking": true,
+          "signature": "public void Overload(int x)",
+          "reason": "member removed or no longer visible"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Size",
+          "breaking": true,
+          "signature": "public int Size()",
+          "reason": "return type changed from long to int"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "method",
+          "member": "Unparams",
+          "breaking": true,
+          "signature": "public void Unparams(int[] xs)",
+          "reason": "parameter xs is no longer params; callers passing separate arguments break"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "property",
+          "member": "Getter",
+          "breaking": true,
+          "signature": "protected int Getter { get; set; }",
+          "reason": "getter accessibility reduced from public to protected"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "property",
+          "member": "Init",
+          "breaking": true,
+          "signature": "public string Init { get; set; }",
+          "reason": "setter became init-only; assignments after construction break"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "property",
+          "member": "Name",
+          "breaking": true,
+          "signature": "public string Name { get; }",
+          "reason": "setter removed"
+        },
+        {
+          "change": "changed",
+          "scope": "member",
+          "type": "Acme.Lib.Widget",
+          "memberKind": "property",
+          "member": "Setter",
+          "breaking": true,
+          "signature": "public int Setter { get; set; }",
+          "reason": "setter accessibility reduced from public to protected"
+        },
+        {
+          "change": "removed",
+          "scope": "type",
+          "type": "Acme.Lib.WillBeInternal",
+          "memberKind": null,
+          "member": null,
+          "breaking": true,
+          "signature": "public class Acme.Lib.WillBeInternal",
+          "reason": "type removed or no longer visible"
+        },
+        {
+          "change": "changed",
+          "scope": "type",
+          "type": "Acme.Lib.WillSeal",
+          "memberKind": null,
+          "member": null,
+          "breaking": true,
+          "signature": "public sealed class Acme.Lib.WillSeal",
+          "reason": "became sealed"
+        }
+      ]
+    }
+  }
+}

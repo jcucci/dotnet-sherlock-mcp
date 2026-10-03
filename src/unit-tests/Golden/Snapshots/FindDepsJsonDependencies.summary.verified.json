@@ -1,0 +1,29 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.deps",
+    "version": "1.0.0",
+    "data": {
+      "projectFilePath": "{Fixture}/project/Sample/Sample.csproj",
+      "configuration": "Debug",
+      "dependencies": [
+        {
+          "Name": "Sample",
+          "Version": "1.0.0",
+          "Type": "project",
+          "AssemblyPath": "",
+          "Dependencies": []
+        },
+        {
+          "Name": "Fake.Lib",
+          "Version": "1.0.0",
+          "Type": "package",
+          "AssemblyPath": "",
+          "Dependencies": []
+        }
+      ]
+    }
+  }
+}

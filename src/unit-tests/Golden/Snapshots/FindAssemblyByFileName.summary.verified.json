@@ -1,0 +1,16 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.findByFileName",
+    "version": "1.0.0",
+    "data": {
+      "searchTerm": "Sherlock.Golden.dll",
+      "workingDirectory": "{Fixture}",
+      "foundAssembly": "{Fixture}/Sherlock.Golden.dll",
+      "candidateCount": 1,
+      "candidates": null
+    }
+  }
+}

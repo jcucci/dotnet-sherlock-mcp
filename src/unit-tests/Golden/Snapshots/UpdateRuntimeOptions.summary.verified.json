@@ -1,0 +1,27 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "runtime.options",
+    "version": "1.0.0",
+    "data": {
+      "searchRoots": [],
+      "defaultMaxItems": 20,
+      "cacheTtlSeconds": 300,
+      "includeNonPublicByDefault": false,
+      "maxLoadedAssemblies": 64,
+      "maxCachedResponses": 256,
+      "maxAssemblyHandles": 256,
+      "sourceFetch": "off",
+      "sourceFetchHosts": [
+        "raw.githubusercontent.com",
+        "gitlab.com",
+        "bitbucket.org",
+        "api.bitbucket.org",
+        "dev.azure.com",
+        "*.visualstudio.com"
+      ]
+    }
+  }
+}

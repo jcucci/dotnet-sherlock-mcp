@@ -1,0 +1,207 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.type",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "namespace_": "Golden.Shapes",
+      "assemblyName": "Sherlock.Golden, Version=1.2.3.0, Culture=neutral, PublicKeyToken=null",
+      "isClass": true,
+      "isInterface": false,
+      "isEnum": false,
+      "isAbstract": false,
+      "isSealed": false,
+      "isGeneric": false,
+      "baseType": "System.Object",
+      "interfaces": [
+        "Golden.Shapes.IOrderSource"
+      ],
+      "totalConstructors": 2,
+      "totalMethods": 9,
+      "totalProperties": 2,
+      "totalFields": 2,
+      "nextToken": null,
+      "constructors": [
+        {
+          "memberType": "constructor",
+          "name": ".ctor",
+          "parameters": []
+        },
+        {
+          "memberType": "constructor",
+          "name": ".ctor",
+          "parameters": [
+            {
+              "name": "name",
+              "type": "System.String",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            }
+          ]
+        }
+      ],
+      "methods": [
+        {
+          "memberType": "method",
+          "name": "Add",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "returnType": "System.Void",
+          "parameters": [
+            {
+              "name": "order",
+              "type": "Golden.Shapes.Order",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            }
+          ]
+        },
+        {
+          "memberType": "method",
+          "name": "Add",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "returnType": "System.Void",
+          "parameters": [
+            {
+              "name": "id",
+              "type": "System.Int32",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            },
+            {
+              "name": "total",
+              "type": "System.Decimal",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            }
+          ]
+        },
+        {
+          "memberType": "method",
+          "name": "Discount",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "returnType": "System.Decimal",
+          "parameters": [
+            {
+              "name": "percent",
+              "type": "System.Decimal",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            }
+          ]
+        },
+        {
+          "memberType": "method",
+          "name": "Next",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": true,
+          "returnType": "Golden.Shapes.Order",
+          "parameters": []
+        },
+        {
+          "memberType": "method",
+          "name": "FlushAsync",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "returnType": "System.Threading.Tasks.Task`1[[System.Int32, System.Private.CoreLib, Version={FrameworkAssemblyVersion}, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+          "parameters": []
+        },
+        {
+          "memberType": "method",
+          "name": "GetType",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "returnType": "System.Type",
+          "parameters": []
+        },
+        {
+          "memberType": "method",
+          "name": "ToString",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": true,
+          "returnType": "System.String",
+          "parameters": []
+        },
+        {
+          "memberType": "method",
+          "name": "Equals",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": true,
+          "returnType": "System.Boolean",
+          "parameters": [
+            {
+              "name": "obj",
+              "type": "System.Object",
+              "hasDefaultValue": false,
+              "defaultValue": null
+            }
+          ]
+        },
+        {
+          "memberType": "method",
+          "name": "GetHashCode",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": true,
+          "returnType": "System.Int32",
+          "parameters": []
+        }
+      ],
+      "properties": [
+        {
+          "memberType": "property",
+          "name": "Name",
+          "propertyType": "System.String",
+          "canRead": true,
+          "canWrite": true,
+          "isStatic": false,
+          "isIndexer": false,
+          "indexParameters": []
+        },
+        {
+          "memberType": "property",
+          "name": "Count",
+          "propertyType": "System.Int32",
+          "canRead": true,
+          "canWrite": false,
+          "isStatic": false,
+          "isIndexer": false,
+          "indexParameters": []
+        }
+      ],
+      "fields": [
+        {
+          "memberType": "field",
+          "name": "MaxBatch",
+          "fieldType": "System.Int32",
+          "isStatic": true,
+          "isReadOnly": false,
+          "isConstant": true,
+          "constantValue": "10"
+        },
+        {
+          "memberType": "field",
+          "name": "DefaultName",
+          "fieldType": "System.String",
+          "isStatic": true,
+          "isReadOnly": true,
+          "isConstant": false,
+          "constantValue": null
+        }
+      ]
+    }
+  }
+}

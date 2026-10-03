@@ -1,0 +1,77 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "type.hierarchy",
+    "version": "1.0.0",
+    "data": {
+      "TypeName": "Golden.Shapes.OrderProcessor",
+      "InheritanceChain": [
+        "System.Object"
+      ],
+      "AllInterfaces": [
+        "Golden.Shapes.IOrderSource"
+      ],
+      "BaseTypes": [
+        {
+          "FullName": "System.Object",
+          "Name": "Object",
+          "Namespace": "System",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "System.Private.CoreLib",
+          "BaseType": null,
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                2
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.InteropServices.ClassInterfaceAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5
+            },
+            {
+              "AttributeType": "System.Runtime.InteropServices.ComVisibleAttribute",
+              "ConstructorArguments": [
+                true
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5597
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.TypeForwardedFromAttribute",
+              "ConstructorArguments": [
+                "mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5148
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        }
+      ],
+      "DerivedTypes": null,
+      "Note": "derivedTypes not computed; pass additionalAssemblies to compute, or use find_implementations_of"
+    }
+  }
+}

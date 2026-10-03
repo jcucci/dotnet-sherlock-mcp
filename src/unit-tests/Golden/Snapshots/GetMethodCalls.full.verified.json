@@ -1,0 +1,70 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "il.methodCalls",
+    "version": "1.0.0",
+    "data": {
+      "declaringType": "Golden.Shapes.OrderProcessor",
+      "methodName": "Add",
+      "matchedOverloads": 2,
+      "anyBodyless": false,
+      "projection": "full",
+      "calls": [
+        {
+          "target": "Golden.Shapes.Order..ctor",
+          "kind": "newobj",
+          "sourceMethod": "void Add(int id, decimal total)"
+        },
+        {
+          "target": "Golden.Shapes.Order.set_Id",
+          "kind": "callvirt",
+          "sourceMethod": "void Add(int id, decimal total)"
+        },
+        {
+          "target": "Golden.Shapes.Order.set_Total",
+          "kind": "callvirt",
+          "sourceMethod": "void Add(int id, decimal total)"
+        },
+        {
+          "target": "Golden.Shapes.OrderProcessor.Add",
+          "kind": "call",
+          "sourceMethod": "void Add(int id, decimal total)"
+        },
+        {
+          "target": "System.Array.Copy",
+          "kind": "call",
+          "sourceMethod": "void Add(Order order)"
+        },
+        {
+          "target": "System.EventHandler.Invoke",
+          "kind": "callvirt",
+          "sourceMethod": "void Add(Order order)"
+        }
+      ],
+      "fieldAccesses": [
+        {
+          "target": "Golden.Shapes.OrderProcessor.Processed",
+          "access": "read",
+          "sourceMethod": "void Add(Order order)"
+        },
+        {
+          "target": "Golden.Shapes.OrderProcessor._orders",
+          "access": "read",
+          "sourceMethod": "void Add(Order order)"
+        },
+        {
+          "target": "Golden.Shapes.OrderProcessor._orders",
+          "access": "write",
+          "sourceMethod": "void Add(Order order)"
+        },
+        {
+          "target": "System.EventArgs.Empty",
+          "access": "read",
+          "sourceMethod": "void Add(Order order)"
+        }
+      ]
+    }
+  }
+}

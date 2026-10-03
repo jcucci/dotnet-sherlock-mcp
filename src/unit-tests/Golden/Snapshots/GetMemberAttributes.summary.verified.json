@@ -1,0 +1,27 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.attributes",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "memberKind": "method",
+      "memberName": "Add",
+      "attributeCount": 1,
+      "attributes": [
+        {
+          "AttributeType": "Golden.Shapes.TagAttribute",
+          "ConstructorArguments": [
+            "add"
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 32767
+        }
+      ]
+    }
+  }
+}

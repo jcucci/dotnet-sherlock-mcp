@@ -1,0 +1,73 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.IOrderSource",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.IOrderSource"
+    },
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    }
+  ],
+  "payload": {
+    "kind": "reverselookup.references",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.Order",
+      "scope": [
+        "{Fixture}/Sherlock.Golden.dll"
+      ],
+      "projection": "summary",
+      "total": 5,
+      "count": 5,
+      "truncated": false,
+      "hardCap": 500,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 5,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes.IOrderSource",
+          "memberKind": "method",
+          "memberName": "Next",
+          "referenceKind": "return"
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderExtensions",
+          "memberKind": "method",
+          "memberName": "Describe",
+          "referenceKind": "parameter"
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderExtensions",
+          "memberKind": "method",
+          "memberName": "First",
+          "referenceKind": "return"
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderProcessor",
+          "memberKind": "method",
+          "memberName": "Add",
+          "referenceKind": "parameter"
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderProcessor",
+          "memberKind": "method",
+          "memberName": "Next",
+          "referenceKind": "return"
+        }
+      ]
+    }
+  }
+}

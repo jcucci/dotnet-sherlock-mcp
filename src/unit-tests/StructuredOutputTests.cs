@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text.Json;
-using Json.Schema;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
@@ -45,11 +44,7 @@ public class StructuredOutputTests
         nameof(ApiDiffTools.CompareApiSurface)
     ];
 
-    private static readonly Dictionary<string, McpServerTool> ToolsByMethodName = typeof(ConfigTools).Assembly.GetTypes()
-        .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
-        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-        .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
-        .ToDictionary(m => m.Name, m => McpServerTool.Create(m));
+    private static readonly IReadOnlyDictionary<string, McpServerTool> ToolsByMethodName = ToolCatalog.ByMethodName;
 
     public static TheoryData<string, string> ToolCalls => new()
     {
@@ -118,9 +113,7 @@ public class StructuredOutputTests
         Assert.DoesNotContain("\n", text);
         Assert.True(JsonElement.DeepEquals(JsonDocument.Parse(text).RootElement, result.StructuredContent!.Value));
 
-        var schema = JsonSchema.Build(tool.ProtocolTool.OutputSchema!.Value);
-        var evaluation = schema.Evaluate(result.StructuredContent!.Value, new EvaluationOptions { OutputFormat = OutputFormat.List });
-        Assert.True(evaluation.IsValid, $"{methodName} ({projection}) does not match its outputSchema: {JsonSerializer.Serialize(evaluation)}");
+        ToolCatalog.AssertMatchesOutputSchema(methodName, result.StructuredContent!.Value, $"{methodName} ({projection})");
     }
 
     [Fact]

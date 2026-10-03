@@ -1,0 +1,203 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.methods",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "full",
+      "total": 5,
+      "count": 5,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 5,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "methods": [
+        {
+          "name": "Add",
+          "signature": "public void Add(Order order)",
+          "returnType": "void",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [
+            {
+              "AttributeType": "Golden.Shapes.TagAttribute",
+              "ConstructorArguments": [
+                "add"
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 32767
+            }
+          ],
+          "parameters": [
+            {
+              "name": "order",
+              "typeName": "Order",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": []
+            }
+          ]
+        },
+        {
+          "name": "Add",
+          "signature": "public void Add(int id, decimal total)",
+          "returnType": "void",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": [
+            {
+              "name": "id",
+              "typeName": "int",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": []
+            },
+            {
+              "name": "total",
+              "typeName": "decimal",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": [
+                {
+                  "AttributeType": "Golden.Shapes.TagAttribute",
+                  "ConstructorArguments": [
+                    "total"
+                  ],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 32767
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Discount",
+          "signature": "public decimal Discount(decimal percent)",
+          "returnType": "decimal",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": [
+            {
+              "name": "percent",
+              "typeName": "decimal",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": [
+                {
+                  "AttributeType": "Golden.Shapes.TagAttribute",
+                  "ConstructorArguments": [
+                    "percent"
+                  ],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 32767
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "FlushAsync",
+          "signature": "public Task<int> FlushAsync()",
+          "returnType": "Task<int>",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.AsyncStateMachineAttribute",
+              "ConstructorArguments": [
+                {
+                  "FullName": "Golden.Shapes.OrderProcessor+<FlushAsync>d__18",
+                  "AssemblyName": "Sherlock.Golden"
+                }
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 64
+            },
+            {
+              "AttributeType": "System.Diagnostics.DebuggerStepThroughAttribute",
+              "ConstructorArguments": [],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 108
+            }
+          ],
+          "parameters": []
+        },
+        {
+          "name": "Next",
+          "signature": "public sealed Order Next()",
+          "returnType": "Order",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": true,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": []
+        }
+      ]
+    }
+  }
+}

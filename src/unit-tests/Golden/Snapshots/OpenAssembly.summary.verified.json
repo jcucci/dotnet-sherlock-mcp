@@ -1,0 +1,17 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "assembly.handle",
+    "version": "1.0.0",
+    "data": {
+      "handle": "{Handle}",
+      "name": "Sherlock.Golden",
+      "version": "1.2.3.0",
+      "targetFramework": null,
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "additionalAssemblies": []
+    }
+  }
+}

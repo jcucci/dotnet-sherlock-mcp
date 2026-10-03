@@ -1,0 +1,22 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "MemberNotFound",
+    "message": "Method 'Ad' not found in type 'Golden.Shapes.OrderProcessor'",
+    "suggestion": "Did you mean 'Add' or 'add_Processed'?",
+    "alternativeTools": [
+      "get_type_members",
+      "search_members"
+    ],
+    "recommendedParams": {
+      "candidates": [
+        "Add",
+        "add_Processed"
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.packages",
+    "version": "1.0.0",
+    "data": {
+      "projectFilePath": "{Fixture}/project/Sample/Sample.csproj",
+      "packageName": null,
+      "packages": [
+        {
+          "Name": "Sherlock.Golden.NotInCache",
+          "Version": "1.2.3",
+          "AssemblyPaths": [],
+          "IsResolved": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    },
+    {
+      "name": "Golden.Shapes.PriorityProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.PriorityProcessor"
+    }
+  ],
+  "payload": {
+    "kind": "reverselookup.implementations",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.IOrderSource",
+      "scope": [
+        "{Fixture}/Sherlock.Golden.dll"
+      ],
+      "projection": "summary",
+      "total": 2,
+      "count": 2,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 2,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "typeFullName": "Golden.Shapes.OrderProcessor",
+          "kind": "interface"
+        },
+        {
+          "typeFullName": "Golden.Shapes.PriorityProcessor",
+          "kind": "interface"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "InvalidContinuationToken",
+    "message": "The continuation token is invalid or expired.",
+    "details": null
+  }
+}

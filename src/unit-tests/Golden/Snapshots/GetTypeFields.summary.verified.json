@@ -1,0 +1,44 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.fields",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "total": 2,
+      "count": 2,
+      "nextToken": null,
+      "fields": [
+        {
+          "name": "DefaultName",
+          "signature": "public static readonly string DefaultName",
+          "typeName": "string",
+          "accessModifier": "public",
+          "isStatic": true,
+          "isReadOnly": true,
+          "isConst": false,
+          "isVolatile": false,
+          "isInitOnly": true,
+          "constantValue": null,
+          "attributes": []
+        },
+        {
+          "name": "MaxBatch",
+          "signature": "public static const int MaxBatch",
+          "typeName": "int",
+          "accessModifier": "public",
+          "isStatic": true,
+          "isReadOnly": false,
+          "isConst": true,
+          "isVolatile": false,
+          "isInitOnly": false,
+          "constantValue": 10,
+          "attributes": []
+        }
+      ]
+    }
+  }
+}

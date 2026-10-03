@@ -1,0 +1,25 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "decompile.member",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "memberName": "Add",
+      "overloads": [
+        {
+          "signature": "void Add(Order order)"
+        }
+      ],
+      "source": "using System;\n\n/// <summary>Queues an order.</summary>\n/// <param name=\"order\">The order to queue.</param>\n[Tag(\"add\")]\npublic void Add(Order order)\n{\n\tOrder[] array = new Order[_orders.Length + 1];\n\tArray.Copy(_orders, array, _orders.Length);\n\tarray[_orders.Length] = order;\n\t_orders = array;\n\tProcessed?.Invoke(this, EventArgs.Empty);\n}",
+      "startLine": 1,
+      "lineCount": 13,
+      "totalLines": 13,
+      "truncated": false,
+      "clippedLines": 0,
+      "continuationToken": null
+    }
+  }
+}

@@ -1,0 +1,75 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.packageGraph",
+    "version": "1.0.0",
+    "data": {
+      "assetsPath": "{Fixture}/project/Sample/obj/project.assets.json",
+      "projectName": "Sample",
+      "projectPath": "{Fixture}/project/Sample/Sample.csproj",
+      "targetFramework": "net8.0",
+      "runtimeIdentifier": null,
+      "availableTargets": [
+        "net8.0",
+        "net8.0/linux-x64",
+        "net10.0"
+      ],
+      "projection": "full",
+      "packageIdContains": null,
+      "directDependencies": [
+        {
+          "id": "Fake.Lib",
+          "requested": "[1.0.0, )"
+        }
+      ],
+      "total": 3,
+      "count": 3,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 3,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "packages": [
+        {
+          "id": "Fake.Dep",
+          "version": "1.0.0",
+          "type": "package",
+          "direct": false,
+          "dependencyCount": 0,
+          "path": "fake.dep/1.0.0",
+          "dependencies": {},
+          "compileAssemblies": []
+        },
+        {
+          "id": "Fake.Lib",
+          "version": "1.0.0",
+          "type": "package",
+          "direct": true,
+          "dependencyCount": 1,
+          "path": "fake.lib/1.0.0",
+          "dependencies": {
+            "Fake.Dep": "1.0.0"
+          },
+          "compileAssemblies": [
+            "{Fixture}/project/packages/fake.lib/1.0.0/lib/net8.0/Fake.Lib.dll"
+          ]
+        },
+        {
+          "id": "Ref",
+          "version": "1.0.0",
+          "type": "project",
+          "direct": false,
+          "dependencyCount": 0,
+          "path": "{Fixture}/project/Ref/Ref.csproj",
+          "dependencies": {},
+          "compileAssemblies": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,72 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.assemblyInfo",
+    "version": "1.0.0",
+    "data": {
+      "projection": "full",
+      "name": "Sherlock.Golden",
+      "version": "1.2.3.0",
+      "fullName": "Sherlock.Golden, Version=1.2.3.0, Culture=neutral, PublicKeyToken=null",
+      "location": "{Fixture}/Sherlock.Golden.dll",
+      "targetFramework": null,
+      "frameworkResolution": {
+        "kind": "hostRuntime",
+        "targetFramework": null,
+        "coreAssembly": "System.Private.CoreLib",
+        "packs": [],
+        "missingFrameworks": []
+      },
+      "referencedAssemblies": [
+        "System.Private.CoreLib@{FrameworkAssemblyVersion}"
+      ],
+      "attributes": [
+        {
+          "AttributeType": "System.Runtime.CompilerServices.ExtensionAttribute",
+          "ConstructorArguments": [],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 69
+        },
+        {
+          "AttributeType": "System.Runtime.CompilerServices.CompilationRelaxationsAttribute",
+          "ConstructorArguments": [
+            8
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 71
+        },
+        {
+          "AttributeType": "System.Runtime.CompilerServices.RuntimeCompatibilityAttribute",
+          "ConstructorArguments": [],
+          "NamedArguments": {
+            "WrapNonExceptionThrows": true
+          },
+          "AllowMultiple": false,
+          "ValidOn": 1
+        },
+        {
+          "AttributeType": "System.Diagnostics.DebuggableAttribute",
+          "ConstructorArguments": [
+            263
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 3
+        },
+        {
+          "AttributeType": "System.Reflection.AssemblyInformationalVersionAttribute",
+          "ConstructorArguments": [
+            "1.2.3-golden"
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 1
+        }
+      ]
+    }
+  }
+}

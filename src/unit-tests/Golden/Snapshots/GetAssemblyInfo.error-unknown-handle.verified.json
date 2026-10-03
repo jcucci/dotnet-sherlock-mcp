@@ -1,0 +1,15 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "UnknownAssemblyHandle",
+    "message": "Assembly handle not found: {Handle}",
+    "suggestion": "The handle was never issued here or has been evicted. Call open_assembly with the assembly path to get a handle, or pass assemblyPath directly.",
+    "alternativeTools": [
+      "open_assembly"
+    ]
+  }
+}

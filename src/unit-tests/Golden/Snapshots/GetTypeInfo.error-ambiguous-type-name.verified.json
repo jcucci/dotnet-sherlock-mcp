@@ -1,0 +1,18 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "AmbiguousTypeName",
+    "message": "Type name 'Order' is ambiguous; it matches 2 types: Golden.Shapes.Legacy.Order, Golden.Shapes.Order.",
+    "suggestion": "Retry with one of the candidate full names as typeName.",
+    "recommendedParams": {
+      "candidates": [
+        "Golden.Shapes.Legacy.Order",
+        "Golden.Shapes.Order"
+      ]
+    }
+  }
+}

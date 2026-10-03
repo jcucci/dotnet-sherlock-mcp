@@ -1,0 +1,76 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.IOrderSource",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.IOrderSource"
+    },
+    {
+      "name": "Golden.Shapes.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Order"
+    },
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    },
+    {
+      "name": "Golden.Shapes.Legacy.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Legacy.Order"
+    }
+  ],
+  "payload": {
+    "kind": "search.members",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "nameContains": "Order",
+      "total": 5,
+      "count": 5,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 5,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "IOrderSource",
+          "signature": "interface Golden.Shapes.IOrderSource"
+        },
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "Order",
+          "signature": "class Golden.Shapes.Order"
+        },
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "OrderExtensions",
+          "signature": "class Golden.Shapes.OrderExtensions"
+        },
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "OrderProcessor",
+          "signature": "class Golden.Shapes.OrderProcessor"
+        },
+        {
+          "declaringType": "Golden.Shapes.Legacy",
+          "memberKind": "type",
+          "name": "Order",
+          "signature": "class Golden.Shapes.Legacy.Order"
+        }
+      ]
+    }
+  }
+}
