@@ -1,0 +1,17 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "ToolNotFound",
+    "message": "No Sherlock tool is named 'get_package_graf'.",
+    "suggestion": "Tool names are snake_case; retry with one of recommendedParams.candidates.",
+    "recommendedParams": {
+      "candidates": [
+        "get_package_graph"
+      ]
+    }
+  }
+}

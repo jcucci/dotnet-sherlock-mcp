@@ -11,6 +11,11 @@ public static class JsonHelpers
     public static string Envelope(string kind, object data) =>
         JsonSerializer.Serialize(new { kind, version = SchemaVersion, data }, DefaultOptions);
 
+    public static string Envelope(string kind, object data, IReadOnlyList<ToolHint> hints) =>
+        hints.Count == 0
+            ? Envelope(kind, data)
+            : JsonSerializer.Serialize(new { kind, version = SchemaVersion, data, hints }, DefaultOptions);
+
     public static string Error(string code, string message, object? details = null) =>
         JsonSerializer.Serialize(new { kind = "error", version = SchemaVersion, code, message, details }, DefaultOptions);
 

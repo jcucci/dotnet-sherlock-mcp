@@ -89,6 +89,14 @@ public class ToolResponseGoldenTests
         ["FindReferencesTo|summary"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["FindReferencesTo|full"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, projection: "full", noCache: true)),
         ["FindReferencesTo|il"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, analysisDepth: "il", noCache: true)),
+        ["LoadTools|summary"] = () => Text(ToolGroupTools.LoadTools(CoreRegistry().Registry)),
+        ["LoadTools|load"] = () =>
+        {
+            var (registry, tools) = CoreRegistry();
+            return Text(ToolGroupTools.Load(registry, ["frameworks"], tools));
+        },
+        ["InvokeTool|error-not-loaded"] = () => Text(ToolGroupTools.Resolve(CoreRegistry().Tools, "get_package_graph", out _)!),
+        ["InvokeTool|error-not-found"] = () => Text(ToolGroupTools.Resolve(CoreRegistry().Tools, "get_package_graf", out _)!),
         ["FindEndpoints|summary"] = () => Done(FrameworkPatternTools.FindEndpoints(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
         ["FindEndpoints|full"] = () => Done(FrameworkPatternTools.FindEndpoints(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, projection: "full", noCache: true)),
         ["FindServiceRegistrations|summary"] = () => Done(FrameworkPatternTools.FindServiceRegistrations(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
@@ -135,6 +143,14 @@ public class ToolResponseGoldenTests
     private static IlAnalysisService IlAnalysis => new();
 
     private static FrameworkPatternService FrameworkPatterns => new();
+
+    private static (ToolGroupRegistry Registry, ModelContextProtocol.Server.McpServerPrimitiveCollection<ModelContextProtocol.Server.McpServerTool> Tools) CoreRegistry()
+    {
+        var tools = ToolCatalog.NewCollection();
+        var registry = new ToolGroupRegistry(ToolProfile.Core);
+        registry.Detach(tools);
+        return (registry, tools);
+    }
 
     public static TheoryData<string, string> CaseNames()
     {

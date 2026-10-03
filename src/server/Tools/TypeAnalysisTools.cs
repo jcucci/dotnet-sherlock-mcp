@@ -146,7 +146,7 @@ public static class TypeAnalysisTools
                 var info = typeAnalysis.GetTypeInfo(assemblyPath, typeName);
                 return info == null
                     ? ToolErrors.TypeNotFound(contexts, assemblyPath, typeName)
-                    : JsonHelpers.Envelope("type.info", info);
+                    : JsonHelpers.Envelope("type.info", info, ToolHints.ForType(info));
             }, noCache));
         }
         catch (AmbiguousTypeNameException ex)

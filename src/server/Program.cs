@@ -42,21 +42,17 @@ builder.Logging.AddConsole(consoleLogOptions =>
     consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-if (toolProfile.IsRestricted)
-{
-    builder.Services.PostConfigure<McpServerOptions>(options =>
-    {
-        if (options.ToolCollection is not { } tools)
-            return;
-        foreach (var tool in tools.ToArray().Where(tool => !toolProfile.Includes(tool.ProtocolTool.Name)))
-            tools.Remove(tool);
-    });
-}
+builder.Services
+    .AddSingleton(new ToolGroupRegistry(toolProfile))
+    .AddOptions<McpServerOptions>()
+    .PostConfigure<ToolGroupRegistry>((options, registry) => registry.Detach(options.ToolCollection));
 
-// The tool set is scanned from the assembly and narrowed by the tool profile once at startup; it
-// never varies per caller, so clients may cache tools/list for a long time and share it across
-// authorization contexts.
+// The tool set is scanned from the assembly and narrowed by the tool profile at startup. Under the
+// full profile it never changes, so clients may cache tools/list for a long time and share it across
+// authorization contexts. A restricted profile grows when load_tools adds a group, so its list is
+// private to the session and refreshed through notifications/tools/list_changed.
 var toolListTimeToLive = TimeSpan.FromHours(1);
+var toolListCacheScope = toolProfile.IsRestricted ? CacheScope.Private : CacheScope.Public;
 
 // ttlMs and cacheScope were introduced by the 2026-07-28 revision; earlier revisions reject them
 // as unrecognized keys. The SDK only defaults these fields, it does not strip ones we set, so the
@@ -111,7 +107,7 @@ builder.Services
             if (SupportsCachingHints(request))
             {
                 result.TimeToLive = toolListTimeToLive;
-                result.CacheScope = CacheScope.Public;
+                result.CacheScope = toolListCacheScope;
             }
 
             return result;

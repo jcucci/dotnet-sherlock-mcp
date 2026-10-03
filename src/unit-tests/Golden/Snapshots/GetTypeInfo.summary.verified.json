@@ -111,6 +111,13 @@
           "NestedTypes": []
         }
       ]
-    }
+    },
+    "hints": [
+      {
+        "tool": "get_nested_types",
+        "reason": "lists this type's nested types with their kinds and accessibility",
+        "group": "metadata"
+      }
+    ]
   }
 }

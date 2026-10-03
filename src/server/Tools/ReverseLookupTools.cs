@@ -107,7 +107,7 @@ public static class ReverseLookupTools
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
                     results
                 };
-                return new ToolResponse(JsonHelpers.Envelope("reverselookup.implementations", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.TypeFullName))));
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.implementations", result, ToolHints.ForTypeName(typeName)), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.TypeFullName))));
             }, noCache);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -320,7 +320,7 @@ public static class ReverseLookupTools
                     pagination = PaginationMetadata.Create(allHits.Length, page.Length, nextToken, resultsJson.Length),
                     results
                 };
-                return new ToolResponse(JsonHelpers.Envelope("reverselookup.extensions", result), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.extensions", result, ToolHints.ForTypeName(typeName)), ResourceUris.TypeLinks(page.Select(h => (h.AssemblyPath, h.TypeMetadataName ?? h.DeclaringTypeFullName))));
             }, noCache);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -479,7 +479,7 @@ public static class ReverseLookupTools
                 var sizeError = ResponseSizeHelper.ValidateResponseSize(new { result, links }, "find_references_to");
                 if (sizeError != null) return sizeError;
 
-                return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result), links);
+                return new ToolResponse(JsonHelpers.Envelope("reverselookup.references", result, ToolHints.ForTypeName(typeName)), links);
             }, noCache);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

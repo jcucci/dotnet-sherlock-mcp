@@ -74,7 +74,7 @@ public static class ProjectAnalysisTools
             return await middleware.ExecuteAsync(cacheKey, async () =>
             {
                 var paths = await projectAnalysis.GetProjectOutputPathsAsync(projectFilePath, configuration, cancellationToken);
-                return JsonHelpers.Envelope("project.outputs", new { projectFilePath, configuration, outputPaths = paths });
+                return JsonHelpers.Envelope("project.outputs", new { projectFilePath, configuration, outputPaths = paths }, ToolHints.ForProjectOutputs());
             }, noCache);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

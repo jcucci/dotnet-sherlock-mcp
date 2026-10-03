@@ -1,0 +1,409 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "toolgroups.load",
+    "version": "1.0.0",
+    "data": {
+      "loaded": [
+        {
+          "name": "find_endpoints",
+          "description": "Finds ASP.NET Core HTTP endpoints across one or more assemblies: MVC/API controller actions (attribute routes combined from [Route]/[Http*] with [controller]/[action] substituted) and minimal APIs (Map{Get,Post,Put,Delete,Patch,Methods,Group,Fallback} calls read from IL). Minimal-API routes and handlers come from string literals and method references next to the call, so routes held in variables or fields are reported as null. Returns a lean summary ({ kind, httpMethods, route, handler }) by default; projection='full' adds assemblyPath, handlerType, handlerMethod and registeredIn.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "assemblyPath": {
+                "description": "Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "assemblyHandle": {
+                "description": "Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "additionalAssemblies": {
+                "description": "Optional additional assembly paths to include in the search scope",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "default": null
+              },
+              "routeContains": {
+                "description": "Only endpoints whose route template contains this text (case-insensitive)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "httpMethod": {
+                "description": "Only endpoints that accept this HTTP method (e.g. 'GET'); endpoints without an explicit method always match",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "includeNonPublic": {
+                "description": "Include non-public controllers (default: false). Minimal-API calls are read from every method body regardless.",
+                "type": "boolean",
+                "default": false
+              },
+              "maxItems": {
+                "description": "Maximum items to return (default: 50)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "skip": {
+                "description": "Items to skip (paging)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "continuationToken": {
+                "description": "Continuation token for paging",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "projection": {
+                "description": "Response shape. 'summary' (default, token-lean): { kind, httpMethods, route, handler }. 'full': adds assemblyPath, handlerType, handlerMethod, registeredIn.",
+                "type": "string",
+                "default": "summary"
+              },
+              "noCache": {
+                "description": "Bypass cache for this request",
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        {
+          "name": "find_service_registrations",
+          "description": "Finds Microsoft.Extensions.DependencyInjection registrations by reading IL for calls to Add{Singleton,Scoped,Transient}, TryAdd*, AddKeyed*, AddHostedService and ServiceDescriptor factories, across one or more assemblies. Service/implementation types come from generic arguments or typeof(...) operands; factory and instance registrations report implementation=null. Every method body is scanned (registrations usually live in non-public Program code). Returns a lean summary ({ lifetime, service, implementation, registeredIn }) by default; projection='full' adds assemblyPath, registrationMethod, registrationKind, isTryAdd and isKeyed.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "assemblyPath": {
+                "description": "Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "assemblyHandle": {
+                "description": "Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "additionalAssemblies": {
+                "description": "Optional additional assembly paths to include in the search scope",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "default": null
+              },
+              "serviceType": {
+                "description": "Only registrations of this service type (simple or full name; open generic accepted, e.g. 'IRepository')",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "implementationType": {
+                "description": "Only registrations with this implementation type (simple or full name)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "lifetime": {
+                "description": "Only registrations with this lifetime: 'singleton', 'scoped' or 'transient'",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "caseSensitive": {
+                "description": "Case sensitive type-name matching (default: false)",
+                "type": "boolean",
+                "default": false
+              },
+              "maxItems": {
+                "description": "Maximum items to return (default: 50)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "skip": {
+                "description": "Items to skip (paging)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "continuationToken": {
+                "description": "Continuation token for paging",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "projection": {
+                "description": "Response shape. 'summary' (default, token-lean): { lifetime, service, implementation, registeredIn }. 'full': adds assemblyPath, registrationMethod, registrationKind, isTryAdd, isKeyed.",
+                "type": "string",
+                "default": "summary"
+              },
+              "noCache": {
+                "description": "Bypass cache for this request",
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        {
+          "name": "find_ef_entities",
+          "description": "Finds Entity Framework Core entities: the DbSet<T> properties (declared or inherited) of every DbContext subclass across one or more assemblies. Entities configured only in OnModelCreating are not listed. Returns a lean summary ({ context, property, entity }) by default; projection='full' adds assemblyPath.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "assemblyPath": {
+                "description": "Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "assemblyHandle": {
+                "description": "Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "additionalAssemblies": {
+                "description": "Optional additional assembly paths to include in the search scope",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "default": null
+              },
+              "contextType": {
+                "description": "Only this DbContext type (simple or full name)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "entityType": {
+                "description": "Only this entity type (simple or full name)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "caseSensitive": {
+                "description": "Case sensitive type-name matching (default: false)",
+                "type": "boolean",
+                "default": false
+              },
+              "includeNonPublic": {
+                "description": "Include non-public DbContext types (default: false)",
+                "type": "boolean",
+                "default": false
+              },
+              "maxItems": {
+                "description": "Maximum items to return (default: 50)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "skip": {
+                "description": "Items to skip (paging)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "continuationToken": {
+                "description": "Continuation token for paging",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "projection": {
+                "description": "Response shape. 'summary' (default, token-lean): { context, property, entity }. 'full': adds assemblyPath.",
+                "type": "string",
+                "default": "summary"
+              },
+              "noCache": {
+                "description": "Bypass cache for this request",
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        {
+          "name": "find_handlers",
+          "description": "Finds MediatR-style handlers across one or more assemblies: concrete types implementing IRequestHandler<,>/IRequestHandler<>, INotificationHandler<>, IStreamRequestHandler<,> or IPipelineBehavior<,> from the MediatR or Mediator namespaces. Returns a lean summary ({ kind, handler, message, response }) by default; projection='full' adds assemblyPath and interface.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "assemblyPath": {
+                "description": "Path to the primary .NET assembly file (.dll or .exe). Omit when passing assemblyHandle.",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "assemblyHandle": {
+                "description": "Handle returned by open_assembly; pass instead of assemblyPath (it also supplies the additionalAssemblies it was opened with)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "additionalAssemblies": {
+                "description": "Optional additional assembly paths to include in the search scope",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "default": null
+              },
+              "messageType": {
+                "description": "Only handlers of this request/notification type (simple or full name)",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "kind": {
+                "description": "Only this handler kind: 'request', 'notification', 'stream' or 'behavior'",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "caseSensitive": {
+                "description": "Case sensitive type-name matching (default: false)",
+                "type": "boolean",
+                "default": false
+              },
+              "includeNonPublic": {
+                "description": "Include non-public handler types (default: false)",
+                "type": "boolean",
+                "default": false
+              },
+              "maxItems": {
+                "description": "Maximum items to return (default: 50)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "skip": {
+                "description": "Items to skip (paging)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null
+              },
+              "continuationToken": {
+                "description": "Continuation token for paging",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null
+              },
+              "projection": {
+                "description": "Response shape. 'summary' (default, token-lean): { kind, handler, message, response }. 'full': adds assemblyPath, interface.",
+                "type": "string",
+                "default": "summary"
+              },
+              "noCache": {
+                "description": "Bypass cache for this request",
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        }
+      ],
+      "alreadyLoaded": [],
+      "note": "The loaded tools now appear in tools/list. If your client does not show them (it may not refresh its tool list), call them through invoke_tool with the name and arguments listed here."
+    }
+  }
+}
