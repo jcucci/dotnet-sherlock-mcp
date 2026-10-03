@@ -30,7 +30,7 @@ public class ProjectAnalysisServiceTests
         Assert.Single(projects);
         var p = projects[0];
         Assert.Equal("App", p.Name);
-        Assert.EndsWith(projRel, p.RelativePath.Replace('\\', '/'));
+        Assert.EndsWith(projRel.Replace('\\', '/'), p.RelativePath.Replace('\\', '/'));
         Assert.True(File.Exists(p.FullPath));
     }
 
