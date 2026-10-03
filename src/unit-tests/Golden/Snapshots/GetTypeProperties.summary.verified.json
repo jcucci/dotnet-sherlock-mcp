@@ -1,0 +1,54 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.properties",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "total": 2,
+      "count": 2,
+      "nextToken": null,
+      "properties": [
+        {
+          "name": "Count",
+          "signature": "public int Count { get; }",
+          "typeName": "int",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "canRead": true,
+          "canWrite": false,
+          "isIndexer": false,
+          "getterAccessModifier": "public",
+          "setterAccessModifier": null,
+          "attributes": [],
+          "indexerParameters": []
+        },
+        {
+          "name": "Name",
+          "signature": "public string Name { get; set; }",
+          "typeName": "string",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "canRead": true,
+          "canWrite": true,
+          "isIndexer": false,
+          "getterAccessModifier": "public",
+          "setterAccessModifier": "public",
+          "attributes": [],
+          "indexerParameters": []
+        }
+      ]
+    }
+  }
+}

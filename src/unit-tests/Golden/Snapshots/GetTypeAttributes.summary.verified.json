@@ -1,0 +1,44 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "type.attributes",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "attributeCount": 3,
+      "attributes": [
+        {
+          "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+          "ConstructorArguments": [
+            1
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 5196
+        },
+        {
+          "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+          "ConstructorArguments": [
+            0
+          ],
+          "NamedArguments": {},
+          "AllowMultiple": false,
+          "ValidOn": 27524
+        },
+        {
+          "AttributeType": "Golden.Shapes.TagAttribute",
+          "ConstructorArguments": [
+            "processor"
+          ],
+          "NamedArguments": {
+            "Weight": 2
+          },
+          "AllowMultiple": false,
+          "ValidOn": 32767
+        }
+      ]
+    }
+  }
+}

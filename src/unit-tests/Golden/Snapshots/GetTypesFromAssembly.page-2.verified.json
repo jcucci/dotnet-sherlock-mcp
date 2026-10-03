@@ -1,0 +1,55 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.PriorityProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.PriorityProcessor"
+    },
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.Repository`1",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Repository%601"
+    },
+    {
+      "name": "Golden.Shapes.Legacy.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Legacy.Order"
+    }
+  ],
+  "payload": {
+    "kind": "type.list",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "summary",
+      "totalTypeCount": 9,
+      "returnedTypeCount": 4,
+      "nextToken": "{Token}",
+      "types": [
+        {
+          "FullName": "Golden.Shapes.PriorityProcessor",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0
+        },
+        {
+          "FullName": "Golden.Shapes.OrderExtensions",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0
+        },
+        {
+          "FullName": "Golden.Shapes.Repository<T>",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0
+        },
+        {
+          "FullName": "Golden.Shapes.Legacy.Order",
+          "Namespace": "Golden.Shapes.Legacy",
+          "Kind": 0
+        }
+      ]
+    }
+  }
+}

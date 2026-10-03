@@ -1,0 +1,148 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.assembly",
+    "version": "1.0.0",
+    "data": {
+      "assemblyName": "Sherlock.Golden, Version=1.2.3.0, Culture=neutral, PublicKeyToken=null",
+      "location": "{Fixture}/Sherlock.Golden.dll",
+      "totalTypeCount": 9,
+      "returnedTypeCount": 9,
+      "nextToken": null,
+      "types": [
+        {
+          "name": "TagAttribute",
+          "fullName": "Golden.Shapes.TagAttribute",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": true,
+          "isGeneric": false,
+          "baseType": "System.Attribute",
+          "interfaces": [],
+          "memberCount": 14
+        },
+        {
+          "name": "IOrderSource",
+          "fullName": "Golden.Shapes.IOrderSource",
+          "namespace_": "Golden.Shapes",
+          "isClass": false,
+          "isInterface": true,
+          "isEnum": false,
+          "isAbstract": true,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": null,
+          "interfaces": [],
+          "memberCount": 1
+        },
+        {
+          "name": "Order",
+          "fullName": "Golden.Shapes.Order",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": "System.Object",
+          "interfaces": [],
+          "memberCount": 11
+        },
+        {
+          "name": "OrderProcessor",
+          "fullName": "Golden.Shapes.OrderProcessor",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": "System.Object",
+          "interfaces": [
+            "Golden.Shapes.IOrderSource"
+          ],
+          "memberCount": 22
+        },
+        {
+          "name": "PriorityProcessor",
+          "fullName": "Golden.Shapes.PriorityProcessor",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": "Golden.Shapes.OrderProcessor",
+          "interfaces": [
+            "Golden.Shapes.IOrderSource"
+          ],
+          "memberCount": 18
+        },
+        {
+          "name": "OrderExtensions",
+          "fullName": "Golden.Shapes.OrderExtensions",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": true,
+          "isSealed": true,
+          "isGeneric": false,
+          "baseType": "System.Object",
+          "interfaces": [],
+          "memberCount": 6
+        },
+        {
+          "name": "Repository`1",
+          "fullName": "Golden.Shapes.Repository`1",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": true,
+          "baseType": "System.Object",
+          "interfaces": [],
+          "memberCount": 6
+        },
+        {
+          "name": "Order",
+          "fullName": "Golden.Shapes.Legacy.Order",
+          "namespace_": "Golden.Shapes.Legacy",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": "System.Object",
+          "interfaces": [],
+          "memberCount": 8
+        },
+        {
+          "name": "Batch",
+          "fullName": "Golden.Shapes.OrderProcessor+Batch",
+          "namespace_": "Golden.Shapes",
+          "isClass": true,
+          "isInterface": false,
+          "isEnum": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isGeneric": false,
+          "baseType": "System.Object",
+          "interfaces": [],
+          "memberCount": 8
+        }
+      ]
+    }
+  }
+}

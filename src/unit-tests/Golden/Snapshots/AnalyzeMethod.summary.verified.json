@@ -1,0 +1,72 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.method",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "methodName": "Add",
+      "overloads": [
+        {
+          "signature": "System.Void Add(Golden.Shapes.Order)",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "isGeneric": false,
+          "returnType": "System.Void",
+          "parameters": [
+            {
+              "name": "order",
+              "type": "Golden.Shapes.Order",
+              "position": 0,
+              "hasDefaultValue": false,
+              "defaultValue": null,
+              "isIn": false,
+              "isOut": false,
+              "isParams": false
+            }
+          ],
+          "attributes": [
+            {
+              "type": "Golden.Shapes.TagAttribute",
+              "toString": "System.Reflection.TypeLoading.Ecma.EcmaCustomAttributeData"
+            }
+          ]
+        },
+        {
+          "signature": "System.Void Add(System.Int32, System.Decimal)",
+          "isStatic": false,
+          "isAbstract": false,
+          "isVirtual": false,
+          "isGeneric": false,
+          "returnType": "System.Void",
+          "parameters": [
+            {
+              "name": "id",
+              "type": "System.Int32",
+              "position": 0,
+              "hasDefaultValue": false,
+              "defaultValue": null,
+              "isIn": false,
+              "isOut": false,
+              "isParams": false
+            },
+            {
+              "name": "total",
+              "type": "System.Decimal",
+              "position": 1,
+              "hasDefaultValue": false,
+              "defaultValue": null,
+              "isIn": false,
+              "isOut": false,
+              "isParams": false
+            }
+          ],
+          "attributes": []
+        }
+      ]
+    }
+  }
+}

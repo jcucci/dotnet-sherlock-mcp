@@ -1,0 +1,430 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.TagAttribute",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.TagAttribute"
+    },
+    {
+      "name": "Golden.Shapes.IOrderSource",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.IOrderSource"
+    },
+    {
+      "name": "Golden.Shapes.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Order"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    },
+    {
+      "name": "Golden.Shapes.PriorityProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.PriorityProcessor"
+    },
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.Repository`1",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Repository%601"
+    },
+    {
+      "name": "Golden.Shapes.Legacy.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Legacy.Order"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor+Batch",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor%2BBatch"
+    }
+  ],
+  "payload": {
+    "kind": "type.list",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "full",
+      "totalTypeCount": 9,
+      "returnedTypeCount": 9,
+      "nextToken": null,
+      "types": [
+        {
+          "FullName": "Golden.Shapes.TagAttribute",
+          "Name": "TagAttribute",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": true,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Attribute",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            },
+            {
+              "AttributeType": "System.AttributeUsageAttribute",
+              "ConstructorArguments": [
+                32767
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 4
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.IOrderSource",
+          "Name": "IOrderSource",
+          "Namespace": "Golden.Shapes",
+          "Kind": 1,
+          "Accessibility": 0,
+          "IsAbstract": true,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": null,
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.Order",
+          "Name": "Order",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.OrderProcessor",
+          "Name": "OrderProcessor",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [
+            "Golden.Shapes.IOrderSource"
+          ],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            },
+            {
+              "AttributeType": "Golden.Shapes.TagAttribute",
+              "ConstructorArguments": [
+                "processor"
+              ],
+              "NamedArguments": {
+                "Weight": 2
+              },
+              "AllowMultiple": false,
+              "ValidOn": 32767
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": [
+            {
+              "FullName": "Golden.Shapes.OrderProcessor+Batch",
+              "Name": "Batch",
+              "Namespace": "Golden.Shapes",
+              "Kind": 0,
+              "Accessibility": 0,
+              "IsAbstract": false,
+              "IsSealed": false,
+              "IsStatic": false,
+              "IsGeneric": false,
+              "IsNested": true,
+              "AssemblyName": "Sherlock.Golden",
+              "BaseType": "System.Object",
+              "Interfaces": [],
+              "Attributes": [
+                {
+                  "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+                  "ConstructorArguments": [
+                    0
+                  ],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 5196
+                }
+              ],
+              "GenericParameters": [],
+              "NestedTypes": []
+            },
+            {
+              "FullName": "Golden.Shapes.OrderProcessor+<FlushAsync>d__18",
+              "Name": "<FlushAsync>d__18",
+              "Namespace": "Golden.Shapes",
+              "Kind": 0,
+              "Accessibility": 1,
+              "IsAbstract": false,
+              "IsSealed": true,
+              "IsStatic": false,
+              "IsGeneric": false,
+              "IsNested": true,
+              "AssemblyName": "Sherlock.Golden",
+              "BaseType": "System.Object",
+              "Interfaces": [
+                "System.Runtime.CompilerServices.IAsyncStateMachine"
+              ],
+              "Attributes": [
+                {
+                  "AttributeType": "System.Runtime.CompilerServices.CompilerGeneratedAttribute",
+                  "ConstructorArguments": [],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 32767
+                }
+              ],
+              "GenericParameters": [],
+              "NestedTypes": []
+            }
+          ]
+        },
+        {
+          "FullName": "Golden.Shapes.PriorityProcessor",
+          "Name": "PriorityProcessor",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "Golden.Shapes.OrderProcessor",
+          "Interfaces": [
+            "Golden.Shapes.IOrderSource"
+          ],
+          "Attributes": [],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.OrderExtensions",
+          "Name": "OrderExtensions",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": true,
+          "IsSealed": true,
+          "IsStatic": true,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.ExtensionAttribute",
+              "ConstructorArguments": [],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 69
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.Repository<T>",
+          "Name": "Repository`1",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": true,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            }
+          ],
+          "GenericParameters": [
+            {
+              "Name": "T",
+              "Position": 0,
+              "Constraints": 20,
+              "TypeConstraints": [],
+              "HasReferenceTypeConstraint": true,
+              "HasValueTypeConstraint": false,
+              "HasDefaultConstructorConstraint": true
+            }
+          ],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.Legacy.Order",
+          "Name": "Order",
+          "Namespace": "Golden.Shapes.Legacy",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": false,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                1
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            },
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.OrderProcessor+Batch",
+          "Name": "Batch",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": true,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        }
+      ]
+    }
+  }
+}

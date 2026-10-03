@@ -1,0 +1,12 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "InvalidArgument",
+    "message": "sourceFetch must be 'off', 'known-hosts' or 'any'",
+    "details": null
+  }
+}

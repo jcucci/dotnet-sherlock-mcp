@@ -1,0 +1,71 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "type.nested",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "nestedTypeCount": 2,
+      "nested": [
+        {
+          "FullName": "Golden.Shapes.OrderProcessor+Batch",
+          "Name": "Batch",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 0,
+          "IsAbstract": false,
+          "IsSealed": false,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": true,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableContextAttribute",
+              "ConstructorArguments": [
+                0
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 5196
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        },
+        {
+          "FullName": "Golden.Shapes.OrderProcessor+<FlushAsync>d__18",
+          "Name": "<FlushAsync>d__18",
+          "Namespace": "Golden.Shapes",
+          "Kind": 0,
+          "Accessibility": 1,
+          "IsAbstract": false,
+          "IsSealed": true,
+          "IsStatic": false,
+          "IsGeneric": false,
+          "IsNested": true,
+          "AssemblyName": "Sherlock.Golden",
+          "BaseType": "System.Object",
+          "Interfaces": [
+            "System.Runtime.CompilerServices.IAsyncStateMachine"
+          ],
+          "Attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.CompilerGeneratedAttribute",
+              "ConstructorArguments": [],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 32767
+            }
+          ],
+          "GenericParameters": [],
+          "NestedTypes": []
+        }
+      ]
+    }
+  }
+}

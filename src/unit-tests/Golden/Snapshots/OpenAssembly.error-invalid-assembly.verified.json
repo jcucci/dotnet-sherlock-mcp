@@ -1,0 +1,12 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "InvalidAssembly",
+    "message": "Failed to open assembly: {BadImageMessage}",
+    "suggestion": "The file is not a managed .NET assembly (it may be a native DLL or a corrupt file). Point assemblyPath at the managed .dll/.exe produced by the build."
+  }
+}

@@ -1,0 +1,100 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.members",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "summary",
+      "kinds": [
+        "constructor",
+        "property",
+        "field",
+        "event",
+        "method"
+      ],
+      "total": 12,
+      "count": 12,
+      "countsByKind": {
+        "constructor": 2,
+        "property": 2,
+        "field": 2,
+        "event": 1,
+        "method": 5
+      },
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 12,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "members": [
+        {
+          "kind": "constructor",
+          "name": ".ctor",
+          "signature": "public OrderProcessor()"
+        },
+        {
+          "kind": "constructor",
+          "name": ".ctor",
+          "signature": "public OrderProcessor(string name)"
+        },
+        {
+          "kind": "property",
+          "name": "Count",
+          "signature": "public int Count { get; }"
+        },
+        {
+          "kind": "property",
+          "name": "Name",
+          "signature": "public string Name { get; set; }"
+        },
+        {
+          "kind": "field",
+          "name": "DefaultName",
+          "signature": "public static readonly string DefaultName"
+        },
+        {
+          "kind": "field",
+          "name": "MaxBatch",
+          "signature": "public static const int MaxBatch"
+        },
+        {
+          "kind": "event",
+          "name": "Processed",
+          "signature": "public event EventHandler Processed"
+        },
+        {
+          "kind": "method",
+          "name": "Add",
+          "signature": "public void Add(Order order)"
+        },
+        {
+          "kind": "method",
+          "name": "Add",
+          "signature": "public void Add(int id, decimal total)"
+        },
+        {
+          "kind": "method",
+          "name": "Discount",
+          "signature": "public decimal Discount(decimal percent)"
+        },
+        {
+          "kind": "method",
+          "name": "FlushAsync",
+          "signature": "public Task<int> FlushAsync()"
+        },
+        {
+          "kind": "method",
+          "name": "Next",
+          "signature": "public sealed Order Next()"
+        }
+      ]
+    }
+  }
+}

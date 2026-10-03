@@ -5,8 +5,13 @@ namespace Sherlock.MCP.Tests;
 internal sealed class AssetsFixture : IDisposable
 {
     public AssetsFixture()
+        : this(Path.Combine(Path.GetTempPath(), $"sherlock_assets_{Guid.NewGuid():N}"))
     {
-        Root = Path.Combine(Path.GetTempPath(), $"sherlock_assets_{Guid.NewGuid():N}");
+    }
+
+    public AssetsFixture(string root)
+    {
+        Root = root;
         PackageFolder = Path.Combine(Root, "packages") + Path.DirectorySeparatorChar;
         ProjectDirectory = Path.Combine(Root, "Sample");
         ProjectFile = Path.Combine(ProjectDirectory, "Sample.csproj");

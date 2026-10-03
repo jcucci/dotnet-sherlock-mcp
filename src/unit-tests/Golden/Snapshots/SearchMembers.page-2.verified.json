@@ -1,0 +1,46 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    }
+  ],
+  "payload": {
+    "kind": "search.members",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "nameContains": "Order",
+      "total": 5,
+      "count": 2,
+      "nextToken": "{Token}",
+      "pagination": {
+        "hasMore": true,
+        "recommendedPageSize": 2,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "OrderExtensions",
+          "signature": "class Golden.Shapes.OrderExtensions"
+        },
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "OrderProcessor",
+          "signature": "class Golden.Shapes.OrderProcessor"
+        }
+      ]
+    }
+  }
+}

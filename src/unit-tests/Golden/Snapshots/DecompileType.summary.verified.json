@@ -1,0 +1,19 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "decompile.type",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.Order",
+      "source": "/// <summary>A customer order.</summary>\npublic class Order\n{\n\t/// <summary>Order id.</summary>\n\tpublic int Id { get; set; }\n\n\t/// <summary>Order total.</summary>\n\tpublic decimal Total { get; set; }\n}",
+      "startLine": 1,
+      "lineCount": 9,
+      "totalLines": 9,
+      "truncated": false,
+      "clippedLines": 0,
+      "continuationToken": null
+    }
+  }
+}

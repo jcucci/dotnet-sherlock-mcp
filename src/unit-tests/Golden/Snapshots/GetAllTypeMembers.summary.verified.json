@@ -1,0 +1,192 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.all",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "memberCounts": {
+        "methods": 5,
+        "properties": 2,
+        "fields": 2,
+        "events": 1,
+        "constructors": 2,
+        "total": 12
+      },
+      "methods": [
+        {
+          "name": "Add",
+          "signature": "public void Add(Order order)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "returnType": "void",
+          "parameterCount": 1,
+          "attributes": [
+            {
+              "AttributeType": "Golden.Shapes.TagAttribute",
+              "ConstructorArguments": [
+                "add"
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 32767
+            }
+          ]
+        },
+        {
+          "name": "Add",
+          "signature": "public void Add(int id, decimal total)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "returnType": "void",
+          "parameterCount": 2,
+          "attributes": []
+        },
+        {
+          "name": "Discount",
+          "signature": "public decimal Discount(decimal percent)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "returnType": "decimal",
+          "parameterCount": 1,
+          "attributes": []
+        },
+        {
+          "name": "FlushAsync",
+          "signature": "public Task<int> FlushAsync()",
+          "accessModifier": "public",
+          "isStatic": false,
+          "returnType": "Task<int>",
+          "parameterCount": 0,
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.AsyncStateMachineAttribute",
+              "ConstructorArguments": [
+                {
+                  "FullName": "Golden.Shapes.OrderProcessor+<FlushAsync>d__18",
+                  "AssemblyName": "Sherlock.Golden"
+                }
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 64
+            },
+            {
+              "AttributeType": "System.Diagnostics.DebuggerStepThroughAttribute",
+              "ConstructorArguments": [],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 108
+            }
+          ]
+        },
+        {
+          "name": "Next",
+          "signature": "public sealed Order Next()",
+          "accessModifier": "public",
+          "isStatic": false,
+          "returnType": "Order",
+          "parameterCount": 0,
+          "attributes": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "Count",
+          "signature": "public int Count { get; }",
+          "accessModifier": "public",
+          "isStatic": false,
+          "typeName": "int",
+          "canRead": true,
+          "canWrite": false,
+          "isIndexer": false,
+          "attributes": []
+        },
+        {
+          "name": "Name",
+          "signature": "public string Name { get; set; }",
+          "accessModifier": "public",
+          "isStatic": false,
+          "typeName": "string",
+          "canRead": true,
+          "canWrite": true,
+          "isIndexer": false,
+          "attributes": []
+        }
+      ],
+      "fields": [
+        {
+          "name": "DefaultName",
+          "signature": "public static readonly string DefaultName",
+          "accessModifier": "public",
+          "isStatic": true,
+          "typeName": "string",
+          "isConst": false,
+          "isReadOnly": true,
+          "constantValue": null,
+          "attributes": []
+        },
+        {
+          "name": "MaxBatch",
+          "signature": "public static const int MaxBatch",
+          "accessModifier": "public",
+          "isStatic": true,
+          "typeName": "int",
+          "isConst": true,
+          "isReadOnly": false,
+          "constantValue": 10,
+          "attributes": []
+        }
+      ],
+      "events": [
+        {
+          "name": "Processed",
+          "signature": "public event EventHandler Processed",
+          "accessModifier": "public",
+          "isStatic": false,
+          "eventHandlerTypeName": "EventHandler",
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                2
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            }
+          ]
+        }
+      ],
+      "constructors": [
+        {
+          "signature": "public OrderProcessor()",
+          "accessModifier": "public",
+          "isStatic": false,
+          "parameterCount": 0,
+          "attributes": [],
+          "parameters": []
+        },
+        {
+          "signature": "public OrderProcessor(string name)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "parameterCount": 1,
+          "attributes": [],
+          "parameters": [
+            {
+              "Name": "name",
+              "TypeName": "string",
+              "IsOptional": false,
+              "DefaultValue": null,
+              "attributes": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

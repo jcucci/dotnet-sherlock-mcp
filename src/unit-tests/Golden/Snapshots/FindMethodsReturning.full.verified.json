@@ -1,0 +1,65 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.IOrderSource",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.IOrderSource"
+    },
+    {
+      "name": "Golden.Shapes.OrderExtensions",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderExtensions"
+    },
+    {
+      "name": "Golden.Shapes.OrderProcessor",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.OrderProcessor"
+    }
+  ],
+  "payload": {
+    "kind": "reverselookup.returning",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.Order",
+      "scope": [
+        "{Fixture}/Sherlock.Golden.dll"
+      ],
+      "projection": "full",
+      "total": 3,
+      "count": 3,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 3,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes.IOrderSource",
+          "methodName": "Next",
+          "signature": "Order Next()",
+          "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+          "returnType": "Order",
+          "isStatic": false
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderExtensions",
+          "methodName": "First",
+          "signature": "Order First(OrderProcessor processor)",
+          "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+          "returnType": "Order",
+          "isStatic": true
+        },
+        {
+          "declaringType": "Golden.Shapes.OrderProcessor",
+          "methodName": "Next",
+          "signature": "Order Next()",
+          "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+          "returnType": "Order",
+          "isStatic": false
+        }
+      ]
+    }
+  }
+}

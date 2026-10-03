@@ -1,0 +1,18 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "AssemblyNotFound",
+    "message": "Assembly file not found: {Fixture}/Missing.dll",
+    "suggestion": "Locate the assembly first: search by a class it contains, by file name, by NuGet package, or from a project's build output.",
+    "alternativeTools": [
+      "find_assembly_by_class_name",
+      "find_assembly_by_file_name",
+      "find_assembly_by_nuget_package",
+      "get_project_output_paths"
+    ]
+  }
+}

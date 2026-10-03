@@ -1,0 +1,38 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "project.project",
+    "version": "1.0.0",
+    "data": {
+      "ProjectName": "Sample",
+      "TargetFramework": "net8.0",
+      "TargetFrameworks": [
+        "net8.0"
+      ],
+      "OutputType": "Library",
+      "AssemblyName": "Sample",
+      "RootNamespace": "Golden.Sample",
+      "ProjectReferences": [
+        {
+          "Name": "Ref",
+          "RelativePath": "../Ref/Ref.csproj",
+          "FullPath": "{Fixture}/project/Ref/Ref.csproj"
+        }
+      ],
+      "PackageReferences": [
+        {
+          "Name": "Sherlock.Golden.NotInCache",
+          "Version": "1.2.3",
+          "AssemblyPaths": [],
+          "IsResolved": false
+        }
+      ],
+      "OutputPaths": [
+        "{Fixture}/project/Sample/bin/Debug/net8.0",
+        "{Fixture}/project/Sample/bin/Release/net8.0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "ProjectNotFound",
+    "message": "Failed to analyze project: Project file not found: {Fixture}/Missing.csproj",
+    "suggestion": "Check the path; it must point at an existing file."
+  }
+}

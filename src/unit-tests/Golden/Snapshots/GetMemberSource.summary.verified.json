@@ -1,0 +1,34 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "source.member",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "memberName": "Add",
+      "origin": "embedded",
+      "overloads": [
+        {
+          "signature": "void Add(Order order)",
+          "origin": "embedded",
+          "document": "/_/Golden/Shapes.cs",
+          "url": null,
+          "lines": {
+            "start": 71,
+            "end": 81
+          }
+        }
+      ],
+      "note": null,
+      "source": "/// <summary>Queues an order.</summary>\n/// <param name=\"order\">The order to queue.</param>\n[Tag(\"add\")]\npublic void Add(Order order)\n{\n    var next = new Order[_orders.Length + 1];\n    Array.Copy(_orders, next, _orders.Length);\n    next[_orders.Length] = order;\n    _orders = next;\n    Processed?.Invoke(this, EventArgs.Empty);\n}",
+      "startLine": 1,
+      "lineCount": 11,
+      "totalLines": 11,
+      "truncated": false,
+      "clippedLines": 0,
+      "continuationToken": null
+    }
+  }
+}

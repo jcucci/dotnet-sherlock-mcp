@@ -1,0 +1,20 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "PackageNotFound",
+    "message": "Package 'Sherlock.Golden.NotInCache' not found under NuGet cache '{NuGetCache}'.",
+    "details": {
+      "packageId": "Sherlock.Golden.NotInCache",
+      "requestedVersion": null,
+      "requestedTfm": null,
+      "resolvedVersion": null,
+      "cacheRoot": "{NuGetCache}",
+      "availableVersions": [],
+      "availableTfms": []
+    }
+  }
+}

@@ -1,0 +1,343 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.members",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "full",
+      "kinds": [
+        "constructor",
+        "property",
+        "field",
+        "event",
+        "method"
+      ],
+      "total": 12,
+      "count": 12,
+      "countsByKind": {
+        "constructor": 2,
+        "property": 2,
+        "field": 2,
+        "event": 1,
+        "method": 5
+      },
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 12,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "members": [
+        {
+          "kind": "constructor",
+          "name": ".ctor",
+          "signature": "public OrderProcessor()",
+          "accessModifier": "public",
+          "isStatic": false,
+          "attributes": [],
+          "parameters": []
+        },
+        {
+          "kind": "constructor",
+          "name": ".ctor",
+          "signature": "public OrderProcessor(string name)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "attributes": [],
+          "parameters": [
+            {
+              "name": "name",
+              "typeName": "string",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": []
+            }
+          ]
+        },
+        {
+          "kind": "property",
+          "name": "Count",
+          "signature": "public int Count { get; }",
+          "typeName": "int",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "canRead": true,
+          "canWrite": false,
+          "isIndexer": false,
+          "getterAccessModifier": "public",
+          "setterAccessModifier": null,
+          "attributes": [],
+          "indexerParameters": []
+        },
+        {
+          "kind": "property",
+          "name": "Name",
+          "signature": "public string Name { get; set; }",
+          "typeName": "string",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "canRead": true,
+          "canWrite": true,
+          "isIndexer": false,
+          "getterAccessModifier": "public",
+          "setterAccessModifier": "public",
+          "attributes": [],
+          "indexerParameters": []
+        },
+        {
+          "kind": "field",
+          "name": "DefaultName",
+          "signature": "public static readonly string DefaultName",
+          "typeName": "string",
+          "accessModifier": "public",
+          "isStatic": true,
+          "isReadOnly": true,
+          "isConst": false,
+          "isVolatile": false,
+          "isInitOnly": true,
+          "constantValue": null,
+          "attributes": []
+        },
+        {
+          "kind": "field",
+          "name": "MaxBatch",
+          "signature": "public static const int MaxBatch",
+          "typeName": "int",
+          "accessModifier": "public",
+          "isStatic": true,
+          "isReadOnly": false,
+          "isConst": true,
+          "isVolatile": false,
+          "isInitOnly": false,
+          "constantValue": 10,
+          "attributes": []
+        },
+        {
+          "kind": "event",
+          "name": "Processed",
+          "signature": "public event EventHandler Processed",
+          "eventHandlerTypeName": "EventHandler",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "addMethodAccessModifier": "public",
+          "removeMethodAccessModifier": "public",
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                2
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            }
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "Add",
+          "signature": "public void Add(Order order)",
+          "returnType": "void",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [
+            {
+              "AttributeType": "Golden.Shapes.TagAttribute",
+              "ConstructorArguments": [
+                "add"
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 32767
+            }
+          ],
+          "parameters": [
+            {
+              "name": "order",
+              "typeName": "Order",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": []
+            }
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "Add",
+          "signature": "public void Add(int id, decimal total)",
+          "returnType": "void",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": [
+            {
+              "name": "id",
+              "typeName": "int",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": []
+            },
+            {
+              "name": "total",
+              "typeName": "decimal",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": [
+                {
+                  "AttributeType": "Golden.Shapes.TagAttribute",
+                  "ConstructorArguments": [
+                    "total"
+                  ],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 32767
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "Discount",
+          "signature": "public decimal Discount(decimal percent)",
+          "returnType": "decimal",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": [
+            {
+              "name": "percent",
+              "typeName": "decimal",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false,
+              "attributes": [
+                {
+                  "AttributeType": "Golden.Shapes.TagAttribute",
+                  "ConstructorArguments": [
+                    "percent"
+                  ],
+                  "NamedArguments": {},
+                  "AllowMultiple": false,
+                  "ValidOn": 32767
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "method",
+          "name": "FlushAsync",
+          "signature": "public Task<int> FlushAsync()",
+          "returnType": "Task<int>",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.AsyncStateMachineAttribute",
+              "ConstructorArguments": [
+                {
+                  "FullName": "Golden.Shapes.OrderProcessor+<FlushAsync>d__18",
+                  "AssemblyName": "Sherlock.Golden"
+                }
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 64
+            },
+            {
+              "AttributeType": "System.Diagnostics.DebuggerStepThroughAttribute",
+              "ConstructorArguments": [],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 108
+            }
+          ],
+          "parameters": []
+        },
+        {
+          "kind": "method",
+          "name": "Next",
+          "signature": "public sealed Order Next()",
+          "returnType": "Order",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": true,
+          "isOverride": false,
+          "isOperator": false,
+          "isExtensionMethod": false,
+          "genericTypeParameters": [],
+          "attributes": [],
+          "parameters": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "reflection.assemblyInfo",
+    "version": "1.0.0",
+    "data": {
+      "projection": "summary",
+      "name": "Sherlock.Golden",
+      "version": "1.2.3.0",
+      "fullName": "Sherlock.Golden, Version=1.2.3.0, Culture=neutral, PublicKeyToken=null",
+      "location": "{Fixture}/Sherlock.Golden.dll",
+      "targetFramework": null,
+      "frameworkResolution": {
+        "kind": "hostRuntime",
+        "targetFramework": null,
+        "coreAssembly": "System.Private.CoreLib",
+        "packs": [],
+        "missingFrameworks": []
+      },
+      "referencedAssemblies": [
+        "System.Private.CoreLib@{FrameworkAssemblyVersion}"
+      ]
+    }
+  }
+}

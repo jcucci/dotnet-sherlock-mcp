@@ -1,0 +1,46 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [
+    {
+      "name": "Golden.Shapes.IOrderSource",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.IOrderSource"
+    },
+    {
+      "name": "Golden.Shapes.Order",
+      "uri": "sherlock://assembly/{Fixture}%2FSherlock.Golden.dll/type/Golden.Shapes.Order"
+    }
+  ],
+  "payload": {
+    "kind": "search.members",
+    "version": "1.0.0",
+    "data": {
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "nameContains": "Order",
+      "total": 5,
+      "count": 2,
+      "nextToken": "{Token}",
+      "pagination": {
+        "hasMore": true,
+        "recommendedPageSize": 2,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "IOrderSource",
+          "signature": "interface Golden.Shapes.IOrderSource"
+        },
+        {
+          "declaringType": "Golden.Shapes",
+          "memberKind": "type",
+          "name": "Order",
+          "signature": "class Golden.Shapes.Order"
+        }
+      ]
+    }
+  }
+}

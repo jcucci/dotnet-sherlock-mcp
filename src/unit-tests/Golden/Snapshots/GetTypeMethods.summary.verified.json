@@ -1,0 +1,46 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.methods",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "summary",
+      "total": 5,
+      "count": 5,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 5,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "methods": [
+        {
+          "name": "Add",
+          "signature": "public void Add(Order order)"
+        },
+        {
+          "name": "Add",
+          "signature": "public void Add(int id, decimal total)"
+        },
+        {
+          "name": "Discount",
+          "signature": "public decimal Discount(decimal percent)"
+        },
+        {
+          "name": "FlushAsync",
+          "signature": "public Task<int> FlushAsync()"
+        },
+        {
+          "name": "Next",
+          "signature": "public sealed Order Next()"
+        }
+      ]
+    }
+  }
+}

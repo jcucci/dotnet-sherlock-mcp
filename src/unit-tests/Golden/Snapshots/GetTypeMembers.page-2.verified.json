@@ -1,0 +1,44 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": true,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.members",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "projection": "summary",
+      "kinds": [
+        "property",
+        "field"
+      ],
+      "total": 4,
+      "count": 2,
+      "countsByKind": {
+        "property": 2,
+        "field": 2
+      },
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 2,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "members": [
+        {
+          "kind": "field",
+          "name": "DefaultName",
+          "signature": "public static readonly string DefaultName"
+        },
+        {
+          "kind": "field",
+          "name": "MaxBatch",
+          "signature": "public static const int MaxBatch"
+        }
+      ]
+    }
+  }
+}

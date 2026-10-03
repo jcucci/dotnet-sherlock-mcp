@@ -1,0 +1,42 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.events",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "total": 1,
+      "count": 1,
+      "nextToken": null,
+      "events": [
+        {
+          "name": "Processed",
+          "signature": "public event EventHandler Processed",
+          "eventHandlerTypeName": "EventHandler",
+          "accessModifier": "public",
+          "isStatic": false,
+          "isVirtual": false,
+          "isAbstract": false,
+          "isSealed": false,
+          "isOverride": false,
+          "addMethodAccessModifier": "public",
+          "removeMethodAccessModifier": "public",
+          "attributes": [
+            {
+              "AttributeType": "System.Runtime.CompilerServices.NullableAttribute",
+              "ConstructorArguments": [
+                2
+              ],
+              "NamedArguments": {},
+              "AllowMultiple": false,
+              "ValidOn": 27524
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

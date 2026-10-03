@@ -1,0 +1,41 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "member.constructors",
+    "version": "1.0.0",
+    "data": {
+      "typeName": "Golden.Shapes.OrderProcessor",
+      "assemblyPath": "{Fixture}/Sherlock.Golden.dll",
+      "total": 2,
+      "count": 2,
+      "nextToken": null,
+      "constructors": [
+        {
+          "signature": "public OrderProcessor()",
+          "accessModifier": "public",
+          "isStatic": false,
+          "parameters": []
+        },
+        {
+          "signature": "public OrderProcessor(string name)",
+          "accessModifier": "public",
+          "isStatic": false,
+          "parameters": [
+            {
+              "name": "name",
+              "typeName": "string",
+              "defaultValue": null,
+              "isOptional": false,
+              "isOut": false,
+              "isRef": false,
+              "isIn": false,
+              "isParams": false
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

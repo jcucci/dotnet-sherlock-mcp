@@ -1,0 +1,23 @@
+﻿{
+  "isError": true,
+  "hasStructuredContent": false,
+  "resourceLinks": [],
+  "payload": {
+    "kind": "error",
+    "version": "1.0.0",
+    "code": "TypeNotFound",
+    "message": "Type 'Golden.Shapes.OrderProcesor' not found in assembly",
+    "suggestion": "Did you mean 'Golden.Shapes.OrderProcessor' or 'Golden.Shapes.Order' or 'Golden.Shapes.Legacy.Order'? Retry with one of recommendedParams.candidates as typeName.",
+    "alternativeTools": [
+      "search_members",
+      "get_types_from_assembly"
+    ],
+    "recommendedParams": {
+      "candidates": [
+        "Golden.Shapes.OrderProcessor",
+        "Golden.Shapes.Order",
+        "Golden.Shapes.Legacy.Order"
+      ]
+    }
+  }
+}
