@@ -21,16 +21,16 @@ public class ReverseLookupService : IReverseLookupService
     {
         var hits = new ConcurrentBag<ImplementationHit>();
 
-        ScanInParallel(assemblyPaths, (path, ctx) =>
+        AssemblyScanner.ScanInParallel(_contexts, assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
+            foreach (var candidate in AssemblyScanner.GetScannableTypes(ctx, options, cancellationToken))
             {
-                var matchedInterfaces = GetInterfacesSafe(candidate)
+                var matchedInterfaces = AssemblyScanner.GetInterfacesSafe(candidate)
                     .Where(i => TypeNameMatcher.Matches(i, typeName, options.CaseSensitive))
                     .Select(TypeNameFormatter.FriendlyFullName)
                     .ToArray();
 
-                var baseTypeChain = GetBaseTypeChain(candidate);
+                var baseTypeChain = AssemblyScanner.GetBaseTypeChain(candidate);
                 var matchedBases = baseTypeChain
                     .Where(b => TypeNameMatcher.Matches(b, typeName, options.CaseSensitive))
                     .Select(TypeNameFormatter.FriendlyFullName)
@@ -60,13 +60,13 @@ public class ReverseLookupService : IReverseLookupService
         IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<MethodReturnHit>();
-        var flags = BuildMemberFlags(options);
+        var flags = AssemblyScanner.BuildMemberFlags(options);
 
-        ScanInParallel(assemblyPaths, (path, ctx) =>
+        AssemblyScanner.ScanInParallel(_contexts, assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
+            foreach (var candidate in AssemblyScanner.GetScannableTypes(ctx, options, cancellationToken))
             {
-                foreach (var method in GetMethodsSafe(candidate, flags))
+                foreach (var method in AssemblyScanner.GetMethodsSafe(candidate, flags))
                 {
                     Type? returnType;
                     try { returnType = method.ReturnType; }
@@ -99,15 +99,15 @@ public class ReverseLookupService : IReverseLookupService
         IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<ExtensionMethodHit>();
-        var flags = BuildMemberFlags(options);
+        var flags = AssemblyScanner.BuildMemberFlags(options);
 
-        ScanInParallel(assemblyPaths, (path, ctx) =>
+        AssemblyScanner.ScanInParallel(_contexts, assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
+            foreach (var candidate in AssemblyScanner.GetScannableTypes(ctx, options, cancellationToken))
             {
                 if (!IsStaticClass(candidate)) continue;
 
-                foreach (var method in GetMethodsSafe(candidate, flags))
+                foreach (var method in AssemblyScanner.GetMethodsSafe(candidate, flags))
                 {
                     if (!IsExtensionMethod(method)) continue;
 
@@ -146,7 +146,7 @@ public class ReverseLookupService : IReverseLookupService
         IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var hits = new ConcurrentBag<ReferenceHit>();
-        var flags = BuildMemberFlags(options);
+        var flags = AssemblyScanner.BuildMemberFlags(options);
         var cap = Math.Max(1, options.HardCap);
         var reserved = 0;
         var truncated = 0;
@@ -162,9 +162,9 @@ public class ReverseLookupService : IReverseLookupService
             return true;
         }
 
-        ScanInParallel(assemblyPaths, (path, ctx) =>
+        AssemblyScanner.ScanInParallel(_contexts, assemblyPaths, (path, ctx) =>
         {
-            foreach (var candidate in GetScannableTypes(ctx, options, cancellationToken))
+            foreach (var candidate in AssemblyScanner.GetScannableTypes(ctx, options, cancellationToken))
             {
                 if (Volatile.Read(ref truncated) == 1) return;
 
@@ -179,7 +179,7 @@ public class ReverseLookupService : IReverseLookupService
                         disambiguator: TypeNameFormatter.FriendlyFullName(baseType)))) return;
                 }
 
-                foreach (var iface in GetInterfacesSafe(candidate))
+                foreach (var iface in AssemblyScanner.GetInterfacesSafe(candidate))
                 {
                     if (!TypeNameMatcher.Matches(iface, typeName, options.CaseSensitive)) continue;
                     if (!TryAdd(MakeRefHit(path, candidate, "type", declaringName, "interface",
@@ -200,7 +200,7 @@ public class ReverseLookupService : IReverseLookupService
                     }
                 }
 
-                foreach (var method in GetMethodsSafe(candidate, flags))
+                foreach (var method in AssemblyScanner.GetMethodsSafe(candidate, flags))
                 {
                     var sig = FormatMethodSignature(method);
 
@@ -225,7 +225,7 @@ public class ReverseLookupService : IReverseLookupService
                     }
                 }
 
-                foreach (var prop in GetPropertiesSafe(candidate, flags))
+                foreach (var prop in AssemblyScanner.GetPropertiesSafe(candidate, flags))
                 {
                     Type? pt;
                     try { pt = prop.PropertyType; } catch { continue; }
@@ -236,7 +236,7 @@ public class ReverseLookupService : IReverseLookupService
                         disambiguator: TypeNameFormatter.FriendlyFullName(propMatch)))) return;
                 }
 
-                foreach (var field in GetFieldsSafe(candidate, flags))
+                foreach (var field in AssemblyScanner.GetFieldsSafe(candidate, flags))
                 {
                     Type? ft;
                     try { ft = field.FieldType; } catch { continue; }
@@ -247,7 +247,7 @@ public class ReverseLookupService : IReverseLookupService
                         disambiguator: TypeNameFormatter.FriendlyFullName(fieldMatch)))) return;
                 }
 
-                foreach (var evt in GetEventsSafe(candidate, flags))
+                foreach (var evt in AssemblyScanner.GetEventsSafe(candidate, flags))
                 {
                     Type? et;
                     try { et = evt.EventHandlerType; } catch { continue; }
@@ -272,22 +272,6 @@ public class ReverseLookupService : IReverseLookupService
         return new ReferencesResult(sorted, truncated == 1);
     }
 
-    private void ScanInParallel(
-        string[] assemblyPaths, Action<string, IAssemblyInspectionContext> scan,
-        IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
-    {
-        var paths = assemblyPaths.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        var counter = new ProgressCounter(progress, paths.Length);
-        Parallel.ForEach(
-            paths,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-            path =>
-            {
-                TryScanAssembly(path, scan);
-                counter.Increment(Path.GetFileName(path));
-            });
-    }
-
     private static ReferenceHit MakeRefHit(
         string assemblyPath, Type declaringTypeInfo, string memberKind, string memberName,
         string referenceKind, string signature, string disambiguator)
@@ -302,21 +286,6 @@ public class ReverseLookupService : IReverseLookupService
             : $"{declaringType}|{memberKind}|{memberName}|{referenceKind}|{disambiguator}";
 
         return new(assemblyPath, declaringType, memberKind, memberName, referenceKind, signature, dedupeKey, declaringTypeInfo.FullName);
-    }
-
-    private bool TryScanAssembly(string path, Action<string, IAssemblyInspectionContext> scan)
-    {
-        try
-        {
-            using var lease = _contexts.Acquire(path);
-            scan(path, lease.Context);
-            return true;
-        }
-        catch (BadImageFormatException) { return false; }
-        catch (FileLoadException) { return false; }
-        catch (FileNotFoundException) { return false; }
-        catch (ReflectionTypeLoadException) { return false; }
-        catch (IOException) { return false; }
     }
 
     private static Type? FindMatchingType(Type? container, string userName, bool caseSensitive)
@@ -344,76 +313,6 @@ public class ReverseLookupService : IReverseLookupService
             }
         }
         return null;
-    }
-
-    private static BindingFlags BuildMemberFlags(ReverseLookupOptions options)
-    {
-        var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
-        if (options.IncludeNonPublic) flags |= BindingFlags.NonPublic;
-        return flags;
-    }
-
-    private static IEnumerable<Type> GetScannableTypes(
-        IAssemblyInspectionContext ctx, ReverseLookupOptions options, CancellationToken cancellationToken)
-    {
-        IEnumerable<Type> types;
-        try { types = ctx.GetTypes(); }
-        catch { yield break; }
-
-        foreach (var t in types)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (t == null) continue;
-            if (t.IsGenericParameter) continue;
-            if (!options.IncludeNonPublic && !t.IsPublic && !t.IsNestedPublic) continue;
-            yield return t;
-        }
-    }
-
-    private static Type[] GetInterfacesSafe(Type t)
-    {
-        try { return t.GetInterfaces(); }
-        catch { return Array.Empty<Type>(); }
-    }
-
-    private static List<Type> GetBaseTypeChain(Type t)
-    {
-        var chain = new List<Type>();
-        try
-        {
-            var current = t.BaseType;
-            while (current != null)
-            {
-                chain.Add(current);
-                current = current.BaseType;
-            }
-        }
-        catch { }
-        return chain;
-    }
-
-    private static MethodInfo[] GetMethodsSafe(Type t, BindingFlags flags)
-    {
-        try { return t.GetMethods(flags).Where(m => !m.IsSpecialName).ToArray(); }
-        catch { return Array.Empty<MethodInfo>(); }
-    }
-
-    private static PropertyInfo[] GetPropertiesSafe(Type t, BindingFlags flags)
-    {
-        try { return t.GetProperties(flags); }
-        catch { return Array.Empty<PropertyInfo>(); }
-    }
-
-    private static FieldInfo[] GetFieldsSafe(Type t, BindingFlags flags)
-    {
-        try { return t.GetFields(flags); }
-        catch { return Array.Empty<FieldInfo>(); }
-    }
-
-    private static EventInfo[] GetEventsSafe(Type t, BindingFlags flags)
-    {
-        try { return t.GetEvents(flags); }
-        catch { return Array.Empty<EventInfo>(); }
     }
 
     private static string FormatMethodSignature(MethodInfo m)

@@ -93,4 +93,19 @@ public class IlInstructionReaderTests
         var single = Assert.Single(IlInstructionReader.ReadTokenInstructions(il.ToArray()).ToArray());
         Assert.Equal(IlRefKind.LdFtn, single.Kind);
     }
+
+    [Fact]
+    public void OperandLoads_AreOptIn()
+    {
+        // ldstr <string token>; ldtoken <type token>; call <token>; ret
+        byte[] il = [0x72, 0x01, 0x00, 0x00, 0x70, 0xD0, 0x01, 0x00, 0x00, 0x02, 0x28, .. SampleTokenBytes, 0x2A];
+
+        var calls = IlInstructionReader.ReadTokenInstructions(il).ToArray();
+        var withOperands = IlInstructionReader.ReadTokenInstructions(il, includeOperandLoads: true).ToArray();
+
+        Assert.Equal(IlRefKind.Call, Assert.Single(calls).Kind);
+        Assert.Equal(
+            [new IlTokenRef(IlRefKind.LdStr, 0x70000001), new IlTokenRef(IlRefKind.LdToken, 0x02000001), new IlTokenRef(IlRefKind.Call, SampleToken)],
+            withOperands);
+    }
 }

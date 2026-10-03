@@ -12,7 +12,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 
 ## Key Features
 
-*   **Comprehensive MCP Server**: Provides 43 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
+*   **Comprehensive MCP Server**: Provides 47 specialized tools for .NET assembly analysis, with an optional 22-tool `core` profile
 *   **Advanced Assembly Introspection**: Deep reflection-based analysis of types, members, and metadata
 *   **Rich Member Analysis**: Detailed inspection of methods, properties, fields, events, and constructors
 *   **Smart Filtering & Pagination**: Advanced filtering by name/attributes with efficient pagination for large datasets
@@ -142,7 +142,7 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 
 | Profile | Tools | Contents |
 |---|---|---|
-| `full` (default) | 43 | Every tool, including the deprecated per-kind member tools |
+| `full` (default) | 47 | Every tool, including the deprecated per-kind member tools |
 | `core` | 22 | Discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
@@ -292,6 +292,13 @@ On /abs/path/MyLib.dll: FindImplementationsOf MyNamespace.IMyService. Then FindR
 - **`FindExtensionMethodsFor`**: Extension methods that extend a given type (scans static classes by `this`-parameter)
 - **`FindReferencesTo`**: Broader sweep across parameters, fields, properties, events, and generic arguments; pass `analysisDepth='il'` to also resolve inbound callers from method bodies
 
+### Framework Patterns
+Full profile only. Each tool scans one or more assemblies (`additionalAssemblies`) and pages with `maxItems` / `continuationToken`. The default `summary` projection is lean, and `projection='full'` adds the assembly path and detail fields.
+- **`FindEndpoints`**: ASP.NET Core endpoints. Controller actions are read from `[Route]` / `[Http*]` / `[AcceptVerbs]` attribute routes, with `[controller]` / `[action]` substituted. Minimal APIs come from `Map{Get,Post,Put,Delete,Patch,Methods,Group,Fallback}` calls read from IL. Filter with `routeContains` and `httpMethod`. Minimal-API routes and handlers are taken from the string literal and method reference next to each call, so a route held in a variable or field comes back as `null`, and `MapGroup` prefixes are listed as separate `minimalApiGroup` entries rather than combined
+- **`FindServiceRegistrations`**: `Microsoft.Extensions.DependencyInjection` registrations, read from IL calls to `Add{Singleton,Scoped,Transient}`, `TryAdd*`, `AddKeyed*`, `AddHostedService` and the `ServiceDescriptor` factories. Lifetime, service and implementation come from generic arguments or `typeof(...)` operands, and factory and instance registrations report `implementation: null`. Filter with `serviceType`, `implementationType` and `lifetime`
+- **`FindEfEntities`**: The `DbSet<T>` properties, declared or inherited, of every `DbContext` subclass. Filter with `contextType` and `entityType`
+- **`FindHandlers`**: MediatR-style handlers: concrete implementations of `IRequestHandler<,>` / `IRequestHandler<>`, `INotificationHandler<>`, `IStreamRequestHandler<,>` and `IPipelineBehavior<,>` from the `MediatR` or `Mediator` namespaces. Filter with `messageType` and `kind`
+
 ### IL Analysis
 - **`GetMethodCalls`**: Read a method's IL body to list what it calls and which fields it touches — the "what does this method do?" question signature-level tools can't answer (aggregates across overloads; use `.ctor`/`.cctor` for constructors). `format='mermaid'` returns a Mermaid flowchart call graph, and `depth` (up to 5) follows callees defined in the same assembly
 
@@ -370,7 +377,7 @@ All member analysis tools support comprehensive filtering and pagination:
 
 Most enumerating tools default to a lean **`summary`** projection and let you opt into the heavier **`full`** payload only when you need it. Reach for `full` deliberately — `summary` is usually enough to decide your next call.
 
-* `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, and `FindReferencesTo`. `summary` returns just enough to browse (e.g. `{ kind, name, signature }` for members); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: the deprecated `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
+* `projection` (`summary` | `full`): supported by `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo`, `FindEndpoints`, `FindServiceRegistrations`, `FindEfEntities`, and `FindHandlers`. `summary` returns just enough to browse (e.g. `{ kind, name, signature }` for members); `full` adds structured fields (parameters, attributes, return type, modifiers, etc.). _Note: the deprecated `GetTypeProperties/Fields/Events/Constructors` have a single fixed shape and take no `projection`._
 * `analysisDepth` (`signatures` | `il`): `FindReferencesTo` only. `signatures` (default) scans member declarations; `il` additionally scans method bodies for inbound callers (slower).
 * `format` (`json` | `mermaid`): supported by `GetTypeHierarchy` (`classDiagram`) and `GetMethodCalls` (`flowchart`, with `depth` for transitive calls). Mermaid results return `{ diagram, nodeCount, edgeCount, truncated, note }`, bounded by `maxNodes` (default 50, max 200).
 * `additionalAssemblies` (string[]): widen the search scope for `GetTypeHierarchy` and the reverse-lookup tools. `GetTypeHierarchy.derivedTypes` stays `null` until you pass this.

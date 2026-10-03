@@ -37,13 +37,13 @@ This is a comprehensive .NET MCP (Model Context Protocol) server called "Sherloc
 This MCP server provides LLMs with comprehensive .NET reflection capabilities through several key architectural principles:
 
 ### Assembly-First Discovery
-Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 43 specialized tools for clients to:
+Since the MCP server runs as a separate process, it cannot access the client's loaded assemblies. Instead, it provides 47 specialized tools for clients to:
 1. **Discover assemblies** using multiple strategies (project analysis, class name search, file system scanning)
 2. **Load and analyze** specific assemblies by path with efficient caching
 3. **Deep introspection** of types, members, attributes, and XML documentation
 4. **Performance optimization** through pagination, caching, and response size validation
 
-### Tool Categories (43 Available)
+### Tool Categories (47 Available)
 - **Assembly Discovery & Analysis** (6 tools): `OpenAssembly`, `AnalyzeAssembly`, `GetAssemblyInfo`, `FindAssemblyByClassName`, `FindAssemblyByFileName`, `FindAssemblyByNugetPackage`
 - **Type Introspection** (7 tools): `GetTypesFromAssembly`, `GetTypeInfo`, `GetTypeHierarchy`, `AnalyzeType` (deprecated), etc.
 - **Member Analysis** (8 tools): `GetTypeMembers` (one tool for every member kind, filtered by `kinds`), `AnalyzeMethod`, and the deprecated `GetTypeMethods` / `GetTypeProperties` / `GetTypeFields` / `GetTypeEvents` / `GetTypeConstructors` / `GetAllTypeMembers`
@@ -51,6 +51,7 @@ Since the MCP server runs as a separate process, it cannot access the client's l
 - **Reverse Lookup & IL Analysis** (5 tools): `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo` (supports `analysisDepth='il'` for inbound callers), `GetMethodCalls` (outbound IL call/field analysis)
 - **Decompilation & Source** (3 tools): `GetMemberSource` (core; original source from the portable PDB, its local file or Source Link, falling back to decompiled C# per overload), `DecompileMember` (core; every overload unless `parameterTypes` narrows it), `DecompileType` (full profile only); all page source by line via `maxLines`/`continuationToken`
 - **API Diff** (1 tool): `CompareApiSurface` (core; diffs two assembly or `Package.Id@version` sides via `src/runtime/ApiDiff` — `ApiSurfaceReader` builds the visible surface, `ApiSurfaceComparer` flags breaking changes with reasons; summary = counts + breaking list, `full` = every change)
+- **Framework Patterns** (4 tools, full profile only): `FindEndpoints` (controller attribute routes + minimal-API `Map*` calls from IL), `FindServiceRegistrations` (DI `Add*`/`TryAdd*`/`AddKeyed*` calls from IL, types from MethodSpec generic args or `typeof` operands), `FindEfEntities` (`DbSet<T>` properties on `DbContext` subclasses), `FindHandlers` (MediatR handler interfaces); `src/runtime/FrameworkPatterns` — `IlCallSiteWalker` pairs each call with the preceding `ldstr`/`ldtoken`/`ldftn` operands (opt-in `IlInstructionReader` kinds), and `AssemblyScanner` holds the parallel scan helpers shared with `ReverseLookupService`
 - **Attributes & Metadata** (2 tools): `GetMemberAttributes`, `GetParameterAttributes`
 - **XML Documentation** (2 tools): `GetXmlDocsForType`, `GetXmlDocsForMember`
 - **Project Analysis** (6 tools): `AnalyzeSolution`, `AnalyzeProject`, `ResolvePackageReferences`, `GetPackageGraph` (restored graph from `project.assets.json`), etc.
@@ -71,7 +72,7 @@ This project uses Sherlock MCP for comprehensive .NET assembly analysis. When wo
 > **Tool names:** the MCP client exposes these tools in `snake_case`, so the names you call are `get_type_members`, `search_members`, `find_references_to`, etc. The PascalCase names below (`GetTypeMembers`, `SearchMembers`, …) match the C# methods and the tool descriptions — map them to snake_case when invoking.
 
 ### Token-efficient by default
-The enumerating tools return a lean **`summary`** payload by default (e.g. `GetTypeMembers` returns `{ kind, name, signature }` — the C# signature already carries the return type, parameters, and modifiers). Only pass `projection='full'` when you need structured access to parameters, attributes, or modifier flags, and ideally only for the specific items you've already narrowed to. Prefer filtered, paginated `GetTypeMembers` calls (narrow with `kinds` / `nameContains`) over the deprecated `GetAllTypeMembers`/`AnalyzeType` — those return everything at once and can blow the token budget. Tools carrying `projection`: `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo`.
+The enumerating tools return a lean **`summary`** payload by default (e.g. `GetTypeMembers` returns `{ kind, name, signature }` — the C# signature already carries the return type, parameters, and modifiers). Only pass `projection='full'` when you need structured access to parameters, attributes, or modifier flags, and ideally only for the specific items you've already narrowed to. Prefer filtered, paginated `GetTypeMembers` calls (narrow with `kinds` / `nameContains`) over the deprecated `GetAllTypeMembers`/`AnalyzeType` — those return everything at once and can blow the token budget. Tools carrying `projection`: `GetTypesFromAssembly`, `GetTypeMembers`, `GetTypeMethods`, `GetAssemblyInfo`, `GetMethodCalls`, `FindImplementationsOf`, `FindMethodsReturning`, `FindExtensionMethodsFor`, `FindReferencesTo`, `FindEndpoints`, `FindServiceRegistrations`, `FindEfEntities`, `FindHandlers`.
 
 ### Discovery & Initial Analysis
 1. **Find the DLL**: `FindAssemblyByClassName` / `FindAssemblyByFileName` when you know a name but not the path; `FindAssemblyByNugetPackage` to resolve a package from the NuGet cache; `GetProjectOutputPaths` from a project file. Don't hardcode `./bin/Debug/net9.0/...` — the target framework varies.

@@ -10,7 +10,7 @@ namespace Sherlock.MCP.IntegrationTests;
 
 public class McpStdioProtocolTests
 {
-    private const int ExpectedToolCount = 43;
+    private const int ExpectedToolCount = 47;
 
     private const string CurrentProtocolVersion = "2026-07-28";
 

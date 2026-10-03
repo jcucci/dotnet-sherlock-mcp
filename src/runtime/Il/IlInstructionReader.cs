@@ -14,7 +14,9 @@ internal enum IlRefKind
     LdFld,
     LdsFld,
     StFld,
-    StsFld
+    StsFld,
+    LdStr,
+    LdToken
 }
 
 internal readonly record struct IlTokenRef(IlRefKind Kind, int Token);
@@ -28,7 +30,7 @@ internal static class IlInstructionReader
 
     private static readonly Dictionary<int, int> OperandWidths = BuildOperandWidths();
 
-    internal static IEnumerable<IlTokenRef> ReadTokenInstructions(byte[]? il)
+    internal static IEnumerable<IlTokenRef> ReadTokenInstructions(byte[]? il, bool includeOperandLoads = false)
     {
         if (il is null || il.Length == 0) yield break;
 
@@ -57,7 +59,7 @@ internal static class IlInstructionReader
                 continue;
             }
 
-            var kind = Classify(opcode);
+            var kind = Classify(opcode, includeOperandLoads);
             if (kind != IlRefKind.None)
             {
                 if (ip + 4 > len) yield break;
@@ -69,8 +71,10 @@ internal static class IlInstructionReader
         }
     }
 
-    private static IlRefKind Classify(int opcode) => opcode switch
+    private static IlRefKind Classify(int opcode, bool includeOperandLoads) => opcode switch
     {
+        0x72 when includeOperandLoads => IlRefKind.LdStr,
+        0xD0 when includeOperandLoads => IlRefKind.LdToken,
         0x28 => IlRefKind.Call,
         0x6F => IlRefKind.CallVirt,
         0x73 => IlRefKind.NewObj,

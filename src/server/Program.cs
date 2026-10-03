@@ -5,6 +5,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.ApiDiff;
+using Sherlock.MCP.Runtime.FrameworkPatterns;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Runtime.Decompilation;
@@ -78,6 +79,7 @@ builder.Services
     .AddSingleton<IProjectAnalysisService, ProjectAnalysisService>()
     .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
+    .AddSingleton<IFrameworkPatternService, FrameworkPatternService>()
     .AddSingleton<IDecompilerService, DecompilerService>()
     .AddSingleton<ISourceFetcher>(services => new SourceFetcher(
         services.GetRequiredService<RuntimeOptions>(),
