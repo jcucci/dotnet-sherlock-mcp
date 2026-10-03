@@ -1,0 +1,71 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [
+    {
+      "name": "Golden.Framework.Startup",
+      "uri": "sherlock://assembly/{Fixture}%2Fframework%2FSherlock.Golden.Framework.dll/type/Golden.Framework.Startup"
+    }
+  ],
+  "payload": {
+    "kind": "frameworkpatterns.services",
+    "version": "1.0.0",
+    "data": {
+      "filters": {
+        "serviceType": null,
+        "implementationType": null,
+        "lifetime": null,
+        "caseSensitive": false
+      },
+      "scope": [
+        "{Fixture}/framework/Sherlock.Golden.Framework.dll"
+      ],
+      "projection": "full",
+      "total": 3,
+      "count": 3,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 3,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "lifetime": "transient",
+          "service": "Golden.Framework.IClock",
+          "implementation": "Golden.Framework.SystemClock",
+          "registeredIn": "Golden.Framework.Startup.AddOrders",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "registrationMethod": "AddTransient",
+          "registrationKind": "type",
+          "isTryAdd": false,
+          "isKeyed": false
+        },
+        {
+          "lifetime": "scoped",
+          "service": "Golden.Framework.IOrderStore",
+          "implementation": "Golden.Framework.OrderStore",
+          "registeredIn": "Golden.Framework.Startup.AddOrders",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "registrationMethod": "AddScoped",
+          "registrationKind": "type",
+          "isTryAdd": false,
+          "isKeyed": false
+        },
+        {
+          "lifetime": "singleton",
+          "service": "Golden.Framework.OrderOptions",
+          "implementation": null,
+          "registeredIn": "Golden.Framework.Startup.AddOrders",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "registrationMethod": "AddSingleton",
+          "registrationKind": "factory",
+          "isTryAdd": false,
+          "isKeyed": false
+        }
+      ]
+    }
+  }
+}

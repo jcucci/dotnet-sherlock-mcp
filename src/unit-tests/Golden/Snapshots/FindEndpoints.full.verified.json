@@ -1,0 +1,77 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [
+    {
+      "name": "Golden.Framework.OrdersController",
+      "uri": "sherlock://assembly/{Fixture}%2Fframework%2FSherlock.Golden.Framework.dll/type/Golden.Framework.OrdersController"
+    },
+    {
+      "name": "Golden.Framework.Startup",
+      "uri": "sherlock://assembly/{Fixture}%2Fframework%2FSherlock.Golden.Framework.dll/type/Golden.Framework.Startup"
+    }
+  ],
+  "payload": {
+    "kind": "frameworkpatterns.endpoints",
+    "version": "1.0.0",
+    "data": {
+      "filters": {
+        "routeContains": null,
+        "httpMethod": null,
+        "includeNonPublic": false
+      },
+      "scope": [
+        "{Fixture}/framework/Sherlock.Golden.Framework.dll"
+      ],
+      "projection": "full",
+      "total": 3,
+      "count": 3,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 3,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "kind": "controller",
+          "httpMethods": [
+            "GET"
+          ],
+          "route": "api/Orders",
+          "handler": "Golden.Framework.OrdersController.List",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "handlerType": "Golden.Framework.OrdersController",
+          "handlerMethod": "List",
+          "registeredIn": null
+        },
+        {
+          "kind": "controller",
+          "httpMethods": [
+            "GET"
+          ],
+          "route": "api/Orders/{id}",
+          "handler": "Golden.Framework.OrdersController.Get",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "handlerType": "Golden.Framework.OrdersController",
+          "handlerMethod": "Get",
+          "registeredIn": null
+        },
+        {
+          "kind": "minimalApi",
+          "httpMethods": [
+            "GET"
+          ],
+          "route": "/orders/count",
+          "handler": "Golden.Framework.Startup.MapOrders (lambda)",
+          "assemblyPath": "{Fixture}/framework/Sherlock.Golden.Framework.dll",
+          "handlerType": "Golden.Framework.Startup",
+          "handlerMethod": "MapOrders (lambda)",
+          "registeredIn": "Golden.Framework.Startup.MapOrders"
+        }
+      ]
+    }
+  }
+}

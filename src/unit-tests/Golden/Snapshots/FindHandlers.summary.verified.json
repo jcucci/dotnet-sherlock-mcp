@@ -1,0 +1,44 @@
+﻿{
+  "isError": false,
+  "hasStructuredContent": false,
+  "resourceLinks": [
+    {
+      "name": "Golden.Framework.GetOrderHandler",
+      "uri": "sherlock://assembly/{Fixture}%2Fframework%2FSherlock.Golden.Framework.dll/type/Golden.Framework.GetOrderHandler"
+    }
+  ],
+  "payload": {
+    "kind": "frameworkpatterns.handlers",
+    "version": "1.0.0",
+    "data": {
+      "filters": {
+        "messageType": null,
+        "kind": null,
+        "caseSensitive": false,
+        "includeNonPublic": false
+      },
+      "scope": [
+        "{Fixture}/framework/Sherlock.Golden.Framework.dll"
+      ],
+      "projection": "summary",
+      "total": 1,
+      "count": 1,
+      "nextToken": null,
+      "pagination": {
+        "hasMore": false,
+        "recommendedPageSize": 1,
+        "estimatedTotalChars": "{Chars}",
+        "currentPageChars": "{Chars}",
+        "paginationAdvised": false
+      },
+      "results": [
+        {
+          "kind": "request",
+          "handler": "Golden.Framework.GetOrderHandler",
+          "message": "Golden.Framework.GetOrder",
+          "response": "Golden.Framework.Order"
+        }
+      ]
+    }
+  }
+}

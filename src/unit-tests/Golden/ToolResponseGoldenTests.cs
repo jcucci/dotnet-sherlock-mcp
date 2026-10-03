@@ -3,6 +3,7 @@ using ModelContextProtocol.Protocol;
 using Sherlock.MCP.Runtime;
 using Sherlock.MCP.Runtime.ApiDiff;
 using Sherlock.MCP.Runtime.Decompilation;
+using Sherlock.MCP.Runtime.FrameworkPatterns;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.SourceLink;
 using Sherlock.MCP.Server.Middleware;
@@ -88,6 +89,14 @@ public class ToolResponseGoldenTests
         ["FindReferencesTo|summary"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["FindReferencesTo|full"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, projection: "full", noCache: true)),
         ["FindReferencesTo|il"] = () => Done(ReverseLookupTools.FindReferencesTo(new ReverseLookupService(), IlAnalysis, Middleware, Options, TestHandles.Registry, Order, assemblyPath: Fixture.AssemblyPath, analysisDepth: "il", noCache: true)),
+        ["FindEndpoints|summary"] = () => Done(FrameworkPatternTools.FindEndpoints(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
+        ["FindEndpoints|full"] = () => Done(FrameworkPatternTools.FindEndpoints(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, projection: "full", noCache: true)),
+        ["FindServiceRegistrations|summary"] = () => Done(FrameworkPatternTools.FindServiceRegistrations(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
+        ["FindServiceRegistrations|full"] = () => Done(FrameworkPatternTools.FindServiceRegistrations(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, projection: "full", noCache: true)),
+        ["FindEfEntities|summary"] = () => Done(FrameworkPatternTools.FindEfEntities(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
+        ["FindEfEntities|full"] = () => Done(FrameworkPatternTools.FindEfEntities(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, projection: "full", noCache: true)),
+        ["FindHandlers|summary"] = () => Done(FrameworkPatternTools.FindHandlers(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, noCache: true)),
+        ["FindHandlers|full"] = () => Done(FrameworkPatternTools.FindHandlers(FrameworkPatterns, Middleware, Options, TestHandles.Registry, assemblyPath: Fixture.FrameworkPatternsPath, projection: "full", noCache: true)),
 
         ["GetMethodCalls|summary"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, noCache: true)),
         ["GetMethodCalls|full"] = () => Done(IlAnalysisTools.GetMethodCalls(IlAnalysis, Middleware, TestHandles.Registry, Processor, "Add", assemblyPath: Fixture.AssemblyPath, projection: "full", noCache: true)),
@@ -124,6 +133,8 @@ public class ToolResponseGoldenTests
     private static ToolMiddleware Middleware => TestMiddleware.Fresh;
 
     private static IlAnalysisService IlAnalysis => new();
+
+    private static FrameworkPatternService FrameworkPatterns => new();
 
     public static TheoryData<string, string> CaseNames()
     {

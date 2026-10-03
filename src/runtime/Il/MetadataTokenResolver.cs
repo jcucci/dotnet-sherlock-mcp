@@ -24,6 +24,7 @@ internal sealed class MetadataTokenResolver
 {
     private readonly MetadataReader _md;
     private readonly StringSignatureTypeProvider _provider;
+    private readonly StringSignatureTypeProvider _instantiatedProvider;
     private readonly ConcurrentDictionary<int, ResolvedMember?> _resolved = new();
     private readonly ConcurrentDictionary<TypeDefinitionHandle, string> _typeDefNames = new();
 
@@ -31,6 +32,7 @@ internal sealed class MetadataTokenResolver
     {
         _md = md;
         _provider = new StringSignatureTypeProvider(md);
+        _instantiatedProvider = new StringSignatureTypeProvider(md, keepGenericArguments: true);
     }
 
     public ResolvedMember? Resolve(int token) => _resolved.GetOrAdd(token, ResolveUncached);
@@ -68,6 +70,69 @@ internal sealed class MetadataTokenResolver
             default:
                 return null;
         }
+    }
+
+    public ImmutableArray<string> ResolveMethodGenericArguments(int token)
+    {
+        if (!TryGetEntityHandle(token, out var handle) || handle.Kind != HandleKind.MethodSpecification)
+            return ImmutableArray<string>.Empty;
+
+        try { return _md.GetMethodSpecification((MethodSpecificationHandle)handle).DecodeSignature(_instantiatedProvider, null); }
+        catch (BadImageFormatException) { return ImmutableArray<string>.Empty; }
+    }
+
+    public ImmutableArray<string> ResolveMethodParameterTypes(int token)
+    {
+        if (!TryGetEntityHandle(token, out var handle)) return ImmutableArray<string>.Empty;
+        if (handle.Kind == HandleKind.MethodSpecification)
+            handle = _md.GetMethodSpecification((MethodSpecificationHandle)handle).Method;
+
+        try
+        {
+            return handle.Kind switch
+            {
+                HandleKind.MethodDefinition => _md.GetMethodDefinition((MethodDefinitionHandle)handle).DecodeSignature(_instantiatedProvider, null).ParameterTypes,
+                HandleKind.MemberReference when _md.GetMemberReference((MemberReferenceHandle)handle).GetKind() == MemberReferenceKind.Method =>
+                    _md.GetMemberReference((MemberReferenceHandle)handle).DecodeMethodSignature(_instantiatedProvider, null).ParameterTypes,
+                _ => ImmutableArray<string>.Empty
+            };
+        }
+        catch (BadImageFormatException) { return ImmutableArray<string>.Empty; }
+    }
+
+    public string? ResolveTypeToken(int token)
+    {
+        if (!TryGetEntityHandle(token, out var handle)) return null;
+
+        try
+        {
+            return handle.Kind switch
+            {
+                HandleKind.TypeDefinition => _instantiatedProvider.GetTypeFromDefinition(_md, (TypeDefinitionHandle)handle, 0),
+                HandleKind.TypeReference => _instantiatedProvider.GetTypeFromReference(_md, (TypeReferenceHandle)handle, 0),
+                HandleKind.TypeSpecification => _md.GetTypeSpecification((TypeSpecificationHandle)handle).DecodeSignature(_instantiatedProvider, null),
+                _ => null
+            };
+        }
+        catch (BadImageFormatException) { return null; }
+    }
+
+    public string? ResolveUserString(int token)
+    {
+        try
+        {
+            var handle = MetadataTokens.Handle(token);
+            return handle.Kind == HandleKind.UserString ? _md.GetUserString((UserStringHandle)handle) : null;
+        }
+        catch (ArgumentException) { return null; }
+        catch (BadImageFormatException) { return null; }
+    }
+
+    private static bool TryGetEntityHandle(int token, out EntityHandle handle)
+    {
+        try { handle = MetadataTokens.EntityHandle(token); }
+        catch (ArgumentException) { handle = default; }
+        return !handle.IsNil;
     }
 
     public MethodDefinitionHandle LocalMethodDefinition(int token)
@@ -157,13 +222,19 @@ internal sealed class MetadataTokenResolver
 }
 
 // Produces type names as strings while decoding metadata signatures. Only the declaring-type
-// portion is needed for call resolution, so generic instantiations collapse to the open
-// generic-type-definition name (e.g. System.Collections.Generic.List`1).
+// portion is needed for call resolution, so by default generic instantiations collapse to the open
+// generic-type-definition name (e.g. System.Collections.Generic.List`1). With keepGenericArguments
+// they render like TypeNameFormatter.FriendlyFullName (e.g. System.Collections.Generic.List<System.String>).
 internal sealed class StringSignatureTypeProvider : ISignatureTypeProvider<string, object?>
 {
     private readonly MetadataReader _md;
+    private readonly bool _keepGenericArguments;
 
-    public StringSignatureTypeProvider(MetadataReader md) => _md = md;
+    public StringSignatureTypeProvider(MetadataReader md, bool keepGenericArguments = false)
+    {
+        _md = md;
+        _keepGenericArguments = keepGenericArguments;
+    }
 
     public string GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
     {
@@ -190,7 +261,11 @@ internal sealed class StringSignatureTypeProvider : ISignatureTypeProvider<strin
     public string GetTypeFromSpecification(MetadataReader reader, object? genericContext, TypeSpecificationHandle handle, byte rawTypeKind) =>
         reader.GetTypeSpecification(handle).DecodeSignature(this, genericContext);
 
-    public string GetGenericInstantiation(string genericType, ImmutableArray<string> typeArguments) => genericType;
+    public string GetGenericInstantiation(string genericType, ImmutableArray<string> typeArguments) =>
+        _keepGenericArguments ? $"{StripArity(genericType)}<{string.Join(", ", typeArguments)}>" : genericType;
+
+    private static string StripArity(string name) =>
+        string.Join("+", name.Split('+').Select(segment => segment.IndexOf('`') is var tick and > 0 ? segment[..tick] : segment));
 
     public string GetPrimitiveType(PrimitiveTypeCode typeCode) => typeCode switch
     {

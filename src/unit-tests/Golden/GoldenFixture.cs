@@ -182,6 +182,7 @@ internal sealed class GoldenFixture
         ApiDiffLeftPath = ApiDiffFixtures.Emit(ApiDiffFixtures.Version1, Path.Combine(Root, "left"));
         ApiDiffRightPath = ApiDiffFixtures.Emit(ApiDiffFixtures.Version2, Path.Combine(Root, "right"));
         Project = GoldenProject.Create(Path.Combine(Root, "project"));
+        FrameworkPatternsPath = FrameworkPatternsGoldenSource.Emit(Path.Combine(Root, "framework"));
     }
 
     public static GoldenFixture Shared => Instance.Value;
@@ -199,6 +200,8 @@ internal sealed class GoldenFixture
     public string ApiDiffRightPath { get; }
 
     public GoldenProject Project { get; }
+
+    public string FrameworkPatternsPath { get; }
 
     public IReadOnlyList<(string Value, string Placeholder)> Scrubs =>
     [
