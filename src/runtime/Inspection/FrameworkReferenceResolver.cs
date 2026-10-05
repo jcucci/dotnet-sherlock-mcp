@@ -241,7 +241,7 @@ public static class FrameworkReferenceResolver
             .Select(Path.GetFullPath)
             .Distinct(PathComparers.Comparer);
 
-    private static IEnumerable<string> DotnetRoots()
+    internal static IEnumerable<string> DotnetRoots()
     {
         if (!string.IsNullOrWhiteSpace(DotnetRootOverride))
             return [DotnetRootOverride];

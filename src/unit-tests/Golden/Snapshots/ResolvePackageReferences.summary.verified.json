@@ -15,7 +15,11 @@
           "AssemblyPaths": [],
           "IsResolved": false
         }
-      ]
+      ],
+      "evaluation": {
+        "Mode": "xml",
+        "Reason": "disabled"
+      }
     }
   }
 }

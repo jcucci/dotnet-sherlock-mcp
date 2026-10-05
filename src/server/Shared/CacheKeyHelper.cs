@@ -41,10 +41,25 @@ public static class CacheKeyHelper
     public static string PdbStamp(string assemblyStamp, string assemblyPath) =>
         $"{assemblyStamp};{FileStamp(Path.ChangeExtension(assemblyPath, ".pdb"))}";
 
+    private static readonly string[] ProjectImportFileNames =
+        ["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", "global.json"];
+
     public static string ProjectStamp(string projectFilePath)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectFilePath)) ?? string.Empty;
-        return $"{FileStamp(projectFilePath)};{FileStamp(Path.Combine(directory, "obj", "project.assets.json"))}";
+        return $"{FileStamp(projectFilePath)};{FileStamp(Path.Combine(directory, "obj", "project.assets.json"))};{ProjectImportsStamp(directory)}";
+    }
+
+    private static string ProjectImportsStamp(string projectDirectory) =>
+        string.Join(";", AncestorDirectories(projectDirectory)
+            .SelectMany(directory => ProjectImportFileNames.Select(name => Path.Combine(directory, name)))
+            .Where(File.Exists)
+            .Select(FileStamp));
+
+    private static IEnumerable<string> AncestorDirectories(string directory)
+    {
+        for (var current = new DirectoryInfo(directory); current is not null; current = current.Parent)
+            yield return current.FullName;
     }
 
     public static string Sha256(string input)

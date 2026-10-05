@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.ProjectEvaluation;
 using Sherlock.MCP.Runtime.Caching;
 using Sherlock.MCP.Runtime.Inspection;
 using Sherlock.MCP.Runtime.Telemetry;
@@ -173,6 +174,60 @@ public sealed class ResponseCachingTests : IDisposable
     }
 
     [Fact]
+    public async Task AnalyzeProject_ChangedDirectoryBuildProps_MissesCache()
+    {
+        var (middleware, cache) = Recording();
+        var project = WriteProject();
+        var props = Path.Combine(_workDirectory, "Directory.Build.props");
+        await File.WriteAllTextAsync(props, "<Project />");
+
+        await ProjectAnalysisTools.AnalyzeProject(new ProjectAnalysisService(), middleware, project);
+        await ProjectAnalysisTools.AnalyzeProject(new ProjectAnalysisService(), middleware, project);
+        File.SetLastWriteTimeUtc(props, File.GetLastWriteTimeUtc(props).AddMinutes(1));
+        await ProjectAnalysisTools.AnalyzeProject(new ProjectAnalysisService(), middleware, project);
+
+        Assert.Equal(1, cache.Hits);
+        Assert.Equal(2, cache.Sets);
+    }
+
+    [Fact]
+    public async Task ProjectTools_EvaluationFallback_IsNotCached()
+    {
+        var (middleware, cache) = Recording();
+        var project = WriteProject();
+        var analysis = new ProjectAnalysisService(
+            new RuntimeOptions { ProjectEvaluation = ProjectEvaluationMode.Auto },
+            new FakeProjectEvaluator(_ => ProjectEvaluationResult.Failed("timed out")));
+
+        var first = await ProjectAnalysisTools.AnalyzeProject(analysis, middleware, project);
+        await ProjectAnalysisTools.AnalyzeProject(analysis, middleware, project);
+        await ProjectAnalysisTools.GetProjectOutputPaths(analysis, middleware, project);
+        await ProjectAnalysisTools.GetProjectOutputPaths(analysis, middleware, project);
+
+        Assert.Equal("project.project", Kind(first));
+        Assert.Equal(0, cache.Sets);
+        Assert.Equal(0, cache.Hits);
+    }
+
+    [Fact]
+    public async Task FindDepsJsonDependencies_CacheHit_DoesNotEvaluateTheProject()
+    {
+        var (middleware, _) = Recording();
+        var project = WriteProject();
+        var evaluator = new FakeProjectEvaluator(call => call.Properties.Contains("TargetDir")
+            ? new ProjectEvaluationResult(true, null, new Dictionary<string, string> { ["TargetDir"] = Path.Combine(_workDirectory, "bin", "Debug", "net10.0") }, new Dictionary<string, EvaluatedItem[]>())
+            : new ProjectEvaluationResult(true, null, new Dictionary<string, string> { ["TargetFramework"] = "net10.0" }, new Dictionary<string, EvaluatedItem[]>()));
+        var analysis = new ProjectAnalysisService(new RuntimeOptions { ProjectEvaluation = ProjectEvaluationMode.Auto }, evaluator);
+
+        await ProjectAnalysisTools.FindDepsJsonDependencies(analysis, middleware, project);
+        var evaluationsAfterFirstCall = evaluator.Calls.Count;
+        await ProjectAnalysisTools.FindDepsJsonDependencies(analysis, middleware, project);
+
+        Assert.Equal(2, evaluationsAfterFirstCall);
+        Assert.Equal(evaluationsAfterFirstCall, evaluator.Calls.Count);
+    }
+
+    [Fact]
     public async Task ProjectTools_RepeatedCall_AreServedFromCacheUnlessNoCache()
     {
         var (middleware, cache) = Recording();
@@ -195,8 +250,8 @@ public sealed class ResponseCachingTests : IDisposable
             await call(false);
         }
 
-        Assert.Equal(calls.Length, cache.Sets);
-        Assert.Equal(calls.Length, cache.Hits);
+        Assert.Equal(calls.Length + 1, cache.Sets);
+        Assert.Equal(calls.Length + 1, cache.Hits);
     }
 
     [Fact]
@@ -218,8 +273,8 @@ public sealed class ResponseCachingTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(output, "Sample.deps.json"), "{}");
         await ProjectAnalysisTools.FindDepsJsonDependencies(analysis, middleware, project);
 
-        Assert.Equal(2, cache.Sets);
-        Assert.Equal(0, cache.Hits);
+        Assert.Equal(3, cache.Sets);
+        Assert.Equal(1, cache.Hits);
     }
 
     [Fact]

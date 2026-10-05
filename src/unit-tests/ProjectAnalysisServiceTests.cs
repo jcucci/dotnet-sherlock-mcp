@@ -127,7 +127,7 @@ public class ProjectAnalysisServiceTests
 """;
         await File.WriteAllTextAsync(projPath, csproj);
 
-        var resolved = await _service.ResolvePackageReferencesAsync(projPath, "Newtonsoft.Json");
+        var resolved = (await _service.ResolvePackageReferencesAsync(projPath, "Newtonsoft.Json")).Packages;
         Assert.Single(resolved);
         Assert.Equal("Newtonsoft.Json", resolved[0].Name);
         Assert.Equal("13.0.3", resolved[0].Version);
@@ -152,7 +152,7 @@ public class ProjectAnalysisServiceTests
 """;
         await File.WriteAllTextAsync(projPath, csproj);
 
-        var defaults = await _service.GetProjectOutputPathsAsync(projPath);
+        var defaults = (await _service.GetProjectOutputPathsAsync(projPath)).Paths;
         Assert.Contains(Path.Combine(projDir, "bin", "Debug", "net9.0"), defaults);
         Assert.Contains(Path.Combine(projDir, "bin", "Release", "net9.0"), defaults);
 
@@ -165,7 +165,7 @@ public class ProjectAnalysisServiceTests
 </Project>
 """;
         await File.WriteAllTextAsync(projPath, csprojCustom);
-        var custom = await _service.GetProjectOutputPathsAsync(projPath, "Debug");
+        var custom = (await _service.GetProjectOutputPathsAsync(projPath, "Debug")).Paths;
         Assert.Single(custom);
         Assert.Equal(Path.GetFullPath(Path.Combine(projDir, "out", "custom")), custom[0]);
     }

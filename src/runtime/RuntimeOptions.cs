@@ -1,3 +1,4 @@
+using Sherlock.MCP.Runtime.ProjectEvaluation;
 using Sherlock.MCP.Runtime.SourceLink;
 
 namespace Sherlock.MCP.Runtime;
@@ -16,6 +17,7 @@ public class RuntimeOptions
         StateDirectory = DefaultStateDirectory();
         SourceFetch = DefaultSourceFetch();
         SourceFetchHosts = KnownSourceHosts;
+        ProjectEvaluation = DefaultProjectEvaluation();
 
         ToolSpecificMaxItems = new Dictionary<string, int>(ToolNameComparer.Instance)
         {
@@ -57,6 +59,8 @@ public class RuntimeOptions
 
     public IReadOnlyList<string> SourceFetchHosts { get; set; }
 
+    public ProjectEvaluationMode ProjectEvaluation { get; set; }
+
     public static readonly IReadOnlyList<string> KnownSourceHosts =
     [
         "raw.githubusercontent.com",
@@ -79,6 +83,17 @@ public class RuntimeOptions
         return Enum.IsDefined(mode);
     }
 
+    public static bool TryParseProjectEvaluation(string? value, out ProjectEvaluationMode mode)
+    {
+        mode = value?.Trim().ToLowerInvariant() switch
+        {
+            "auto" or "on" or "msbuild" or "true" or "1" => ProjectEvaluationMode.Auto,
+            "off" or "xml" or "false" or "0" or "none" => ProjectEvaluationMode.Off,
+            _ => (ProjectEvaluationMode)(-1)
+        };
+        return Enum.IsDefined(mode);
+    }
+
     public Dictionary<string, int> ToolSpecificMaxItems { get; }
 
     public int GetMaxItemsForTool(string toolName)
@@ -94,6 +109,11 @@ public class RuntimeOptions
         TryParseSourceFetch(Environment.GetEnvironmentVariable("SHERLOCK_SOURCE_FETCH"), out var mode)
             ? mode
             : SourceFetchMode.KnownHosts;
+
+    private static ProjectEvaluationMode DefaultProjectEvaluation() =>
+        TryParseProjectEvaluation(Environment.GetEnvironmentVariable("SHERLOCK_PROJECT_EVALUATION"), out var mode)
+            ? mode
+            : ProjectEvaluationMode.Auto;
 
     private static string DefaultStateDirectory() =>
         Environment.GetEnvironmentVariable("SHERLOCK_STATE_DIR") is { Length: > 0 } configured

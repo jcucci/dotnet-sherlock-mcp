@@ -11,7 +11,11 @@
       "outputPaths": [
         "{Fixture}/project/Sample/bin/Debug/net8.0",
         "{Fixture}/project/Sample/bin/Release/net8.0"
-      ]
+      ],
+      "evaluation": {
+        "Mode": "xml",
+        "Reason": "disabled"
+      }
     },
     "hints": [
       {
