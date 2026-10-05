@@ -32,33 +32,21 @@ This roadmap summarizes what has shipped and what is planned. The live, ordered 
 - **Original source via Source Link and PDBs**: `get_member_source` (in the `core` profile) reads embedded source, the local build file or the Source Link URL (known hosts by default), verified against the PDB checksum, falling back to decompilation ([#71](https://github.com/jcucci/dotnet-sherlock-mcp/issues/71)).
 - **API diff**: `compare_api_surface` diffs two assembly or NuGet package versions and flags breaking changes ([#72](https://github.com/jcucci/dotnet-sherlock-mcp/issues/72)).
 - **Restored dependency resolution**: assemblies in a project's build output resolve NuGet dependencies from `obj/project.assets.json` at the restored versions, and `get_package_graph` exposes the restored graph ([#73](https://github.com/jcucci/dotnet-sherlock-mcp/issues/73)).
+- **Tool error guidance**: `isError` on failures with did-you-mean candidates and fix-it suggestions ([#59](https://github.com/jcucci/dotnet-sherlock-mcp/issues/59)), and snake_case wire names throughout descriptions and instructions ([#61](https://github.com/jcucci/dotnet-sherlock-mcp/issues/61)).
+- **Claude Code plugin** bundling the server and a Sherlock skill ([#62](https://github.com/jcucci/dotnet-sherlock-mcp/issues/62)), and the NuGet `McpServer` package type with `dnx` launch ([#63](https://github.com/jcucci/dotnet-sherlock-mcp/issues/63)).
+- **Completions** for resource template variables and prompt arguments ([#65](https://github.com/jcucci/dotnet-sherlock-mcp/issues/65)).
+- **Cancellation and progress notifications** for long scans ([#66](https://github.com/jcucci/dotnet-sherlock-mcp/issues/66)).
+- **Workflow prompts**: `explore_package`, `explain_type`, `who_calls` ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69)).
+- **Reference-pack resolution**: framework types resolve against the target framework's reference packs, reported as `frameworkResolution` ([#74](https://github.com/jcucci/dotnet-sherlock-mcp/issues/74)).
+- **MSBuild evaluation** for project analysis, with an XML fallback ([#75](https://github.com/jcucci/dotnet-sherlock-mcp/issues/75)).
+- **Framework pattern detectors**: `find_endpoints`, `find_service_registrations`, `find_ef_entities`, `find_handlers` ([#76](https://github.com/jcucci/dotnet-sherlock-mcp/issues/76)).
+- **Mermaid output** for type hierarchies and call graphs ([#77](https://github.com/jcucci/dotnet-sherlock-mcp/issues/77)).
+- **On-demand tool groups** and discovery hints for the `core` profile ([#118](https://github.com/jcucci/dotnet-sherlock-mcp/issues/118)).
+- **Performance & quality**: memoized NuGet cache enumeration ([#79](https://github.com/jcucci/dotnet-sherlock-mcp/issues/79)), reused IL metadata readers ([#80](https://github.com/jcucci/dotnet-sherlock-mcp/issues/80)), BenchmarkDotNet benchmarks ([#81](https://github.com/jcucci/dotnet-sherlock-mcp/issues/81)), response caching for every assembly and project tool ([#82](https://github.com/jcucci/dotnet-sherlock-mcp/issues/82)), dead-code removal ([#83](https://github.com/jcucci/dotnet-sherlock-mcp/issues/83)), CI on Windows and macOS ([#84](https://github.com/jcucci/dotnet-sherlock-mcp/issues/84)) and golden-file tests for tool response shapes ([#85](https://github.com/jcucci/dotnet-sherlock-mcp/issues/85)).
 
 ## Planned
 
-### Agent ergonomics & MCP protocol
-- `isError` on tool errors, with guidance for common failures ([#59](https://github.com/jcucci/dotnet-sherlock-mcp/issues/59))
-- snake_case wire names in tool descriptions and server instructions ([#61](https://github.com/jcucci/dotnet-sherlock-mcp/issues/61))
-- Claude Code plugin bundling the server and a Sherlock skill ([#62](https://github.com/jcucci/dotnet-sherlock-mcp/issues/62))
-- NuGet `McpServer` package type and `dnx` launch ([#63](https://github.com/jcucci/dotnet-sherlock-mcp/issues/63))
-- Completions for type names, assembly paths, and package IDs ([#65](https://github.com/jcucci/dotnet-sherlock-mcp/issues/65))
-- Cancellation and progress notifications for long scans ([#66](https://github.com/jcucci/dotnet-sherlock-mcp/issues/66))
-- MCP prompts for common workflows ([#69](https://github.com/jcucci/dotnet-sherlock-mcp/issues/69))
-
-### New capabilities
-- Type resolution against target-framework reference packs ([#74](https://github.com/jcucci/dotnet-sherlock-mcp/issues/74))
-- MSBuild evaluation for project analysis ([#75](https://github.com/jcucci/dotnet-sherlock-mcp/issues/75))
-- Framework pattern detectors: ASP.NET endpoints, DI registrations, EF models, MediatR handlers ([#76](https://github.com/jcucci/dotnet-sherlock-mcp/issues/76))
-- Mermaid output for type hierarchies and call graphs ([#77](https://github.com/jcucci/dotnet-sherlock-mcp/issues/77))
-
-### Performance & quality
-- Memoized NuGet cache enumeration ([#79](https://github.com/jcucci/dotnet-sherlock-mcp/issues/79))
-- Reused `PEReader`/`MetadataReader` across IL analysis calls ([#80](https://github.com/jcucci/dotnet-sherlock-mcp/issues/80))
-- BenchmarkDotNet benchmarks ([#81](https://github.com/jcucci/dotnet-sherlock-mcp/issues/81))
-- Response caching for type, reflection, XML-doc, and project tools ([#82](https://github.com/jcucci/dotnet-sherlock-mcp/issues/82))
-- Dead-code removal ([#83](https://github.com/jcucci/dotnet-sherlock-mcp/issues/83))
-- CI on Windows and macOS ([#84](https://github.com/jcucci/dotnet-sherlock-mcp/issues/84))
-- Golden-file tests for tool response shapes ([#85](https://github.com/jcucci/dotnet-sherlock-mcp/issues/85))
-- Persistent on-disk index for reverse lookup ([#39](https://github.com/jcucci/dotnet-sherlock-mcp/issues/39))
+Nothing is scheduled right now; new work is tracked in [#87](https://github.com/jcucci/dotnet-sherlock-mcp/issues/87). The persistent on-disk index for reverse lookup ([#39](https://github.com/jcucci/dotnet-sherlock-mcp/issues/39)) was dropped after the benchmarks showed the parallel scans are fast enough.
 
 ## Ideas (not yet tracked)
 - `ExplainType` / `ExplainMember`: concise natural-language summaries from metadata and XML docs.

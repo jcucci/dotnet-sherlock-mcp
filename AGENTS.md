@@ -5,18 +5,20 @@
 - `src/server`: MCP server (`Sherlock.MCP.Server`) and entry point.
 - `src/runtime`: Core analysis services and contracts (`Sherlock.MCP.Runtime`).
 - `src/unit-tests`: xUnit tests (e.g., `MemberAnalysisServiceTests.cs`).
+- `src/integration-tests`: End-to-end MCP stdio protocol tests that launch the server.
+- `src/benchmarks`: BenchmarkDotNet benchmarks (run on demand; see `src/benchmarks/README.md`).
 - `src/example`: Minimal console example.
 - `src/docs`: Roadmap and supporting docs.
 
 ## Build, Test, and Development Commands
-- `dotnet restore && dotnet build src/Sherlock.MCP.slnx`: Restore and build (net9.0).
+- `dotnet restore && dotnet build src/Sherlock.MCP.slnx`: Restore and build (net8.0, net9.0 and net10.0).
 - `dotnet run --project src/server/Sherlock.MCP.Server.csproj`: Run MCP server over stdio.
 - `dotnet test src/unit-tests/Sherlock.MCP.Tests.csproj`: Run unit tests.
 - `dotnet test --collect:"XPlat Code Coverage"`: Run tests with coverage (coverlet).
 - `./tool-install.sh` / `./tool-uninstall.sh`: Pack and install/uninstall the global tool (`sherlock-mcp`).
 
 ## Coding Style & Naming Conventions
-- C# 12/.NET 9, nullable enabled, implicit usings on; prefer file‑scoped namespaces.
+- Multi-targets .NET 8, 9 and 10; nullable enabled, implicit usings on; prefer file‑scoped namespaces.
 - Indentation: 4 spaces; wrap at ~120 chars where practical.
 - Naming: PascalCase for types/methods/properties; camelCase for locals/parameters; interfaces start with `I`.
 - Prefer expression-bodied members when clear; use named parameters when argument meaning isn’t obvious.
@@ -36,6 +38,7 @@ AI contributors: when generating or editing code, please preserve and improve wh
 - Framework: xUnit; files in `src/unit-tests` named `*Tests.cs` (e.g., `MemberAnalysisServiceTests`).
 - Test naming: `MethodOrUnit_Scenario_ExpectedOutcome`.
 - Aim to cover new public API surface; include edge cases (binding flags, generics, by‑ref/arrays).
+- Golden-file tests in `src/unit-tests/Golden` snapshot every tool's response; when a shape changes on purpose, review the `*.received.json` diff and replace the matching `.verified.json`. A new tool needs a golden case.
 - Run locally with `dotnet test`; include coverage on substantial changes.
 
 ## Commit & Pull Request Guidelines
@@ -45,4 +48,4 @@ AI contributors: when generating or editing code, please preserve and improve wh
 
 ## Security & Configuration Tips
 - Assembly loading analyzes paths supplied by users; avoid pointing at untrusted binaries.
-- Require .NET 9 SDK. Use the global tool (`sherlock-mcp`) or `dotnet run` during development.
+- Requires the .NET 10 SDK to build (it targets net8.0–net10.0). Use the global tool (`sherlock-mcp`) or `dotnet run` during development.

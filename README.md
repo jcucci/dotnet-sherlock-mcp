@@ -19,18 +19,19 @@ This tool is essential for developers who want to harness LLM capabilities for:
 *   **XML Documentation Integration**: Automatic extraction of summary, parameters, returns, and remarks
 *   **Performance Optimized**: Caching, pagination, and memory-efficient processing
 *   **Stable JSON API**: Consistent envelopes with versioning and structured error codes
-*   **.NET 9.0 Native**: Built on the latest .NET platform with modern C# features
+*   **Modern .NET**: Targets .NET 8, 9 and 10
 *   **Project Integration**: Solution and project file analysis with dependency resolution
 *   **Workflow Prompts**: `explore_package`, `explain_type` and `who_calls` prompts give one-click entry points into common analysis workflows
 *   **Current MCP SDK**: Built on `ModelContextProtocol` 2.1.0 (GA)
 *   **Current MCP Specification**: Speaks protocol revision `2026-07-28`, and negotiates down automatically for clients on earlier revisions
 
-## What's New in 2.14.0
+## What's New in 2.15.0
 
-- **Claude Code plugin**: `/plugin marketplace add jcucci/dotnet-sherlock-mcp` and `/plugin install sherlock@dotnet-sherlock-mcp` install the server plus a skill that teaches agents the Sherlock workflow. See [Claude Code plugin](#claude-code-plugin).
-- **`get_type_members` and tool profiles**: one paginated, filterable tool lists every member kind, and `--profile core` / `SHERLOCK_TOOL_PROFILE=core` trims the surface to the essential tools, and agents load the rest by group with `load_tools`. The per-kind member tools are deprecated.
-- **Structured output and error guidance**: the core browsing tools publish an `outputSchema` and return `structuredContent`, and failed calls carry `isError: true` with did-you-mean candidates and fix-it suggestions.
-- **Cancellation, progress and elicitation**: long scans can be cancelled and report progress, and an ambiguous simple type name prompts the client to choose. See `CHANGELOG.md` for full details.
+- **Read and compare code**: `get_member_source` returns a member's original source through its PDB or Source Link, `decompile_member` / `decompile_type` decompile to C#, and `compare_api_surface` diffs two assembly or package versions and flags breaking changes.
+- **Framework patterns**: `find_endpoints`, `find_service_registrations`, `find_ef_entities` and `find_handlers` list ASP.NET Core endpoints, DI registrations, EF Core entities and MediatR handlers.
+- **Accurate resolution**: framework types resolve against the target framework's reference pack, dependencies resolve from the project's `project.assets.json` (`get_package_graph` shows the restored graph), and project tools evaluate projects with MSBuild.
+- **Agent ergonomics**: `open_assembly` handles, workflow prompts (`explore_package`, `explain_type`, `who_calls`), Mermaid diagrams for hierarchies and call graphs, and on-demand tool groups with discovery hints under the `core` profile.
+- **Windows-friendly**: inspected assemblies are no longer locked, so rebuilds succeed while the server is running. See `CHANGELOG.md` for full details.
 
 ## Installation
 
@@ -39,7 +40,7 @@ This tool is essential for developers who want to harness LLM capabilities for:
 With the .NET 10 SDK, `dnx` downloads the package from NuGet and runs it directly — no install step:
 
 ```bash
-dnx -v q --yes Sherlock.MCP.Server@2.14.0
+dnx -v q --yes Sherlock.MCP.Server@2.15.0
 ```
 
 `--yes` skips the interactive confirmation prompt, which an MCP client launching the server over stdio can't answer. `-v q` stops `dnx` from printing a "Skipping NuGet package signature verification." notice to stdout the first time it downloads a version, which would otherwise corrupt the MCP stream and fail that first connection. Both are `dnx` options, so they must come before the package id; anything after it is passed to the server. Pinning the version keeps launches reproducible; bump it when you want to upgrade. The package is published with the `McpServer` package type, so it is also listed as an MCP server on NuGet.org.
@@ -102,7 +103,7 @@ Teammates still need the .NET 10 SDK on their `PATH` for `dnx`.
 - Claude Code:
 
 ```bash
-claude mcp add sherlock -- dnx -v q --yes Sherlock.MCP.Server@2.14.0
+claude mcp add sherlock -- dnx -v q --yes Sherlock.MCP.Server@2.15.0
 ```
 
 - VS Code (`.vscode/mcp.json`):
@@ -113,7 +114,7 @@ claude mcp add sherlock -- dnx -v q --yes Sherlock.MCP.Server@2.14.0
     "sherlock": {
       "type": "stdio",
       "command": "dnx",
-      "args": ["-v", "q", "--yes", "Sherlock.MCP.Server@2.14.0"]
+      "args": ["-v", "q", "--yes", "Sherlock.MCP.Server@2.15.0"]
     }
   }
 }
@@ -143,7 +144,7 @@ Large tool lists cost agents context and discoverability (Claude Code switches t
 | Profile | Tools | Contents |
 |---|---|---|
 | `full` (default) | 47 | Every tool, including the deprecated per-kind member tools |
-| `core` | 24 | `load_tools` and `invoke_tool` (see [Tool groups](#tool-groups)), discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`) source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
+| `core` | 24 | `load_tools` and `invoke_tool` (see [Tool groups](#tool-groups)), discovery (`find_assembly_by_class_name`, `find_assembly_by_file_name`, `find_assembly_by_nuget_package`, `get_project_output_paths`, `open_assembly`), orientation (`get_assembly_info`, `get_types_from_assembly`, `get_type_info`, `get_type_hierarchy`), members and docs (`get_type_members`, `search_members`, `analyze_method`, `get_xml_docs_for_type`, `get_xml_docs_for_member`) and relationships (`find_implementations_of`, `find_methods_returning`, `find_extension_methods_for`, `find_references_to`, `get_method_calls`), source (`get_member_source`, `decompile_member`) and API diffs (`compare_api_surface`) |
 
 Select a profile with the `--profile` argument or the `SHERLOCK_TOOL_PROFILE` environment variable (the argument wins). An unknown profile name stops the server with an error.
 
@@ -425,7 +426,7 @@ All tools return a stable JSON envelope:
 { "kind": "type.list|member.methods|...", "version": "1.0.0", "data": { /* result */ }, "hints": [ /* optional */ ] }
 ```
 
-The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `compare_api_surface`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
+The envelope is serialized as compact (unindented) JSON in the tool's text content block. The core browsing tools also advertise an MCP `outputSchema` and return the same envelope as `structuredContent`, so clients can validate and consume results without parsing text: `open_assembly`, `search_members`, `get_types_from_assembly`, `get_type_info`, `get_type_members`, `get_type_methods`, `get_assembly_info`, `get_method_calls`, `decompile_member`, `get_member_source`, `compare_api_surface`, `find_implementations_of`, `find_methods_returning`, `find_extension_methods_for` and `find_references_to`. Their schemas describe the default `summary` projection; `projection='full'` items add fields on top of it. Error results never carry `structuredContent`.
 
 Error results are flagged with MCP's `isError: true`, so clients can tell a failure from a result without parsing the text. Errors use a consistent shape. Every error carries `kind`, `version`, `code`, and `message`; some add `details`, and guided errors add a `suggestion`, `alternativeTools`, or `recommendedParams` to point the agent at a next step:
 
@@ -442,9 +443,10 @@ Error results are flagged with MCP's `isError: true`, so clients can tell a fail
 
 Error codes:
 
-* **Not found:** `AssemblyNotFound` (`recommendedParams.similarFiles` lists near-miss assemblies in the same folder), `TypeNotFound` / `MemberNotFound` (`recommendedParams.candidates` lists the closest names), `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`, `ProjectNotFound`, `FileNotFound`
-* **Bad input:** `AmbiguousTypeName` (only for clients that can't elicit; `recommendedParams.candidates` lists the matching full names), `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidContinuationToken`
-* **Loading:** `InvalidAssembly` (not a managed assembly), `DependencyNotFound` (a referenced assembly couldn't be loaded), `DependencyResolutionFailed`, `AccessDenied`
+* **Not found:** `AssemblyNotFound` (`recommendedParams.similarFiles` lists near-miss assemblies in the same folder), `TypeNotFound` / `MemberNotFound` (`recommendedParams.candidates` lists the closest names), `MethodNotFound`, `PackageNotFound`, `VersionNotFound`, `XmlNotFound`, `ProjectNotFound`, `FileNotFound`, `OverloadNotFound`, `TypeForwarded` (`recommendedParams` names the defining assembly), `AssetsFileNotFound`, `TargetFrameworkNotFound`, `ToolNotFound`
+* **Bad input:** `AmbiguousTypeName` (only for clients that can't elicit; `recommendedParams.candidates` lists the matching full names), `AmbiguousTargetFramework`, `InvalidArgument`, `InvalidProjection`, `InvalidAnalysisDepth`, `InvalidFormat`, `InvalidContinuationToken`
+* **Handles & tool groups:** `StaleAssemblyHandle`, `UnknownAssemblyHandle`, `ToolNotLoaded` (the error names the group to load)
+* **Loading:** `InvalidAssembly` (not a managed assembly), `DependencyNotFound` (a referenced assembly couldn't be loaded), `DependencyResolutionFailed`, `InvalidAssetsFile`, `AccessDenied`
 * **Limits & internal:** `ResponseTooLarge`, `InternalError`
 
 ## Roadmap
@@ -501,23 +503,14 @@ dotnet husky install
 
 ### Creating a Release
 
-Maintainers can create releases using:
+Releases are cut from a pull request that bumps every version pin to the new version: `<Version>` in `src/server/Sherlock.MCP.Server.csproj`, both `version` fields in `server.json`, the Claude Code plugin's `version` in `plugins/sherlock/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, the pinned `dnx` version in `plugins/sherlock/.mcp.json` and in this README, and the `CHANGELOG.md` heading (`[Unreleased]` → `[x.y.z] - date`). `server.json` is packed into the NuGet package as `.mcp/server.json`. Don't run `dotnet versionize` on top of that; it would bump the version again.
+
+After the PR merges, tag the merge commit on `main` and push the tag:
 
 ```bash
-# Restore tools if not already done
-dotnet tool restore
-
-# Preview what will change
-dotnet versionize --dry-run
-
-# Create release (bumps version, updates changelog, creates git tag)
-dotnet versionize
-
-# Push changes and tag to trigger release workflow
-git push --follow-tags
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin vX.Y.Z
 ```
-
-`versionize` only bumps the project version. Before pushing, bump both `version` fields in `server.json`, the Claude Code plugin's `version` in `plugins/sherlock/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, and the pinned `dnx` version in `plugins/sherlock/.mcp.json` (and in this README) in the same release commit, then re-point the tag at it. `server.json` is packed into the NuGet package as `.mcp/server.json`.
 
 The release workflow will automatically:
 1. Verify that the tag, `server.json`, the project version and the Claude Code plugin versions all match
