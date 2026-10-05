@@ -4,6 +4,7 @@ using System.Xml.Linq;
 
 using Sherlock.MCP.Runtime.Contracts.ProjectAnalysis;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Runtime.ProjectEvaluation;
 
 namespace Sherlock.MCP.Runtime;
 
@@ -14,6 +15,20 @@ public class ProjectAnalysisService : IProjectAnalysisService
         RegexOptions.IgnoreCase | RegexOptions.Compiled
     );
     private static readonly string[] SupportedProjectExtensions = { ".csproj", ".vbproj", ".fsproj" };
+    private static readonly IReadOnlyDictionary<string, string> NoGlobalProperties = new Dictionary<string, string>();
+    private static readonly string[] ProjectProperties = ["AssemblyName", "RootNamespace", "OutputType", "TargetFramework", "TargetFrameworks"];
+    private static readonly string[] ProjectItems = ["PackageReference", "PackageVersion", "ProjectReference"];
+    private static readonly string[] FrameworkProperties = ["TargetFramework", "TargetFrameworks"];
+    private static readonly string[] OutputProperties = ["TargetDir", "TargetPath"];
+
+    private readonly RuntimeOptions? _options;
+    private readonly IProjectEvaluator? _evaluator;
+
+    public ProjectAnalysisService(RuntimeOptions? options = null, IProjectEvaluator? evaluator = null)
+    {
+        _options = options;
+        _evaluator = evaluator;
+    }
 
     public async Task<ProjectInfo[]> AnalyzeSolutionFileAsync(string solutionFilePath, CancellationToken cancellationToken = default)
     {
@@ -80,10 +95,186 @@ public class ProjectAnalysisService : IProjectAnalysisService
 
     public async Task<ProjectAnalysisResult> AnalyzeProjectFileAsync(string projectFilePath, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(projectFilePath))
+        EnsureProjectExists(projectFilePath);
+        var (evaluation, evaluationInfo) = await EvaluateAsync(projectFilePath, NoGlobalProperties, ProjectProperties, ProjectItems, cancellationToken);
+        if (evaluation is null)
+            return await AnalyzeFromXmlAsync(projectFilePath, evaluationInfo, cancellationToken);
+
+        var analysis = AnalyzeFromEvaluation(projectFilePath, evaluation);
+        var outputs = await EvaluateOutputPathsAsync(projectFilePath, Configurations(null), OutputFrameworks(evaluation), cancellationToken);
+        return outputs.Paths is null
+            ? await AnalyzeFromXmlAsync(projectFilePath, ProjectEvaluationInfo.Xml(outputs.FailureReason!), cancellationToken)
+            : analysis with { OutputPaths = outputs.Paths, Evaluation = ProjectEvaluationInfo.MsBuild };
+    }
+
+    public async Task<ProjectOutputPaths> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null, CancellationToken cancellationToken = default)
+    {
+        EnsureProjectExists(projectFilePath);
+        var configurations = Configurations(configuration);
+        var (evaluation, evaluationInfo) = await EvaluateAsync(projectFilePath, NoGlobalProperties, FrameworkProperties, [], cancellationToken);
+        if (evaluation is null)
+            return new ProjectOutputPaths(await XmlOutputPathsAsync(projectFilePath, configurations, cancellationToken), evaluationInfo);
+
+        var outputs = await EvaluateOutputPathsAsync(projectFilePath, configurations, OutputFrameworks(evaluation), cancellationToken);
+        return outputs.Paths is null
+            ? new ProjectOutputPaths(await XmlOutputPathsAsync(projectFilePath, configurations, cancellationToken), ProjectEvaluationInfo.Xml(outputs.FailureReason!))
+            : new ProjectOutputPaths(outputs.Paths, ProjectEvaluationInfo.MsBuild);
+    }
+
+    public async Task<ResolvedPackageReferences> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null, CancellationToken cancellationToken = default)
+    {
+        var analysisResult = await AnalyzeProjectFileAsync(projectFilePath, cancellationToken);
+        var resolvedPackages = new List<PackageReference>();
+        var packagesToResolve = packageName != null
+            ? analysisResult.PackageReferences.Where(p => p.Name.Equals(packageName, StringComparison.OrdinalIgnoreCase))
+            : analysisResult.PackageReferences;
+        foreach (var package in packagesToResolve)
         {
-            throw new FileNotFoundException($"Project file not found: {projectFilePath}");
+            cancellationToken.ThrowIfCancellationRequested();
+            var assemblyPaths = await ResolvePackageAssemblyPathsAsync(package, analysisResult.TargetFrameworks);
+            resolvedPackages.Add(package with
+            {
+                AssemblyPaths = assemblyPaths,
+                IsResolved = assemblyPaths.Length > 0
+            });
         }
+        return new ResolvedPackageReferences(resolvedPackages.ToArray(), analysisResult.Evaluation);
+    }
+
+    public async Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug", CancellationToken cancellationToken = default)
+    {
+        var outputs = await GetProjectOutputPathsAsync(projectFilePath, configuration, cancellationToken);
+        return await ReadDepsJsonFilesAsync(projectFilePath, outputs.Paths, cancellationToken);
+    }
+
+    public async Task<RuntimeDependency[]> ReadDepsJsonFilesAsync(string projectFilePath, IReadOnlyList<string> outputPaths, CancellationToken cancellationToken = default)
+    {
+        var dependencies = new List<RuntimeDependency>();
+        foreach (var outputPath in outputPaths)
+        {
+            var assemblyName = Path.GetFileNameWithoutExtension(projectFilePath);
+            var depsJsonPath = Path.Combine(outputPath, $"{assemblyName}.deps.json");
+            if (File.Exists(depsJsonPath))
+            {
+                var deps = await ParseDepsJsonFileAsync(depsJsonPath, cancellationToken);
+                dependencies.AddRange(deps);
+            }
+        }
+        return dependencies.ToArray();
+    }
+
+    private async Task<(ProjectEvaluationResult? Result, ProjectEvaluationInfo Info)> EvaluateAsync(
+        string projectFilePath,
+        IReadOnlyDictionary<string, string> globalProperties,
+        IReadOnlyList<string> properties,
+        IReadOnlyList<string> items,
+        CancellationToken cancellationToken)
+    {
+        if (!EvaluationEnabled)
+            return (null, ProjectEvaluationInfo.Xml(ProjectEvaluationInfo.DisabledReason));
+
+        var result = await _evaluator!.EvaluateAsync(projectFilePath, globalProperties, properties, items, cancellationToken);
+        return result.Success
+            ? (result, ProjectEvaluationInfo.MsBuild)
+            : (null, ProjectEvaluationInfo.Xml(result.FailureReason ?? "MSBuild evaluation failed"));
+    }
+
+    public string EvaluationMode => EvaluationEnabled ? ProjectEvaluationInfo.MsBuildMode : ProjectEvaluationInfo.XmlMode;
+
+    private bool EvaluationEnabled =>
+        _evaluator is not null && _options?.ProjectEvaluation != ProjectEvaluationMode.Off;
+
+    private async Task<(string[]? Paths, string? FailureReason)> EvaluateOutputPathsAsync(
+        string projectFilePath,
+        string[] configurations,
+        string?[] frameworks,
+        CancellationToken cancellationToken)
+    {
+        var evaluations = configurations
+            .SelectMany(configuration => frameworks.Select(framework => OutputGlobalProperties(configuration, framework)))
+            .Select(globalProperties => _evaluator!.EvaluateAsync(projectFilePath, globalProperties, OutputProperties, [], cancellationToken));
+        var results = await Task.WhenAll(evaluations);
+        var failure = results.FirstOrDefault(result => !result.Success);
+        if (failure is not null)
+            return (null, failure.FailureReason ?? "MSBuild evaluation failed");
+
+        var paths = results
+            .Select(result => result.GetProperty("TargetDir"))
+            .Where(targetDir => targetDir is not null)
+            .Select(targetDir => Path.TrimEndingDirectorySeparator(Path.GetFullPath(targetDir!, Path.GetDirectoryName(Path.GetFullPath(projectFilePath))!)))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return paths.Length > 0 ? (paths, null) : (null, "MSBuild evaluation reported no TargetDir");
+    }
+
+    private static Dictionary<string, string> OutputGlobalProperties(string configuration, string? targetFramework)
+    {
+        var globalProperties = new Dictionary<string, string> { ["Configuration"] = configuration };
+        if (targetFramework is not null)
+            globalProperties["TargetFramework"] = targetFramework;
+        return globalProperties;
+    }
+
+    private static ProjectAnalysisResult AnalyzeFromEvaluation(string projectFilePath, ProjectEvaluationResult evaluation)
+    {
+        var targetFrameworks = TargetFrameworksOf(evaluation);
+        var targetFramework = evaluation.GetProperty("TargetFramework") ?? targetFrameworks.FirstOrDefault() ?? string.Empty;
+        var assemblyName = evaluation.GetProperty("AssemblyName") ?? Path.GetFileNameWithoutExtension(projectFilePath);
+        return new ProjectAnalysisResult(
+            assemblyName,
+            targetFramework,
+            targetFrameworks.Length > 0 ? targetFrameworks : [targetFramework],
+            evaluation.GetProperty("OutputType") ?? "Library",
+            assemblyName,
+            evaluation.GetProperty("RootNamespace") ?? assemblyName,
+            EvaluatedProjectReferences(projectFilePath, evaluation),
+            EvaluatedPackageReferences(evaluation),
+            [],
+            ProjectEvaluationInfo.MsBuild);
+    }
+
+    private static string?[] OutputFrameworks(ProjectEvaluationResult evaluation) =>
+        SplitList(evaluation.GetProperty("TargetFrameworks")) is { Length: > 0 } frameworks ? [.. frameworks] : [null];
+
+    private static string[] TargetFrameworksOf(ProjectEvaluationResult evaluation) =>
+        SplitList(evaluation.GetProperty("TargetFrameworks")) is { Length: > 0 } frameworks
+            ? frameworks
+            : SplitList(evaluation.GetProperty("TargetFramework"));
+
+    private static string[] SplitList(string? value) =>
+        value?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+    private static ProjectReference[] EvaluatedProjectReferences(string projectFilePath, ProjectEvaluationResult evaluation)
+    {
+        var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(projectFilePath)) ?? string.Empty;
+        return evaluation.GetItems("ProjectReference")
+            .Select(item => new ProjectReference(
+                Path.GetFileNameWithoutExtension(item.Identity.Replace('\\', '/')),
+                item.Identity,
+                item.GetMetadata("FullPath") ?? Path.GetFullPath(Path.Combine(projectDirectory, item.Identity))))
+            .ToArray();
+    }
+
+    private static PackageReference[] EvaluatedPackageReferences(ProjectEvaluationResult evaluation)
+    {
+        var centralVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var packageVersion in evaluation.GetItems("PackageVersion"))
+            if (packageVersion.GetMetadata("Version") is { } version)
+                centralVersions[packageVersion.Identity] = version;
+
+        return evaluation.GetItems("PackageReference")
+            .Where(item => !string.Equals(item.GetMetadata("IsImplicitlyDefined"), "true", StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(item => item.Identity, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new PackageReference(
+                item.Identity,
+                item.GetMetadata("Version") ?? item.GetMetadata("VersionOverride") ?? centralVersions.GetValueOrDefault(item.Identity) ?? string.Empty,
+                Array.Empty<string>(),
+                false))
+            .ToArray();
+    }
+
+    private static async Task<ProjectAnalysisResult> AnalyzeFromXmlAsync(string projectFilePath, ProjectEvaluationInfo evaluationInfo, CancellationToken cancellationToken)
+    {
         var projectDirectory = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
         var content = await File.ReadAllTextAsync(projectFilePath, cancellationToken);
         var doc = XDocument.Parse(content);
@@ -110,7 +301,7 @@ public class ProjectAnalysisService : IProjectAnalysisService
                 false
             ))
             .ToArray();
-        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, cancellationToken: cancellationToken);
+        var outputPaths = XmlOutputPaths(doc, projectDirectory, Configurations(null));
         return new ProjectAnalysisResult(
             assemblyName,
             targetFramework,
@@ -120,21 +311,21 @@ public class ProjectAnalysisService : IProjectAnalysisService
             rootNamespace,
             projectReferences,
             packageReferences,
-            outputPaths
+            outputPaths,
+            evaluationInfo
         );
     }
 
-    public async Task<string[]> GetProjectOutputPathsAsync(string projectFilePath, string? configuration = null, CancellationToken cancellationToken = default)
+    private static async Task<string[]> XmlOutputPathsAsync(string projectFilePath, string[] configurations, CancellationToken cancellationToken)
     {
-        if (!File.Exists(projectFilePath))
-        {
-            throw new FileNotFoundException($"Project file not found: {projectFilePath}");
-        }
         var projectDirectory = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
         var content = await File.ReadAllTextAsync(projectFilePath, cancellationToken);
-        var doc = XDocument.Parse(content);
+        return XmlOutputPaths(XDocument.Parse(content), projectDirectory, configurations);
+    }
+
+    private static string[] XmlOutputPaths(XDocument doc, string projectDirectory, string[] configurations)
+    {
         var outputPaths = new List<string>();
-        var configurations = configuration != null ? new[] { configuration } : new[] { "Debug", "Release" };
         var propertyGroups = doc.Descendants("PropertyGroup");
         var targetFramework = GetPropertyValue(propertyGroups, "TargetFramework");
         var targetFrameworks = GetPropertyValue(propertyGroups, "TargetFrameworks")?.Split(';') ??
@@ -144,60 +335,23 @@ public class ProjectAnalysisService : IProjectAnalysisService
         {
             foreach (var framework in targetFrameworks)
             {
-                string outputPath;
-                if (!string.IsNullOrEmpty(customOutputPath))
-                {
-                    outputPath = Path.GetFullPath(Path.Combine(projectDirectory, customOutputPath));
-                }
-                else
-                {
-                    outputPath = Path.Combine(projectDirectory, "bin", config, framework);
-                    outputPath = Path.GetFullPath(outputPath);
-                }
+                var outputPath = !string.IsNullOrEmpty(customOutputPath)
+                    ? Path.GetFullPath(Path.Combine(projectDirectory, customOutputPath))
+                    : Path.GetFullPath(Path.Combine(projectDirectory, "bin", config, framework));
                 if (!outputPaths.Contains(outputPath))
-                {
                     outputPaths.Add(outputPath);
-                }
             }
         }
         return outputPaths.ToArray();
     }
 
-    public async Task<PackageReference[]> ResolvePackageReferencesAsync(string projectFilePath, string? packageName = null, CancellationToken cancellationToken = default)
-    {
-        var analysisResult = await AnalyzeProjectFileAsync(projectFilePath, cancellationToken);
-        var resolvedPackages = new List<PackageReference>();
-        var packagesToResolve = packageName != null
-            ? analysisResult.PackageReferences.Where(p => p.Name.Equals(packageName, StringComparison.OrdinalIgnoreCase))
-            : analysisResult.PackageReferences;
-        foreach (var package in packagesToResolve)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var assemblyPaths = await ResolvePackageAssemblyPathsAsync(package, analysisResult.TargetFrameworks);
-            resolvedPackages.Add(package with
-            {
-                AssemblyPaths = assemblyPaths,
-                IsResolved = assemblyPaths.Length > 0
-            });
-        }
-        return resolvedPackages.ToArray();
-    }
+    private static string[] Configurations(string? configuration) =>
+        configuration != null ? [configuration] : ["Debug", "Release"];
 
-    public async Task<RuntimeDependency[]> FindDepsJsonFilesAsync(string projectFilePath, string configuration = "Debug", CancellationToken cancellationToken = default)
+    private static void EnsureProjectExists(string projectFilePath)
     {
-        var outputPaths = await GetProjectOutputPathsAsync(projectFilePath, configuration, cancellationToken);
-        var dependencies = new List<RuntimeDependency>();
-        foreach (var outputPath in outputPaths)
-        {
-            var assemblyName = Path.GetFileNameWithoutExtension(projectFilePath);
-            var depsJsonPath = Path.Combine(outputPath, $"{assemblyName}.deps.json");
-            if (File.Exists(depsJsonPath))
-            {
-                var deps = await ParseDepsJsonFileAsync(depsJsonPath, cancellationToken);
-                dependencies.AddRange(deps);
-            }
-        }
-        return dependencies.ToArray();
+        if (!File.Exists(projectFilePath))
+            throw new FileNotFoundException($"Project file not found: {projectFilePath}");
     }
 
     public Task<NugetAssemblyLookup> FindAssemblyInNugetCacheAsync(string packageId, string? version = null, string? tfm = null)

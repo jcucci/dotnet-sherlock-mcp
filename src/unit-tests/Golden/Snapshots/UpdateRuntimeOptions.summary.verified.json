@@ -21,7 +21,8 @@
         "api.bitbucket.org",
         "dev.azure.com",
         "*.visualstudio.com"
-      ]
+      ],
+      "projectEvaluation": "auto"
     }
   }
 }

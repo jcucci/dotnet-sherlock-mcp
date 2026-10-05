@@ -9,5 +9,6 @@ public record ProjectAnalysisResult(
     string RootNamespace,
     ProjectReference[] ProjectReferences,
     PackageReference[] PackageReferences,
-    string[] OutputPaths
+    string[] OutputPaths,
+    ProjectEvaluationInfo Evaluation
 );

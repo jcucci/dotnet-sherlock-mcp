@@ -11,6 +11,7 @@ using Sherlock.MCP.Runtime.Completions;
 using Sherlock.MCP.Runtime.Decompilation;
 using Sherlock.MCP.Runtime.Handles;
 using Sherlock.MCP.Runtime.Inspection;
+using Sherlock.MCP.Runtime.ProjectEvaluation;
 using Sherlock.MCP.Runtime.SourceLink;
 using Sherlock.MCP.Runtime.Telemetry;
 using Sherlock.MCP.Server.Completions;
@@ -72,7 +73,10 @@ builder.Services
     .AddSingleton<IMemberAnalysisService, MemberAnalysisService>()
     .AddSingleton<ITypeAnalysisService, TypeAnalysisService>()
     .AddSingleton<IXmlDocService, XmlDocService>()
-    .AddSingleton<IProjectAnalysisService, ProjectAnalysisService>()
+    .AddSingleton<IProjectEvaluator>(_ => new DotnetCliProjectEvaluator())
+    .AddSingleton<IProjectAnalysisService>(services => new ProjectAnalysisService(
+        services.GetRequiredService<RuntimeOptions>(),
+        services.GetRequiredService<IProjectEvaluator>()))
     .AddSingleton<IReverseLookupService, ReverseLookupService>()
     .AddSingleton<IIlAnalysisService, IlAnalysisService>()
     .AddSingleton<IFrameworkPatternService, FrameworkPatternService>()

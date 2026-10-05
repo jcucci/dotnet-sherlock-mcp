@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using Sherlock.MCP.Runtime;
+using Sherlock.MCP.Runtime.ProjectEvaluation;
 using Sherlock.MCP.Runtime.SourceLink;
 using Sherlock.MCP.Server.Shared;
 
@@ -23,7 +24,8 @@ public static class ConfigTools
             maxCachedResponses = options.MaxCachedResponses,
             maxAssemblyHandles = options.MaxAssemblyHandles,
             sourceFetch = SourceFetchName(options.SourceFetch),
-            sourceFetchHosts = options.SourceFetchHosts.ToArray()
+            sourceFetchHosts = options.SourceFetchHosts.ToArray(),
+            projectEvaluation = ProjectEvaluationName(options.ProjectEvaluation)
         };
 
         return JsonHelpers.Envelope("runtime.options", result);
@@ -43,14 +45,19 @@ public static class ConfigTools
         [Description("Maximum assembly handles kept in the on-disk handle registry")] int? maxAssemblyHandles = null,
         [Description("Source Link fetching for get_member_source: 'off', 'known-hosts' (only sourceFetchHosts) or 'any'")] string? sourceFetch = null,
         [Description("Add hosts get_member_source may fetch Source Link files from, e.g. 'git.example.com' or '*.example.com'")] string[]? addSourceFetchHosts = null,
-        [Description("Remove hosts from sourceFetchHosts")] string[]? removeSourceFetchHosts = null)
+        [Description("Remove hosts from sourceFetchHosts")] string[]? removeSourceFetchHosts = null,
+        [Description("Project analysis: 'auto' (evaluate with the installed .NET SDK's MSBuild, falling back to XML parsing) or 'off' (XML parsing only)")] string? projectEvaluation = null)
     {
-        if (sourceFetch != null)
-        {
-            if (!RuntimeOptions.TryParseSourceFetch(sourceFetch, out var mode))
-                return JsonHelpers.Error("InvalidArgument", "sourceFetch must be 'off', 'known-hosts' or 'any'");
-            options.SourceFetch = mode;
-        }
+        var fetchMode = options.SourceFetch;
+        if (sourceFetch != null && !RuntimeOptions.TryParseSourceFetch(sourceFetch, out fetchMode))
+            return JsonHelpers.Error("InvalidArgument", "sourceFetch must be 'off', 'known-hosts' or 'any'");
+
+        var evaluationMode = options.ProjectEvaluation;
+        if (projectEvaluation != null && !RuntimeOptions.TryParseProjectEvaluation(projectEvaluation, out evaluationMode))
+            return JsonHelpers.Error("InvalidArgument", "projectEvaluation must be 'auto' or 'off'");
+
+        options.SourceFetch = fetchMode;
+        options.ProjectEvaluation = evaluationMode;
 
         if (defaultMaxItems is > 0) options.DefaultMaxItems = defaultMaxItems.Value;
         if (cacheTtlSeconds is > 0) options.CacheTtlSeconds = cacheTtlSeconds.Value;
@@ -100,5 +107,7 @@ public static class ConfigTools
         SourceFetchMode.AnyHost => "any",
         _ => "known-hosts"
     };
-}
 
+    private static string ProjectEvaluationName(ProjectEvaluationMode mode) =>
+        mode == ProjectEvaluationMode.Off ? "off" : "auto";
+}

@@ -23,6 +23,8 @@ public static class BenchmarkCorpus
 
     public static string[] ReverseLookupScope => [LargePath, LargeCompanionPath, SmallPath];
 
+    public static string ProjectPath => ResolveProjectPath();
+
     public static string PathFor(string corpus) => corpus switch
     {
         Small => SmallPath,
@@ -46,5 +48,18 @@ public static class BenchmarkCorpus
 
         return match ?? throw new InvalidOperationException(
             $"ICSharpCode.Decompiler {version.Major}.{version.Minor}.x was not found under {packageRoot}; run 'dotnet restore' first.");
+    }
+
+    private static string ResolveProjectPath()
+    {
+        string relative = Path.Combine("src", "runtime", "Sherlock.MCP.Runtime.csproj");
+        for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            string candidate = Path.Combine(directory.FullName, relative);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        throw new InvalidOperationException($"{relative} was not found above {AppContext.BaseDirectory}; run the benchmarks from a repository checkout.");
     }
 }
